@@ -29,6 +29,7 @@ export { canTransitionQuestion, QuestionStatus, transitionQuestion } from './que
 export { assertExecutionPlan } from './executionPlan';
 export { assertPlanApproved, PlanDecision, recordPlanDecision } from './planApproval';
 export { assertTaskAssignment } from './assignmentValidation';
+export { validateDepartmentWorkforce } from './departmentWorkforce';
 export { assertObjectiveTransition, canTransitionObjective, OBJECTIVE_TRANSITIONS, transitionObjective, } from './objectiveLifecycle';
 export { assertTaskTransition, canTransitionTask, TASK_TRANSITIONS, transitionTask, } from './taskLifecycle';
 export { assertAgentInvariant, assertCanReportTo, assertDepartmentInvariant, assertObjectiveInvariant, assertOfficeInvariant, assertOrganizationHierarchyInvariant, assertOrganizationInvariant, assertTaskInvariant, } from './invariants';
