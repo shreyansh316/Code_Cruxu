@@ -18,6 +18,7 @@
  * The database file is stored in VS Code's globalStorageUri.fsPath.
  * During unit tests, an in-memory database is used.
  *
- * Implemented starting Phase 006 (database connection) through Phase 009.
+ * Initial relational schema is defined in Phase 003.
+ * Connection lifecycle and repositories are implemented starting Phase 006.
  */
-export {};
+export { CORE_SCHEMA_SQL, initializeCoreSchema } from './schema';
