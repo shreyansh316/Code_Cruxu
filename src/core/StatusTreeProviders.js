@@ -22,6 +22,7 @@ export class ObjectiveStatusTreeProvider {
         const item = new vscode.TreeItem(objective.title, vscode.TreeItemCollapsibleState.None);
         item.id = `objective:${objective.id}`;
         item.description = objective.status;
+        item.accessibilityInformation = { label: `Objective: ${objective.title}. Status: ${objective.status}.` };
         item.contextValue = 'headroom.objective';
         return item;
     }
@@ -39,6 +40,7 @@ export class ObjectiveStatusTreeProvider {
     _emptyState(label) {
         const item = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.None);
         item.contextValue = 'headroom.empty';
+        item.accessibilityInformation = { label: `${label} Use the Command Palette and run HEADROOM: New Objective to add one.` };
         return item;
     }
 }
@@ -58,6 +60,7 @@ export class ActiveTaskTreeProvider {
         const item = new vscode.TreeItem(task.title, vscode.TreeItemCollapsibleState.None);
         item.id = `task:${task.id}`;
         item.description = task.status;
+        item.accessibilityInformation = { label: `Task: ${task.title}. Status: ${task.status}.` };
         item.contextValue = 'headroom.task';
         return item;
     }
@@ -69,6 +72,7 @@ export class ActiveTaskTreeProvider {
         if (tasks.length === 0) {
             const item = new vscode.TreeItem('No active tasks.', vscode.TreeItemCollapsibleState.None);
             item.contextValue = 'headroom.empty';
+            item.accessibilityInformation = { label: 'No active tasks.' };
             return [item];
         }
         return tasks;
