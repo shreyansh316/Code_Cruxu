@@ -87,6 +87,32 @@ export const SCHEMA_MIGRATIONS = [
           BEGIN SELECT RAISE(ABORT, 'memory scope owner mismatch'); END;
         `),
     },
+    {
+        version: 4,
+        name: 'append-only-audit-records',
+        up: (database) => database.exec(`
+          DROP INDEX IF EXISTS idx_audit_entity;
+          ALTER TABLE audit_logs RENAME TO audit_logs_legacy;
+          CREATE TABLE audit_logs (
+            id TEXT PRIMARY KEY NOT NULL,
+            action TEXT NOT NULL,
+            entity TEXT NOT NULL,
+            entity_id TEXT NOT NULL,
+            agent_id TEXT,
+            task_id TEXT,
+            details TEXT,
+            created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+          );
+          INSERT INTO audit_logs (id, action, entity, entity_id, agent_id, task_id, details, created_at)
+            SELECT id, action, entity, entity_id, agent_id, task_id, details, created_at FROM audit_logs_legacy;
+          DROP TABLE audit_logs_legacy;
+          CREATE INDEX idx_audit_entity ON audit_logs(entity, entity_id, created_at);
+          CREATE TRIGGER audit_logs_no_update BEFORE UPDATE ON audit_logs
+            BEGIN SELECT RAISE(ABORT, 'audit records are append-only'); END;
+          CREATE TRIGGER audit_logs_no_delete BEFORE DELETE ON audit_logs
+            BEGIN SELECT RAISE(ABORT, 'audit records are append-only'); END;
+        `),
+    },
 ];
 const CREATE_MIGRATION_LEDGER_SQL = `
   CREATE TABLE IF NOT EXISTS schema_migrations (
