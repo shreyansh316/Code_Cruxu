@@ -2,6 +2,7 @@ export {};
 export { createWorkspaceFileAdapter } from './WorkspaceFileAdapter';
 export { createCommandRunner } from './CommandRunner';
 export { createTaskScopedTools } from './TaskScopedTools';
+export { createWorkspaceSnapshot, compareWorkspaceSnapshots } from './WorkspaceSnapshot';
 export { createVerificationPipeline } from './VerificationPipeline';
 export { SqliteEventBus } from './SqliteEventBus';
 export { createSqliteUnitOfWork } from './SqliteUnitOfWork';
