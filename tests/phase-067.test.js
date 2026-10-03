@@ -2,9 +2,10 @@ import { mkdtemp, readFile, rm, writeFile } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createDatabaseBackupService, OrganizationRepository, SqliteConnection, applyMigrations } from '../src/storage';
+import { createDatabaseBackupService, OrganizationRepository, SqliteConnection, applyMigrations, SCHEMA_MIGRATIONS } from '../src/storage';
 
 describe('Phase 067 — consistent data export, backup, and verified restore', () => {
+    const currentSchemaVersion = SCHEMA_MIGRATIONS.at(-1).version;
     let directory; let connection; let service; let sourcePath;
     beforeEach(async () => {
         directory = await mkdtemp(join(tmpdir(), 'headroom-067-'));
@@ -29,12 +30,12 @@ describe('Phase 067 — consistent data export, backup, and verified restore', (
         const root = await prepare();
         const backupPath = join(root, 'backup.sqlite');
         const backup = await service.backup(backupPath);
-        expect(backup).toMatchObject({ integrity: 'ok', foreignKeyViolations: 0, schemaVersion: 6 });
+        expect(backup).toMatchObject({ integrity: 'ok', foreignKeyViolations: 0, schemaVersion: currentSchemaVersion });
         expect(backup.sha256).toMatch(/^[a-f0-9]{64}$/);
         expect((await service.verify(backupPath)).tableRows).toEqual(backup.tableRows);
         const restorePath = join(root, 'restored.sqlite');
         const restored = await service.restore(backupPath, restorePath);
-        expect(restored).toMatchObject({ integrity: 'ok', schemaVersion: 6, tableRows: backup.tableRows });
+        expect(restored).toMatchObject({ integrity: 'ok', schemaVersion: currentSchemaVersion, tableRows: backup.tableRows });
         const restoredConnection = new SqliteConnection();
         try {
             const restoredDb = restoredConnection.open(restorePath);
@@ -49,7 +50,7 @@ describe('Phase 067 — consistent data export, backup, and verified restore', (
         const exportPath = join(root, 'export.json');
         const exported = await service.exportJson(exportPath);
         const data = JSON.parse(await readFile(exportPath, 'utf8'));
-        expect(data).toMatchObject({ format: 'HEADROOM_SQLITE_JSON_V1', schemaVersion: 6 });
+        expect(data).toMatchObject({ format: 'HEADROOM_SQLITE_JSON_V1', schemaVersion: currentSchemaVersion });
         expect(data.tables.organizations).toContainEqual(expect.objectContaining({ id: 'organization-067', name: 'HEADROOM' }));
         expect(exported.sha256).toMatch(/^[a-f0-9]{64}$/);
         const corruptPath = join(root, 'corrupt.sqlite');

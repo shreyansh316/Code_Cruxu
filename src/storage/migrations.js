@@ -137,6 +137,30 @@ export const SCHEMA_MIGRATIONS = [
             WHERE request_id IS NOT NULL;
         `),
     },
+    {
+        version: 7,
+        name: 'audited-data-retention',
+        up: (database) => database.exec(`
+          CREATE TABLE retention_runs (
+            id TEXT PRIMARY KEY NOT NULL,
+            cutoff_at TEXT NOT NULL,
+            memory_deleted INTEGER NOT NULL CHECK (memory_deleted >= 0),
+            usage_deleted INTEGER NOT NULL CHECK (usage_deleted >= 0),
+            audit_deleted INTEGER NOT NULL CHECK (audit_deleted >= 0),
+            created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+          );
+          CREATE TRIGGER retention_runs_no_update BEFORE UPDATE ON retention_runs
+            BEGIN SELECT RAISE(ABORT, 'retention records are immutable'); END;
+          CREATE TRIGGER retention_runs_no_delete BEFORE DELETE ON retention_runs
+            BEGIN SELECT RAISE(ABORT, 'retention records are immutable'); END;
+          CREATE TABLE retention_state (id INTEGER PRIMARY KEY CHECK (id = 1), active INTEGER NOT NULL CHECK (active IN (0, 1)));
+          INSERT INTO retention_state (id, active) VALUES (1, 0);
+          DROP TRIGGER audit_logs_no_delete;
+          CREATE TRIGGER audit_logs_no_delete BEFORE DELETE ON audit_logs
+            WHEN NOT EXISTS (SELECT 1 FROM retention_state WHERE id = 1 AND active = 1)
+            BEGIN SELECT RAISE(ABORT, 'audit records are append-only'); END;
+        `),
+    },
 ];
 const CREATE_MIGRATION_LEDGER_SQL = `
   CREATE TABLE IF NOT EXISTS schema_migrations (
