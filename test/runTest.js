@@ -9,6 +9,7 @@ async function main() {
     const packageOnly = process.argv.includes('--package');
     const testVsix = packageOnly || process.argv.includes('--vsix');
     const extensionManifest = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+    const vsceTarget = `${process.platform}-${process.arch}`;
     const version = '1.101.0';
     const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'headroom-vscode-'));
     const extensionPath = path.join(temporaryDirectory, 'extension');
@@ -58,13 +59,13 @@ async function main() {
         let extensionTestsPath = path.join(extensionPath, 'test', 'suite');
         if (testVsix) {
             packagePath = packageOnly
-                ? path.join(root, `${extensionManifest.name}-${extensionManifest.version}.vsix`)
+                ? path.join(root, `${extensionManifest.name}-${extensionManifest.version}-${vsceTarget}.vsix`)
                 : path.join(nativeAddonBackupDirectory, `headroom-${process.pid}.vsix`);
-            await require('@vscode/vsce').createVSIX({ cwd: root, packagePath });
+            await require('@vscode/vsce').createVSIX({ cwd: root, packagePath, target: vsceTarget });
             const files = execFileSync('tar', ['-tf', packagePath], { encoding: 'utf8' }).split(/\r?\n/).filter(Boolean);
             const required = [
                 'extension/package.json', 'extension/package.nls.json', 'extension/out/extension.js',
-                'extension/media/headroom-icon.svg',
+                'extension/media/headroom-icon.svg', 'extension/changelog.md',
                 'extension/node_modules/better-sqlite3/build/Release/better_sqlite3.node',
             ];
             for (const file of required) {
@@ -73,6 +74,10 @@ async function main() {
             const forbidden = files.find((file) => /(^|\/)(\.env[^/]*|src|tests|benchmarks|coverage|\.test-cache)(\/|$)/i.test(file)
                 || /(^|\/)(vitest|@vitest|@vscode\/test-electron)(\/|$)/i.test(file));
             if (forbidden) throw new Error(`VSIX contains excluded development or environment data: ${forbidden}`);
+            const vsixManifest = execFileSync('tar', ['-xOf', packagePath, 'extension.vsixmanifest'], { encoding: 'utf8' });
+            if (!vsixManifest.includes(`TargetPlatform="${vsceTarget}"`)) {
+                throw new Error(`VSIX target does not match the native package target ${vsceTarget}.`);
+            }
 
             if (packageOnly) {
                 console.log(`Verified installable VSIX: ${packagePath}`);

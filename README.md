@@ -36,8 +36,8 @@ Phases 001–052 establish the extension foundation, application and infrastruct
 
 ## Requirements
 
-- Visual Studio Code 1.100 or newer
-- Node.js 22 or newer
+- Visual Studio Code 1.101 or newer
+- Node.js 20 or newer for development; the VS Code Extension Host supplies the runtime
 - npm (included with Node.js)
 
 The `better-sqlite3` dependency includes a native Node module. If installation or loading fails on your platform, use the SQLite compatibility check below to see the native-module error.
@@ -85,7 +85,7 @@ Build a local VS Code extension package (`.vsix`) with:
 npm run package
 ```
 
-This rebuilds `better-sqlite3` for the VS Code 1.101.0 Electron runtime, then creates a local `.vsix` using the `package.json` file allowlist. Environment files, source, tests, benchmarks, source maps, and development dependencies are excluded. The command does not publish or deploy HEADROOM. VSCE currently warns that the repository has no top-level license file; no license terms are asserted by this package step. Any generated `.vsix` is ignored by Git.
+This rebuilds `better-sqlite3` for the VS Code 1.101.0 Electron runtime, then creates a platform-targeted local `.vsix` using the `package.json` file allowlist. The artifact is labeled for the current OS and architecture because it contains a platform-specific native module. Environment files, source, tests, benchmarks, source maps, and development dependencies are excluded. The command does not publish or deploy HEADROOM. VSCE currently warns that the repository has no top-level license file. Any generated `.vsix` is ignored by Git.
 
 ## Project structure
 
