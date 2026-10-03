@@ -41,10 +41,16 @@ export function createTaskScheduler({ queueWorkflow, queueRepository, executor, 
     async function runClaimed(candidate, controller, dependencies) {
         const taskId = candidate.task.id;
         try {
-            const value = await dependencies.executor.execute({ task: candidate.task, signal: controller.signal });
+            const outcome = await waitForExecutionOrCancellation(
+                () => dependencies.executor.execute({ task: candidate.task, signal: controller.signal }), controller.signal);
+            if (outcome.kind === 'cancelled') {
+                dependencies.queueRepository.transition(taskId, 'CLAIMED', 'CANCELLED');
+                return { taskId, status: 'CANCELLED' };
+            }
+            if (outcome.kind === 'error') throw outcome.error;
             const cancelled = controller.signal.aborted || dependencies.executionControl.status === 'CANCELLED';
             dependencies.queueRepository.transition(taskId, 'CLAIMED', cancelled ? 'CANCELLED' : 'COMPLETED');
-            return { taskId, status: cancelled ? 'CANCELLED' : 'SUCCEEDED', value: cancelled ? undefined : value };
+            return { taskId, status: cancelled ? 'CANCELLED' : 'SUCCEEDED', value: cancelled ? undefined : outcome.value };
         }
         catch (error) {
             const cancelled = controller.signal.aborted || dependencies.executionControl.status === 'CANCELLED';
@@ -68,4 +74,19 @@ export function createTaskScheduler({ queueWorkflow, queueRepository, executor, 
         get activeCount() { return active.size; },
         get status() { return executionControl.status; },
     });
+}
+
+function waitForExecutionOrCancellation(execute, signal) {
+    if (signal.aborted) return Promise.resolve({ kind: 'cancelled' });
+    const execution = Promise.resolve().then(async () => {
+        if (signal.aborted) return { kind: 'cancelled' };
+        try { return { kind: 'success', value: await execute() }; }
+        catch (error) { return { kind: 'error', error }; }
+    });
+    let onAbort;
+    const cancellation = new Promise((resolve) => {
+        onAbort = () => resolve({ kind: 'cancelled' });
+        signal.addEventListener('abort', onAbort, { once: true });
+    });
+    return Promise.race([execution, cancellation]).finally(() => signal.removeEventListener('abort', onAbort));
 }
