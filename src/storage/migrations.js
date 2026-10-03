@@ -35,6 +35,58 @@ export const SCHEMA_MIGRATIONS = [
             `);
         },
     },
+    {
+        version: 3,
+        name: 'memory-scope-ownership',
+        up: (database) => database.exec(`
+          CREATE TRIGGER memories_scope_owner_insert BEFORE INSERT ON memories
+          WHEN NOT (
+            (NEW.scope IN ('CEO', 'DIRECTOR') AND NEW.organization_id IS NOT NULL
+              AND NEW.office_id IS NULL AND NEW.department_id IS NULL AND NEW.task_id IS NULL
+              AND NEW.project_id IS NULL AND NEW.objective_id IS NULL)
+            OR (NEW.scope = 'OFFICE' AND NEW.office_id IS NOT NULL
+              AND NEW.organization_id IS NULL AND NEW.department_id IS NULL AND NEW.task_id IS NULL
+              AND NEW.project_id IS NULL AND NEW.objective_id IS NULL)
+            OR (NEW.scope = 'DEPARTMENT' AND NEW.department_id IS NOT NULL
+              AND NEW.organization_id IS NULL AND NEW.office_id IS NULL AND NEW.task_id IS NULL
+              AND NEW.project_id IS NULL AND NEW.objective_id IS NULL)
+            OR (NEW.scope = 'TASK' AND NEW.task_id IS NOT NULL
+              AND NEW.organization_id IS NULL AND NEW.office_id IS NULL AND NEW.department_id IS NULL
+              AND NEW.project_id IS NULL AND NEW.objective_id IS NULL)
+            OR (NEW.scope = 'PROJECT' AND NEW.project_id IS NOT NULL
+              AND NEW.organization_id IS NULL AND NEW.office_id IS NULL AND NEW.department_id IS NULL
+              AND NEW.task_id IS NULL AND NEW.objective_id IS NULL)
+            OR (NEW.scope IN ('DECISION', 'KNOWLEDGE') AND
+              ((NEW.organization_id IS NOT NULL) + (NEW.office_id IS NOT NULL) + (NEW.department_id IS NOT NULL)
+               + (NEW.task_id IS NOT NULL) + (NEW.project_id IS NOT NULL) + (NEW.objective_id IS NOT NULL)) = 1)
+          )
+          BEGIN SELECT RAISE(ABORT, 'memory scope owner mismatch'); END;
+
+          CREATE TRIGGER memories_scope_owner_update BEFORE UPDATE OF scope, organization_id, office_id,
+            department_id, task_id, project_id, objective_id ON memories
+          WHEN NOT (
+            (NEW.scope IN ('CEO', 'DIRECTOR') AND NEW.organization_id IS NOT NULL
+              AND NEW.office_id IS NULL AND NEW.department_id IS NULL AND NEW.task_id IS NULL
+              AND NEW.project_id IS NULL AND NEW.objective_id IS NULL)
+            OR (NEW.scope = 'OFFICE' AND NEW.office_id IS NOT NULL
+              AND NEW.organization_id IS NULL AND NEW.department_id IS NULL AND NEW.task_id IS NULL
+              AND NEW.project_id IS NULL AND NEW.objective_id IS NULL)
+            OR (NEW.scope = 'DEPARTMENT' AND NEW.department_id IS NOT NULL
+              AND NEW.organization_id IS NULL AND NEW.office_id IS NULL AND NEW.task_id IS NULL
+              AND NEW.project_id IS NULL AND NEW.objective_id IS NULL)
+            OR (NEW.scope = 'TASK' AND NEW.task_id IS NOT NULL
+              AND NEW.organization_id IS NULL AND NEW.office_id IS NULL AND NEW.department_id IS NULL
+              AND NEW.project_id IS NULL AND NEW.objective_id IS NULL)
+            OR (NEW.scope = 'PROJECT' AND NEW.project_id IS NOT NULL
+              AND NEW.organization_id IS NULL AND NEW.office_id IS NULL AND NEW.department_id IS NULL
+              AND NEW.task_id IS NULL AND NEW.objective_id IS NULL)
+            OR (NEW.scope IN ('DECISION', 'KNOWLEDGE') AND
+              ((NEW.organization_id IS NOT NULL) + (NEW.office_id IS NOT NULL) + (NEW.department_id IS NOT NULL)
+               + (NEW.task_id IS NOT NULL) + (NEW.project_id IS NOT NULL) + (NEW.objective_id IS NOT NULL)) = 1)
+          )
+          BEGIN SELECT RAISE(ABORT, 'memory scope owner mismatch'); END;
+        `),
+    },
 ];
 const CREATE_MIGRATION_LEDGER_SQL = `
   CREATE TABLE IF NOT EXISTS schema_migrations (

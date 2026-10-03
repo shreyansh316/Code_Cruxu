@@ -1,4 +1,5 @@
 import { BaseSqliteRepository } from './BaseSqliteRepository';
+import { assertEntityId } from '../../shared/identifiers';
 export class OrganizationRepository extends BaseSqliteRepository {
     constructor(database) {
         super(database, 'organizations', {
@@ -97,6 +98,76 @@ export class TaskRepository extends BaseSqliteRepository {
     }
     delete(id) { return this.deleteById(id); }
 }
+
+const MEMORY_SCOPE_OWNERS = {
+    CEO: 'organizationId',
+    DIRECTOR: 'organizationId',
+    OFFICE: 'officeId',
+    DEPARTMENT: 'departmentId',
+    TASK: 'taskId',
+    PROJECT: 'projectId',
+};
+const MEMORY_OWNER_COLUMNS = {
+    organizationId: 'organization_id', officeId: 'office_id', departmentId: 'department_id',
+    taskId: 'task_id', projectId: 'project_id', objectiveId: 'objective_id',
+};
+export class MemoryRepository extends BaseSqliteRepository {
+    constructor(database) {
+        super(database, 'memories', {
+            id: 'id', scope: 'scope', category: 'category', title: 'title', content: 'content',
+            importance: 'importance', verified: 'verified', organizationId: 'organization_id',
+            officeId: 'office_id', departmentId: 'department_id', taskId: 'task_id', projectId: 'project_id',
+            objectiveId: 'objective_id', createdAt: 'created_at', updatedAt: 'updated_at',
+        }, {
+            id: 'id', scope: 'scope', category: 'category', title: 'title', content: 'content',
+            importance: 'importance', verified: 'verified', organizationId: 'organization_id',
+            officeId: 'office_id', departmentId: 'department_id', taskId: 'task_id', projectId: 'project_id',
+            objectiveId: 'objective_id',
+        });
+    }
+    create(value) {
+        assertMemoryOwnership(value);
+        return this.insert(value);
+    }
+    list() { return this.query(); }
+    listByScope(scope) {
+        assertMemoryScope(scope);
+        return this.query('scope = ?', [scope]);
+    }
+    listByOwner(scope, ownerId) {
+        assertMemoryScope(scope);
+        const property = MEMORY_SCOPE_OWNERS[scope];
+        if (!property && !['DECISION', 'KNOWLEDGE'].includes(scope)) {
+            throw new Error(`Memory scope ${scope} requires a more specific query.`);
+        }
+        if (property) {
+            return this.query(`scope = ? AND ${MEMORY_OWNER_COLUMNS[property]} = ?`, [scope, assertEntityId(ownerId)]);
+        }
+        const ownerColumns = Object.values(MEMORY_OWNER_COLUMNS);
+        const where = ownerColumns.map((column) => `${column} = ?`).join(' OR ');
+        return this.query(`scope = ? AND (${where})`, [scope, ...ownerColumns.map(() => assertEntityId(ownerId))]);
+    }
+    update(id, changes) { return this.updateById(id, changes); }
+    delete(id) { return this.deleteById(id); }
+}
+
+function assertMemoryScope(scope) {
+    if (!['CEO', 'DIRECTOR', 'OFFICE', 'DEPARTMENT', 'TASK', 'PROJECT', 'DECISION', 'KNOWLEDGE'].includes(scope)) {
+        throw new Error(`Unsupported memory scope ${String(scope)}.`);
+    }
+}
+
+function assertMemoryOwnership(value) {
+    assertMemoryScope(value?.scope);
+    const ownerProperties = Object.keys(MEMORY_OWNER_COLUMNS);
+    const owners = ownerProperties.filter((property) => value[property] !== undefined && value[property] !== null);
+    const expectedOwner = MEMORY_SCOPE_OWNERS[value.scope];
+    if ((expectedOwner && (owners.length !== 1 || owners[0] !== expectedOwner))
+        || (!expectedOwner && owners.length !== 1)) {
+        throw new Error(`Memory scope ${value.scope} must have exactly its matching owner link.`);
+    }
+}
+
 export class DirectorQuestionRepository extends BaseSqliteRepository {
     constructor(database) {
         super(database, 'director_questions', {

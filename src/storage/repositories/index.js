@@ -1,1 +1,1 @@
-export { AgentRepository, DirectorQuestionRepository, ObjectiveRepository, OrganizationRepository, ProjectRepository, TaskRepository, } from './CoreRepositories';
+export { AgentRepository, DirectorQuestionRepository, MemoryRepository, ObjectiveRepository, OrganizationRepository, ProjectRepository, TaskRepository, } from './CoreRepositories';
