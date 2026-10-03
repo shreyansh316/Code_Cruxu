@@ -15,22 +15,29 @@ import * as vscode from 'vscode';
 import { HeadroomContext } from './core/HeadroomContext';
 // Extension-level singleton — initialized on activate, disposed on deactivate
 let headroomContext;
-export async function activate(context) {
+let activationPromise;
+export function activate(context) {
+    if (activationPromise) return activationPromise;
     console.log('[HEADROOM] Activating...');
-    try {
-        // Initialize the core application context
-        headroomContext = new HeadroomContext(context);
-        await headroomContext.initialize();
+    const instance = new HeadroomContext(context);
+    headroomContext = instance;
+    activationPromise = instance.initialize().then(() => {
         console.log('[HEADROOM] Activated successfully.');
-    }
-    catch (err) {
+    }).catch((err) => {
         const message = err instanceof Error ? err.message : String(err);
         console.error('[HEADROOM] Activation failed:', message);
         vscode.window.showErrorMessage(`HEADROOM failed to activate: ${message}`);
-    }
+        if (headroomContext === instance) headroomContext = undefined;
+    }).finally(() => {
+        activationPromise = undefined;
+    });
+    return activationPromise;
 }
 export function deactivate() {
     console.log('[HEADROOM] Deactivating...');
-    headroomContext?.dispose();
-    headroomContext = undefined;
+    try { headroomContext?.dispose(); }
+    finally {
+        headroomContext = undefined;
+        activationPromise = undefined;
+    }
 }

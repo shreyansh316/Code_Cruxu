@@ -130,20 +130,19 @@ export function registerStatusTreeViews(context, repositories, readHealth = unav
     const objectives = new ObjectiveStatusTreeProvider(repositories.objectives);
     const tasks = new ActiveTaskTreeProvider(repositories.tasks);
     const health = new HealthStatusTreeProvider(readHealth);
-    const disposables = [
-        vscode.window.registerTreeDataProvider(
-            VIEWS.OBJECTIVES,
-            objectives,
-        ),
-        vscode.window.registerTreeDataProvider(
-            VIEWS.TASKS,
-            tasks,
-        ),
-        vscode.window.registerTreeDataProvider(VIEWS.HEALTH, health),
-        objectives,
-        tasks,
-        health,
-    ];
-    context.subscriptions.push(...disposables);
-    return { disposables, refresh: () => { objectives.refresh(); tasks.refresh(); health.refresh(); } };
+    const disposables = [];
+    try {
+        disposables.push(objectives);
+        disposables.push(vscode.window.registerTreeDataProvider(VIEWS.OBJECTIVES, objectives));
+        disposables.push(tasks);
+        disposables.push(vscode.window.registerTreeDataProvider(VIEWS.TASKS, tasks));
+        disposables.push(health);
+        disposables.push(vscode.window.registerTreeDataProvider(VIEWS.HEALTH, health));
+        return { disposables, refresh: () => { objectives.refresh(); tasks.refresh(); health.refresh(); } };
+    } catch (error) {
+        for (const disposable of disposables.reverse()) {
+            try { disposable.dispose(); } catch { /* Preserve the registration failure. */ }
+        }
+        throw error;
+    }
 }

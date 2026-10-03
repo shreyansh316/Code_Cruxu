@@ -62,6 +62,7 @@ export class HeadroomContext {
     _disposables = [];
     _statusBarItem;
     _initialized = false;
+    _initialization;
     _configuration = { ...CONFIGURATION_DEFAULTS };
     _databaseConnection = new SqliteConnection();
     _executionControl = new ExecutionControl();
@@ -69,10 +70,16 @@ export class HeadroomContext {
     constructor(context) {
         this._context = context;
     }
-    async initialize() {
-        if (this._initialized) {
-            return;
-        }
+    initialize() {
+        if (this._initialized) return Promise.resolve();
+        if (this._initialization) return this._initialization;
+        const operation = this._initialize();
+        this._initialization = operation;
+        return operation.finally(() => {
+            if (this._initialization === operation) this._initialization = undefined;
+        });
+    }
+    async _initialize() {
         try {
             // Open one connection in VS Code's extension-owned global storage and
             // bring its schema up to date on that same owned handle.
@@ -91,7 +98,7 @@ export class HeadroomContext {
                 verification: () => ({ status: 'NOT_RUN', detail: 'No verification result is currently recorded.' }),
             }));
             this._refreshStatusViews = statusViews.refresh;
-            this._disposables.push(...statusViews.disposables);
+            for (const disposable of statusViews.disposables) this._addDisposable(disposable);
             // 1. Register commands
             this._registerCommands();
             // 2. Validate contributed settings and report invalid values once.
@@ -128,34 +135,50 @@ export class HeadroomContext {
         }
     }
     _registerCommands() {
-        this._disposables.push(vscode.commands.registerCommand(COMMANDS.OPEN_DASHBOARD, () => {
+        this._addDisposable(vscode.commands.registerCommand(COMMANDS.OPEN_DASHBOARD, () => {
             // Phase 015: WebviewPanel implementation
             vscode.window.showInformationMessage(getMessage('dashboard.placeholder'));
-        }), vscode.commands.registerCommand(COMMANDS.NEW_OBJECTIVE, async () => {
+        }));
+        this._addDisposable(vscode.commands.registerCommand(COMMANDS.NEW_OBJECTIVE, async () => {
             await this._createObjective();
-        }), vscode.commands.registerCommand(COMMANDS.SHOW_STATUS, () => {
+        }));
+        this._addDisposable(vscode.commands.registerCommand(COMMANDS.SHOW_STATUS, () => {
             this._showStatus();
-        }), vscode.commands.registerCommand(COMMANDS.PAUSE_EXECUTION, () => {
+        }));
+        this._addDisposable(vscode.commands.registerCommand(COMMANDS.PAUSE_EXECUTION, () => {
             const result = this._executionControl.pause();
             vscode.window.showInformationMessage(result.changed
                 ? getMessage('execution.paused')
                 : getMessage('execution.alreadyPaused'));
-        }), vscode.commands.registerCommand(COMMANDS.RESUME_EXECUTION, () => {
+        }));
+        this._addDisposable(vscode.commands.registerCommand(COMMANDS.RESUME_EXECUTION, () => {
             const result = this._executionControl.resume();
             vscode.window.showInformationMessage(result.changed
                 ? getMessage('execution.resumed')
                 : getMessage('execution.alreadyRunning'));
-        }), vscode.commands.registerCommand(COMMANDS.CONFIGURE_PROVIDER_CREDENTIAL, async () => {
+        }));
+        this._addDisposable(vscode.commands.registerCommand(COMMANDS.CONFIGURE_PROVIDER_CREDENTIAL, async () => {
             await this._configureProviderCredential();
-        }), vscode.commands.registerCommand(COMMANDS.CLEAR_PROVIDER_CREDENTIAL, async () => {
+        }));
+        this._addDisposable(vscode.commands.registerCommand(COMMANDS.CLEAR_PROVIDER_CREDENTIAL, async () => {
             await this._clearProviderCredential();
-        }), vscode.commands.registerCommand(COMMANDS.REVIEW_TASK_CHANGES, async (taskId, bundle) => {
+        }));
+        this._addDisposable(vscode.commands.registerCommand(COMMANDS.REVIEW_TASK_CHANGES, async (taskId, bundle) => {
             await this._reviewTaskChanges(taskId, bundle);
-        }), vscode.commands.registerCommand(COMMANDS.REVIEW_PLAN, async (plan) => {
+        }));
+        this._addDisposable(vscode.commands.registerCommand(COMMANDS.REVIEW_PLAN, async (plan) => {
             return await this._reviewPlan(plan);
         }));
-        // Register all disposables with extension context
-        this._context.subscriptions.push(...this._disposables);
+    }
+    _addDisposable(disposable) {
+        if (!disposable || typeof disposable.dispose !== 'function') {
+            throw new TypeError('VS Code registration did not return a disposable.');
+        }
+        this._disposables.push(disposable);
+        if (Array.isArray(this._context.subscriptions) && !this._context.subscriptions.includes(disposable)) {
+            this._context.subscriptions.push(disposable);
+        }
+        return disposable;
     }
     _setupStatusBar() {
         this._statusBarItem = vscode.window.createStatusBarItem('headroom.status', vscode.StatusBarAlignment.Left, 100);
@@ -164,8 +187,7 @@ export class HeadroomContext {
         this._statusBarItem.tooltip = getMessage('statusBar.tooltip');
         this._statusBarItem.command = COMMANDS.OPEN_DASHBOARD;
         this._statusBarItem.show();
-        this._context.subscriptions.push(this._statusBarItem);
-        this._disposables.push(this._statusBarItem);
+        this._addDisposable(this._statusBarItem);
     }
     _showStatus() {
         const status = this._initialized
@@ -331,16 +353,19 @@ export class HeadroomContext {
     }
     dispose() {
         let disposalError;
-        for (const disposable of this._disposables) {
+        this._initialized = false;
+        for (const disposable of this._disposables.splice(0).reverse()) {
             try {
                 disposable.dispose();
             }
             catch (error) {
                 disposalError ??= error;
             }
+            if (Array.isArray(this._context.subscriptions)) {
+                const index = this._context.subscriptions.indexOf(disposable);
+                if (index >= 0) this._context.subscriptions.splice(index, 1);
+            }
         }
-        this._disposables.length = 0;
-        this._initialized = false;
         try {
             this._databaseConnection.close();
         }
