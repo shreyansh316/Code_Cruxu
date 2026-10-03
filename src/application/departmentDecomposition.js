@@ -1,21 +1,12 @@
 import { AgentRole, TaskStatus } from '../constants';
 import { assertOrganizationHierarchyInvariant, assertTaskDependencyGraph, createEntityId } from '../domain';
 import { ApplicationError, createUseCase } from './useCase';
+import { getPromptContract } from './promptRegistry';
 
 const MAX_SOURCE_TASKS = 20;
 const MAX_SUBTASKS = 80;
 const MAX_TEXT = 2_000;
-const RESULT_SCHEMA = { type: 'object', additionalProperties: false, required: ['subtasks', 'dependencies'], properties: {
-    subtasks: { type: 'array', minItems: 1, maxItems: MAX_SUBTASKS, items: { type: 'object', additionalProperties: false,
-        required: ['parentTaskIndex', 'title', 'description', 'acceptanceCriteria', 'employeeIndex'], properties: {
-            parentTaskIndex: { type: 'integer' }, title: { type: 'string' }, description: { type: 'string' },
-            acceptanceCriteria: { type: 'array', minItems: 1, maxItems: 20, items: { type: 'string' } }, employeeIndex: { type: 'integer' },
-        } } },
-    dependencies: { type: 'array', maxItems: 200, items: { type: 'object', additionalProperties: false,
-        required: ['dependentSubtaskIndex', 'dependencySubtaskIndex'], properties: {
-            dependentSubtaskIndex: { type: 'integer' }, dependencySubtaskIndex: { type: 'integer' },
-        } } },
-} };
+const PROMPT = getPromptContract('department.task-decomposition.v1');
 
 /** Decompose a Department Manager's routed packet into validated own-workforce proposals. */
 export function createDepartmentTaskDecomposition({ agentRepository, hierarchyProvider, provider, idFactory } = {}) {
@@ -67,11 +58,11 @@ export function createDepartmentTaskDecomposition({ agentRepository, hierarchyPr
             assertTaskDependencyGraph(sourceTasks.map(({ id }) => ({ id, status: TaskStatus.CREATED })), sourceDependencies);
             const response = await dependencies.provider.generate({
                 requestId: createEntityId(dependencies.idFactory()), model: input.model,
-                systemPrompt: 'You are a HEADROOM Department Manager. Decompose each routed task into practical subtasks, assign each subtask to an available employee index, and specify concrete acceptance criteria. Work only within this department packet. Do not contact employees or other managers, create cross-department work, approve plans, or claim execution. Return only the requested JSON structure.',
+                systemPrompt: PROMPT.systemPrompt,
                 input: { departmentId: manager.managedDepartmentId,
                     sourceTasks, dependencies: sourceDependencies,
                     availableEmployees: employees.map(({ id, name }) => ({ id, name })) },
-                outputSchema: RESULT_SCHEMA,
+                outputSchema: PROMPT.outputSchema,
             }, { signal: input.signal, budget: input.budget });
             if (response.finishReason !== 'STOP') {
                 const code = response.finishReason === 'ERROR' ? response.errorCode : `department-decomposition-${response.finishReason.toLowerCase()}`;

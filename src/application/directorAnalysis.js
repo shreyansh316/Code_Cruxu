@@ -1,25 +1,11 @@
 import { createEntityId } from '../domain';
 import { ApplicationError, createUseCase } from './useCase';
+import { getPromptContract } from './promptRegistry';
 
 const MAX_PROPOSED_QUESTIONS = 8;
 const MAX_QUESTION_LENGTH = 2000;
 const MAX_RATIONALE_LENGTH = 1000;
-const OUTPUT_SCHEMA = Object.freeze({
-    type: 'object', additionalProperties: false, required: ['questions'],
-    properties: { questions: { type: 'array', maxItems: MAX_PROPOSED_QUESTIONS, items: {
-        type: 'object', additionalProperties: false, required: ['question', 'category', 'rationale'],
-        properties: {
-            question: { type: 'string', minLength: 1, maxLength: MAX_QUESTION_LENGTH },
-            category: { type: 'string', minLength: 1, maxLength: 100 },
-            rationale: { type: 'string', minLength: 1, maxLength: MAX_RATIONALE_LENGTH },
-        },
-    } } },
-});
-const SYSTEM_PROMPT = [
-    'You are HEADROOM AI Director. Analyze the CEO objective only for ambiguity that blocks safe, useful planning.',
-    'Propose concise clarification questions. Do not answer for the CEO, approve the objective, create a plan, or claim work is approved.',
-    'Use the supplied schema. If no blocking ambiguity exists, return an empty questions array.',
-].join(' ');
+const PROMPT = getPromptContract('director.objective-analysis.v1');
 
 /** Analyze an objective and return validated, non-persisted clarification proposals. */
 export function createDirectorObjectiveAnalysis({ objectiveRepository, questionRepository,
@@ -44,9 +30,9 @@ export function createDirectorObjectiveAnalysis({ objectiveRepository, questionR
             const result = await dependencies.provider.generate({
                 requestId: createEntityId(dependencies.idFactory()),
                 model: input.model,
-                systemPrompt: SYSTEM_PROMPT,
+                systemPrompt: PROMPT.systemPrompt,
                 input: { objective: { title: objective.title, description: objective.description }, priorQuestions },
-                outputSchema: OUTPUT_SCHEMA,
+                outputSchema: PROMPT.outputSchema,
             }, input.signal ? { signal: input.signal, budget: input.budget } : { budget: input.budget });
             if (result.finishReason === 'ERROR') {
                 throw new ApplicationError(result.errorCode, 'Director objective analysis could not be completed.', { retryable: true });

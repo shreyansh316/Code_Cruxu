@@ -29,3 +29,4 @@ export { createDirectorObjectiveAnalysis } from './directorAnalysis';
 export { createDirectorPlanProposal } from './directorPlanProposal';
 export { createOfficeHeadRouting } from './officeHeadRouting';
 export { createDepartmentTaskDecomposition } from './departmentDecomposition';
+export { getPromptContract, listPromptContractIds } from './promptRegistry';

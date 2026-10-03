@@ -1,26 +1,12 @@
 import { assertExecutionPlan, createEntityId } from '../domain';
 import { ApplicationError, createUseCase } from './useCase';
+import { getPromptContract } from './promptRegistry';
 
 const MAX_PROJECTS = 6;
 const MAX_MILESTONES = 20;
 const MAX_TASKS = 80;
 const MAX_TEXT = 500;
-const PLAN_SCHEMA = Object.freeze({ type: 'object', required: ['projects', 'milestones', 'tasks', 'dependencies'],
-    additionalProperties: false, properties: {
-        projects: { type: 'array', minItems: 1, maxItems: MAX_PROJECTS,
-            items: { type: 'object', required: ['name'], properties: { name: { type: 'string' } } } },
-        milestones: { type: 'array', minItems: 1, maxItems: MAX_MILESTONES,
-            items: { type: 'object', required: ['projectIndex', 'title'], properties: {
-                projectIndex: { type: 'integer' }, title: { type: 'string' },
-            } } },
-        tasks: { type: 'array', minItems: 1, maxItems: MAX_TASKS,
-            items: { type: 'object', required: ['projectIndex', 'milestoneIndex', 'title', 'acceptanceCriteria'], properties: {
-                projectIndex: { type: 'integer' }, milestoneIndex: { type: 'integer' }, title: { type: 'string' },
-                acceptanceCriteria: { type: 'array', minItems: 1, maxItems: 12, items: { type: 'string' } },
-            } } },
-        dependencies: { type: 'array', maxItems: 200, items: { type: 'object', required: ['dependentTaskIndex', 'dependencyTaskIndex'],
-            properties: { dependentTaskIndex: { type: 'integer' }, dependencyTaskIndex: { type: 'integer' } } } },
-    } });
+const PROMPT = getPromptContract('director.plan-proposal.v1');
 
 /** Ask the Director for an unapproved plan proposal and validate every graph edge locally. */
 export function createDirectorPlanProposal({ objectiveRepository, questionRepository, provider, idFactory } = {}) {
@@ -43,9 +29,9 @@ export function createDirectorPlanProposal({ objectiveRepository, questionReposi
             const answeredQuestions = questions.filter(({ status }) => status === 'ANSWERED')
                 .map(({ question, answer }) => ({ question, answer }));
             const result = await dependencies.provider.generate({ requestId: createEntityId(dependencies.idFactory()),
-                model: input.model, systemPrompt: 'You are HEADROOM AI Director. Propose a concise project plan from the CEO objective and answered clarifications. Return only the requested structure. Do not approve, activate, or claim authorization for the plan. Every task needs concrete acceptance criteria. Dependencies must reference earlier task indexes and form a DAG.',
+                model: input.model, systemPrompt: PROMPT.systemPrompt,
                 input: { objective: { title: objective.title, description: objective.description }, answeredQuestions },
-                outputSchema: PLAN_SCHEMA }, { signal: input.signal, budget: input.budget });
+                outputSchema: PROMPT.outputSchema }, { signal: input.signal, budget: input.budget });
             if (result.finishReason !== 'STOP') {
                 const code = result.finishReason === 'ERROR' ? result.errorCode : `director-plan-${result.finishReason.toLowerCase()}`;
                 throw new ApplicationError(code, 'Director plan proposal did not produce a complete plan.', { retryable: result.finishReason === 'ERROR' });
