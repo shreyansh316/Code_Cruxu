@@ -9,6 +9,7 @@ export { createTaskCreationUseCase } from './taskCreation';
 export { createTaskResultSubmissionUseCase } from './taskResultSubmission';
 export { createEmployeeResultVerificationUseCase } from './employeeResultVerification';
 export { createHierarchyMessageRouter } from './hierarchyMessageRouter';
+export { createOfficeHeadCoordinationUseCase } from './officeHeadCoordination';
 export { createTaskReviewUseCase } from './taskReview';
 export { createExecutionQueueUseCase } from './executionQueue';
 export { createTaskScheduler } from './taskScheduler';
