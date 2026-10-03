@@ -1,4 +1,5 @@
 import { createEntityId, DomainInvariantError } from '../domain';
+import { validateStructuredAIOutput } from './structuredOutput';
 
 const MAX_MODEL_LENGTH = 200;
 const MAX_SYSTEM_PROMPT_LENGTH = 20_000;
@@ -53,7 +54,8 @@ export function validateAIProviderResponse(request, value) {
         finishReason: value.finishReason,
         usage: Object.freeze({ inputTokens: value.usage.inputTokens, outputTokens: value.usage.outputTokens }) };
     if (value.finishReason === 'STOP') {
-        response.output = deepFreeze(clonePlainObject(value.output, 'AI output', MAX_OUTPUT_BYTES));
+        const safeOutput = clonePlainObject(value.output, 'AI output', MAX_OUTPUT_BYTES);
+        response.output = validateStructuredAIOutput(safeOutput, request.outputSchema, { maxBytes: MAX_OUTPUT_BYTES });
         if (value.errorCode !== undefined) invalid('Successful AI responses cannot include an error code.');
     }
     else if (value.finishReason === 'ERROR') {
