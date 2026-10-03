@@ -161,18 +161,21 @@ export class MemoryRepository extends BaseSqliteRepository {
         assertMemoryScope(scope);
         return this.query('scope = ?', [scope]);
     }
-    listByOwner(scope, ownerId) {
+    listByOwner(scope, ownerId, { limit = 100 } = {}) {
         assertMemoryScope(scope);
+        if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+            throw new TypeError('Memory owner query limit must be between 1 and 100.');
+        }
         const property = MEMORY_SCOPE_OWNERS[scope];
         if (!property && !['DECISION', 'KNOWLEDGE'].includes(scope)) {
             throw new Error(`Memory scope ${scope} requires a more specific query.`);
         }
         if (property) {
-            return this.query(`scope = ? AND ${MEMORY_OWNER_COLUMNS[property]} = ?`, [scope, assertEntityId(ownerId)]);
+            return this.query(`scope = ? AND ${MEMORY_OWNER_COLUMNS[property]} = ?`, [scope, assertEntityId(ownerId)], 'created_at, id', limit);
         }
         const ownerColumns = Object.values(MEMORY_OWNER_COLUMNS);
         const where = ownerColumns.map((column) => `${column} = ?`).join(' OR ');
-        return this.query(`scope = ? AND (${where})`, [scope, ...ownerColumns.map(() => assertEntityId(ownerId))]);
+        return this.query(`scope = ? AND (${where})`, [scope, ...ownerColumns.map(() => assertEntityId(ownerId))], 'created_at, id', limit);
     }
     update(id, changes) { return this.updateById(id, changes); }
     delete(id) { return this.deleteById(id); }

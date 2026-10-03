@@ -27,9 +27,11 @@ export class BaseSqliteRepository {
         id = assertEntityId(id);
         return this.database.prepare(`SELECT ${this.selectList()} FROM ${this.table} WHERE id = ?`).get(id);
     }
-    query(whereClause = '', parameters = [], orderBy = 'id') {
+    query(whereClause = '', parameters = [], orderBy = 'id', limit) {
         const where = whereClause ? ` WHERE ${whereClause}` : '';
-        return this.database.prepare(`SELECT ${this.selectList()} FROM ${this.table}${where} ORDER BY ${orderBy}`).all(...parameters);
+        const bounded = limit === undefined ? '' : ' LIMIT ?';
+        const values = limit === undefined ? parameters : [...parameters, limit];
+        return this.database.prepare(`SELECT ${this.selectList()} FROM ${this.table}${where} ORDER BY ${orderBy}${bounded}`).all(...values);
     }
     updateById(id, changes) {
         id = assertEntityId(id);
