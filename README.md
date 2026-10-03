@@ -18,7 +18,7 @@ Communication is designed to follow adjacent levels of this hierarchy. Employees
 
 ## Current implementation
 
-The repository currently provides application workflows for objectives, approved plans, task assignment, results, reviews, durable dependency-ready queueing, bounded scheduling, interruption recovery, and deterministic execution reports. SQLite stores core records, audit history, provider usage, and the durable queue through versioned migrations. Agent runtime contracts enforce repository-resolved identity and hierarchy authorization. A provider-neutral AI request/response port exists, but no real provider adapter is connected. Provider credentials are configured through VS Code SecretStorage commands. The extension registers tree views and commands, displays a status bar item, and shows a first-activation welcome message. Executable and test code is JavaScript; runtime checks enforce identifier constraints that were previously represented by TypeScript brands.
+The repository currently provides application workflows for objectives, approved plans, task assignment, results, reviews, durable dependency-ready queueing, bounded scheduling, interruption recovery, and deterministic execution reports. SQLite stores core records, audit history, provider usage, and the durable queue through versioned migrations. Agent runtime contracts enforce repository-resolved identity and hierarchy authorization. A provider-neutral AI request/response port and Gemini REST adapter are available; the adapter is not yet wired into agent workflows. Provider credentials are configured through VS Code SecretStorage commands. The extension registers tree views and commands, displays a status bar item, and shows a first-activation welcome message. Executable and test code is JavaScript; runtime checks enforce identifier constraints that were previously represented by TypeScript brands.
 
 | Command | Current behavior |
 |---|---|
@@ -115,14 +115,14 @@ The extension contributes these settings in VS Code:
 
 | Setting | Default | Purpose |
 |---|---:|---|
-| `headroom.ai.provider` | `mock` | Selects the configured provider name (`mock`, `gemini`, or `openai`). Provider calls are not implemented yet. |
+| `headroom.ai.provider` | `mock` | Selects the configured provider name (`mock`, `gemini`, or `openai`). Agent workflows do not invoke providers yet. |
 | `headroom.ai.defaultModel` | `gemini-2.0-flash` | Default model setting for future standard tasks. |
 | `headroom.ai.reasoningModel` | `gemini-2.5-pro` | Model setting for future reasoning tasks. |
 | `headroom.execution.maxRetries` | `2` | Configured maximum retry count for future execution behavior. |
 | `headroom.execution.parallelLimit` | `4` | Configured concurrency limit for future execution behavior. |
 | `headroom.debug.verbose` | `false` | Verbose-debug setting. |
 
-Provider credentials can be entered or removed with **HEADROOM: Configure AI Provider Credential** and **HEADROOM: Clear AI Provider Credential**. They are stored through VS Code SecretStorage and are not contributed as settings. Provider calls remain planned.
+Provider credentials can be entered or removed with **HEADROOM: Configure AI Provider Credential** and **HEADROOM: Clear AI Provider Credential**. They are stored through VS Code SecretStorage and are not contributed as settings. The Gemini adapter supports structured JSON output, cancellation, a bounded request timeout, and explicit provider error codes. Agent workflow integration remains planned.
 
 ## Roadmap and project status
 
