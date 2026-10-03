@@ -7,7 +7,7 @@
   "private": true,
   "engines": {
     "vscode": "^1.100.0",
-    "node": ">=20.0.0"
+    "node": ">=22.0.0"
   },
   "categories": [
     "AI",
@@ -141,6 +141,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:vscode": "node ./out/test/runTest.js",
+    "check:sqlite": "node scripts/check-sqlite.js",
     "package": "npm run compile && vsce package --no-dependencies",
     "vscode:prepublish": "npm run compile"
   },
