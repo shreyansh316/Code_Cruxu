@@ -1,10 +1,7 @@
 import { DomainInvariantError } from './errors';
+import type { EntityId, Slug } from '../shared/identifiers';
 
-/** Non-empty identifier suitable for primary and foreign keys. */
-export type EntityId = string & { readonly __entityId: unique symbol };
-
-/** Canonical lowercase kebab-case identifier used for organization units. */
-export type Slug = string & { readonly __slug: unique symbol };
+export type { EntityId, Slug } from '../shared/identifiers';
 
 export function createEntityId(value: unknown): EntityId {
   if (typeof value !== 'string') {

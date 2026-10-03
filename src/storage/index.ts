@@ -13,14 +13,14 @@
  * Dependencies:
  * - better-sqlite3 (native Node.js SQLite driver)
  * - NO dependency on VS Code APIs
- * - NO dependency on domain/application layers
+ * - NO dependency on the domain or application layers
  *
  * The database file is stored in VS Code's globalStorageUri.fsPath.
  * During unit tests, an in-memory database is used.
  *
  * Initial relational schema is defined in Phase 003.
  * Connection lifecycle is implemented in Phase 006 and versioned migrations
- * in Phase 007; repositories are implemented in later storage phases.
+ * in Phase 007; typed core repositories are implemented in Phase 009.
  */
 export { CORE_SCHEMA_SQL, initializeCoreSchema } from './schema';
 export { SqliteConnection, SqliteConnectionError } from './SqliteConnection';
@@ -30,3 +30,4 @@ export {
   SqliteMigrationError,
   type SchemaMigration,
 } from './migrations';
+export * from './repositories';

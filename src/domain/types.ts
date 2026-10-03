@@ -1,5 +1,5 @@
 import { AgentRole, ObjectiveStatus, TaskStatus } from '../constants';
-import type { EntityId, Slug } from './values';
+import type { EntityId, Slug } from '../shared/identifiers';
 
 export type { AgentRole, ObjectiveStatus, TaskStatus };
 
