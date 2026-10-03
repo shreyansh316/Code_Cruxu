@@ -59,7 +59,8 @@ export function createOfficeHeadRouting({ agentRepository, hierarchyProvider } =
                 const destination = routeByTask.get(task.id);
                 if (!destination) throw new ApplicationError('invalid-office-routes', 'Every plan task requires one department route.');
                 if (!grouped.has(destination.department.id)) grouped.set(destination.department.id, {
-                    departmentId: destination.department.id, departmentManagerId: destination.manager.id, tasks: [], dependencies: [],
+                    officeId: office.id, routedBy: manager.id, departmentId: destination.department.id,
+                    departmentManagerId: destination.manager.id, tasks: [], dependencies: [],
                 });
                 grouped.get(destination.department.id).tasks.push(copyTask(task));
             }

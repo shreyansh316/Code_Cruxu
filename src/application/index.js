@@ -19,3 +19,4 @@ export { createBoundedAIProvider, DEFAULT_AI_REQUEST_BUDGET } from './aiRequestP
 export { createDirectorObjectiveAnalysis } from './directorAnalysis';
 export { createDirectorPlanProposal } from './directorPlanProposal';
 export { createOfficeHeadRouting } from './officeHeadRouting';
+export { createDepartmentTaskDecomposition } from './departmentDecomposition';
