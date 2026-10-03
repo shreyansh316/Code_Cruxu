@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { TaskStatus, VIEWS } from '../constants';
+import { getMessage } from './messages';
 
 const TERMINAL_TASK_STATUSES = new Set([
     TaskStatus.COMPLETED,
@@ -32,15 +33,16 @@ export class ObjectiveStatusTreeProvider {
             return [];
         const objectives = this.repository.list();
         if (objectives.length === 0) {
-            return [this._emptyState('No objectives yet.')];
+            return [this._emptyState()];
         }
         return objectives;
     }
 
-    _emptyState(label) {
+    _emptyState() {
+        const label = getMessage('objectives.empty');
         const item = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.None);
         item.contextValue = 'headroom.empty';
-        item.accessibilityInformation = { label: `${label} Use the Command Palette and run HEADROOM: New Objective to add one.` };
+        item.accessibilityInformation = { label: getMessage('objectives.empty.accessible') };
         return item;
     }
 }
@@ -70,9 +72,9 @@ export class ActiveTaskTreeProvider {
             return [];
         const tasks = this.repository.list().filter((task) => !TERMINAL_TASK_STATUSES.has(task.status));
         if (tasks.length === 0) {
-            const item = new vscode.TreeItem('No active tasks.', vscode.TreeItemCollapsibleState.None);
+            const item = new vscode.TreeItem(getMessage('tasks.empty'), vscode.TreeItemCollapsibleState.None);
             item.contextValue = 'headroom.empty';
-            item.accessibilityInformation = { label: 'No active tasks.' };
+            item.accessibilityInformation = { label: getMessage('tasks.empty.accessible') };
             return [item];
         }
         return tasks;

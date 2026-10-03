@@ -1,7 +1,7 @@
 {
   "name": "headroom",
-  "displayName": "HEADROOM — AI CEO Office",
-  "description": "AI-powered CEO operating system inside VS Code. Hierarchical AI organization for planning, executing, and verifying development work.",
+  "displayName": "%extension.displayName%",
+  "description": "%extension.description%",
   "version": "0.1.0",
   "publisher": "headroom",
   "private": true,
@@ -29,7 +29,7 @@
       "activitybar": [
         {
           "id": "headroom",
-          "title": "HEADROOM",
+          "title": "%views.container.title%",
           "icon": "media/headroom-icon.svg"
         }
       ]
@@ -38,17 +38,17 @@
       "headroom": [
         {
           "id": "headroom.organizationView",
-          "name": "Organization",
+          "name": "%views.organization.name%",
           "type": "tree"
         },
         {
           "id": "headroom.objectiveView",
-          "name": "Objectives",
+          "name": "%views.objectives.name%",
           "type": "tree"
         },
         {
           "id": "headroom.taskView",
-          "name": "Active Tasks",
+          "name": "%views.tasks.name%",
           "type": "tree"
         }
       ]
@@ -56,52 +56,52 @@
     "commands": [
       {
         "command": "headroom.openDashboard",
-        "title": "HEADROOM: Open CEO Dashboard",
+        "title": "%command.openDashboard.title%",
         "category": "HEADROOM"
       },
       {
         "command": "headroom.newObjective",
-        "title": "HEADROOM: New Objective",
+        "title": "%command.newObjective.title%",
         "category": "HEADROOM"
       },
       {
         "command": "headroom.showStatus",
-        "title": "HEADROOM: Show Status",
+        "title": "%command.showStatus.title%",
         "category": "HEADROOM"
       },
       {
         "command": "headroom.pauseExecution",
-        "title": "HEADROOM: Pause Execution",
+        "title": "%command.pauseExecution.title%",
         "category": "HEADROOM"
       },
       {
         "command": "headroom.resumeExecution",
-        "title": "HEADROOM: Resume Execution",
+        "title": "%command.resumeExecution.title%",
         "category": "HEADROOM"
       },
       {
         "command": "headroom.configureProviderCredential",
-        "title": "HEADROOM: Configure AI Provider Credential",
+        "title": "%command.configureCredential.title%",
         "category": "HEADROOM"
       },
       {
         "command": "headroom.clearProviderCredential",
-        "title": "HEADROOM: Clear AI Provider Credential",
+        "title": "%command.clearCredential.title%",
         "category": "HEADROOM"
       },
       {
         "command": "headroom.reviewTaskChanges",
-        "title": "HEADROOM: Review Task Changes",
+        "title": "%command.reviewTaskChanges.title%",
         "category": "HEADROOM"
       },
       {
         "command": "headroom.reviewPlan",
-        "title": "HEADROOM: Review Execution Plan",
+        "title": "%command.reviewPlan.title%",
         "category": "HEADROOM"
       }
     ],
     "configuration": {
-      "title": "HEADROOM",
+      "title": "%configuration.title%",
       "properties": {
         "headroom.ai.provider": {
           "type": "string",
@@ -111,36 +111,36 @@
             "openai"
           ],
           "default": "mock",
-          "description": "AI provider for HEADROOM agents. Configure provider credentials with the credential commands."
+          "description": "%configuration.aiProvider.description%"
         },
         "headroom.ai.defaultModel": {
           "type": "string",
           "default": "gemini-2.0-flash",
-          "description": "Default AI model for standard agent tasks."
+          "description": "%configuration.defaultModel.description%"
         },
         "headroom.ai.reasoningModel": {
           "type": "string",
           "default": "gemini-2.5-pro",
-          "description": "AI model for complex reasoning tasks (Director, planning)."
+          "description": "%configuration.reasoningModel.description%"
         },
         "headroom.execution.maxRetries": {
           "type": "number",
           "default": 2,
           "minimum": 0,
           "maximum": 5,
-          "description": "Maximum retry attempts per task before escalation."
+          "description": "%configuration.maxRetries.description%"
         },
         "headroom.execution.parallelLimit": {
           "type": "number",
           "default": 4,
           "minimum": 1,
           "maximum": 10,
-          "description": "Maximum number of tasks to run in parallel."
+          "description": "%configuration.parallelLimit.description%"
         },
         "headroom.debug.verbose": {
           "type": "boolean",
           "default": false,
-          "description": "Enable verbose logging for debugging."
+          "description": "%configuration.verbose.description%"
         }
       }
     },

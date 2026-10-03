@@ -24,6 +24,7 @@ import { createObjectiveIntakeUseCase } from '../application/objectiveIntake';
 import { createHumanCodeReviewDecision } from '../application/humanCodeReview';
 import { createPersistedPlanDecision } from '../application/persistedPlanDecision';
 import { createSqliteUnitOfWork } from '../infrastructure/SqliteUnitOfWork';
+import { getMessage } from './messages';
 export class HeadroomContext {
     _context;
     _disposables = [];
@@ -59,7 +60,7 @@ export class HeadroomContext {
             this._configuration = configuration;
             if (diagnostics.length > 0) {
                 console.warn('[HEADROOM] Configuration validation:', JSON.stringify({ diagnostics }));
-                void vscode.window.showWarningMessage(`HEADROOM is using defaults for ${diagnostics.length} invalid setting(s). See the Extension Host log for details.`);
+                void vscode.window.showWarningMessage(getMessage('settings.invalid', { count: diagnostics.length }));
             }
             // 3. Set up status bar
             this._setupStatusBar();
@@ -69,9 +70,10 @@ export class HeadroomContext {
             const isFirstActivation = !this._context.globalState.get('headroom.activated');
             if (isFirstActivation) {
                 await this._context.globalState.update('headroom.activated', true);
-                vscode.window.showInformationMessage('HEADROOM is active. Open the CEO Dashboard to get started.', 'Open Dashboard').then(selection => {
-                    if (selection === 'Open Dashboard') {
-                        vscode.commands.executeCommand(COMMANDS.OPEN_DASHBOARD);
+                const openDashboardAction = { title: getMessage('welcome.openDashboard'), command: COMMANDS.OPEN_DASHBOARD };
+                vscode.window.showInformationMessage(getMessage('welcome.message'), openDashboardAction).then(selection => {
+                    if (selection?.command === COMMANDS.OPEN_DASHBOARD) {
+                        vscode.commands.executeCommand(selection.command);
                     }
                 });
             }
@@ -89,7 +91,7 @@ export class HeadroomContext {
     _registerCommands() {
         this._disposables.push(vscode.commands.registerCommand(COMMANDS.OPEN_DASHBOARD, () => {
             // Phase 015: WebviewPanel implementation
-            vscode.window.showInformationMessage('HEADROOM: CEO Dashboard — Phase 015');
+            vscode.window.showInformationMessage(getMessage('dashboard.placeholder'));
         }), vscode.commands.registerCommand(COMMANDS.NEW_OBJECTIVE, async () => {
             await this._createObjective();
         }), vscode.commands.registerCommand(COMMANDS.SHOW_STATUS, () => {
@@ -97,13 +99,13 @@ export class HeadroomContext {
         }), vscode.commands.registerCommand(COMMANDS.PAUSE_EXECUTION, () => {
             const result = this._executionControl.pause();
             vscode.window.showInformationMessage(result.changed
-                ? 'HEADROOM: Execution paused.'
-                : 'HEADROOM: Execution is already paused.');
+                ? getMessage('execution.paused')
+                : getMessage('execution.alreadyPaused'));
         }), vscode.commands.registerCommand(COMMANDS.RESUME_EXECUTION, () => {
             const result = this._executionControl.resume();
             vscode.window.showInformationMessage(result.changed
-                ? 'HEADROOM: Execution resumed.'
-                : 'HEADROOM: Execution is already running.');
+                ? getMessage('execution.resumed')
+                : getMessage('execution.alreadyRunning'));
         }), vscode.commands.registerCommand(COMMANDS.CONFIGURE_PROVIDER_CREDENTIAL, async () => {
             await this._configureProviderCredential();
         }), vscode.commands.registerCommand(COMMANDS.CLEAR_PROVIDER_CREDENTIAL, async () => {
@@ -118,9 +120,9 @@ export class HeadroomContext {
     }
     _setupStatusBar() {
         this._statusBarItem = vscode.window.createStatusBarItem('headroom.status', vscode.StatusBarAlignment.Left, 100);
-        this._statusBarItem.name = 'HEADROOM Status';
-        this._statusBarItem.text = '$(circuit-board) HEADROOM';
-        this._statusBarItem.tooltip = 'HEADROOM AI CEO Office — Click to open dashboard';
+        this._statusBarItem.name = getMessage('statusBar.name');
+        this._statusBarItem.text = getMessage('statusBar.text');
+        this._statusBarItem.tooltip = getMessage('statusBar.tooltip');
         this._statusBarItem.command = COMMANDS.OPEN_DASHBOARD;
         this._statusBarItem.show();
         this._context.subscriptions.push(this._statusBarItem);
@@ -128,23 +130,23 @@ export class HeadroomContext {
     }
     _showStatus() {
         const status = this._initialized
-            ? `Active — Execution ${this._executionControl.status.toLowerCase()}.`
-            : 'Not initialized.';
-        vscode.window.showInformationMessage(`HEADROOM Status: ${status}`);
+            ? getMessage('status.active', { state: this._executionControl.status.toLowerCase() })
+            : getMessage('status.inactive');
+        vscode.window.showInformationMessage(getMessage('status.message', { status }));
     }
     async _createObjective() {
         const title = await vscode.window.showInputBox({
-            title: 'HEADROOM — New CEO Objective', prompt: 'Enter a concise objective title.',
-            placeHolder: 'Objective title', ignoreFocusOut: true,
+            title: getMessage('objective.title'), prompt: getMessage('objective.title.prompt'),
+            placeHolder: getMessage('objective.title.placeholder'), ignoreFocusOut: true,
             validateInput: (value) => typeof value === 'string' && value.trim().length >= 1 && value.trim().length <= 200
-                ? undefined : 'Title must contain 1 to 200 characters.',
+                ? undefined : getMessage('objective.title.invalid'),
         });
         if (title === undefined) return;
         const description = await vscode.window.showInputBox({
-            title: 'HEADROOM — Objective Details', prompt: 'Describe the outcome and constraints.',
-            placeHolder: 'Objective description', ignoreFocusOut: true,
+            title: getMessage('objective.description.title'), prompt: getMessage('objective.description.prompt'),
+            placeHolder: getMessage('objective.description.placeholder'), ignoreFocusOut: true,
             validateInput: (value) => typeof value === 'string' && value.trim().length >= 1 && value.trim().length <= 10_000
-                ? undefined : 'Description must contain 1 to 10000 characters.',
+                ? undefined : getMessage('objective.description.invalid'),
         });
         if (description === undefined) return;
         const intake = createObjectiveIntakeUseCase({
@@ -153,30 +155,30 @@ export class HeadroomContext {
         });
         const result = await intake.run({ title, description });
         if (!result.ok) {
-            vscode.window.showErrorMessage(`HEADROOM could not create the objective: ${result.error.message}`);
+            vscode.window.showErrorMessage(getMessage('objective.create.failed', { error: result.error.message }));
             return;
         }
         this._refreshStatusViews();
-        vscode.window.showInformationMessage('HEADROOM objective created and saved.');
+        vscode.window.showInformationMessage(getMessage('objective.created'));
     }
     async _configureProviderCredential() {
         const provider = await this._pickCredentialProvider();
         if (!provider) return;
         const credential = await vscode.window.showInputBox({
-            prompt: `Enter the ${provider} API credential. It will be stored in VS Code SecretStorage.`,
+            prompt: getMessage('credential.prompt', { provider }),
             password: true, ignoreFocusOut: true,
             validateInput: (value) => typeof value === 'string' && value.trim().length > 0
                 && value.length <= 4096 && !/[\r\n]/.test(value)
-                ? undefined : 'Enter a non-empty, single-line credential of at most 4096 characters.',
+                ? undefined : getMessage('credential.invalid'),
         });
         if (credential === undefined) return;
         const store = createSecretStorageAdapter(this._context.secrets);
         try {
             await store.storeCredential(provider, credential);
-            vscode.window.showInformationMessage(`HEADROOM: ${provider} credential stored securely.`);
+            vscode.window.showInformationMessage(getMessage('credential.stored', { provider }));
         }
         catch {
-            vscode.window.showErrorMessage(`HEADROOM could not store the ${provider} credential in VS Code SecretStorage.`);
+            vscode.window.showErrorMessage(getMessage('credential.storeFailed', { provider }));
         }
     }
     async _clearProviderCredential() {
@@ -185,38 +187,38 @@ export class HeadroomContext {
         const store = createSecretStorageAdapter(this._context.secrets);
         try {
             await store.deleteCredential(provider);
-            vscode.window.showInformationMessage(`HEADROOM: ${provider} credential removed.`);
+            vscode.window.showInformationMessage(getMessage('credential.removed', { provider }));
         }
         catch {
-            vscode.window.showErrorMessage(`HEADROOM could not remove the ${provider} credential from VS Code SecretStorage.`);
+            vscode.window.showErrorMessage(getMessage('credential.removeFailed', { provider }));
         }
     }
     async _reviewTaskChanges(taskId, bundle) {
         if (typeof taskId !== 'string' || !bundle || bundle.taskId !== taskId || bundle.schemaVersion !== 1) {
-            vscode.window.showWarningMessage('HEADROOM: No matching review evidence bundle was provided.');
+            vscode.window.showWarningMessage(getMessage('review.bundle.missing'));
             return;
         }
         const serialized = JSON.stringify(bundle, null, 2);
         if (Buffer.byteLength(serialized, 'utf8') > 2 * 1024 * 1024) {
-            vscode.window.showErrorMessage('HEADROOM: Review evidence exceeds the display limit.');
+            vscode.window.showErrorMessage(getMessage('review.bundle.tooLarge'));
             return;
         }
         const document = await vscode.workspace.openTextDocument({ language: 'json', content: serialized });
         await vscode.window.showTextDocument(document, { preview: false });
         const agents = new AgentRepository(this._databaseConnection.database).listByRole('CEO');
         if (agents.length !== 1) {
-            vscode.window.showErrorMessage('HEADROOM: Review requires exactly one persisted CEO identity.');
+            vscode.window.showErrorMessage(getMessage('review.ceo.missing'));
             return;
         }
         const task = new TaskRepository(this._databaseConnection.database).getById(taskId);
         if (!task) {
-            vscode.window.showErrorMessage('HEADROOM: The reviewed task no longer exists.');
+            vscode.window.showErrorMessage(getMessage('review.task.missing'));
             return;
         }
         const decision = await vscode.window.showQuickPick([
-            { label: 'Approve Changes', description: 'Record approval for this exact evidence bundle.', value: 'APPROVE' },
-            { label: 'Request Changes', description: 'Record that these changes need more work.', value: 'REQUEST_CHANGES' },
-        ], { title: `HEADROOM — Review ${task.title}`, placeHolder: 'Choose a review decision. Closing this picker records nothing.' });
+            { label: getMessage('review.approveChanges'), description: getMessage('review.approveChanges.description'), value: 'APPROVE' },
+            { label: getMessage('review.requestChanges'), description: getMessage('review.requestChanges.description'), value: 'REQUEST_CHANGES' },
+        ], { title: getMessage('review.task.title', { title: task.title }), placeHolder: getMessage('review.decision.placeholder') });
         if (!decision) return;
         const useCase = createHumanCodeReviewDecision({
             agentRepository: new AgentRepository(this._databaseConnection.database),
@@ -227,32 +229,34 @@ export class HeadroomContext {
         });
         const result = await useCase.run({ reviewerId: agents[0].id, taskId, bundle, decision: decision.value });
         if (!result.ok) {
-            vscode.window.showErrorMessage(`HEADROOM could not record the review: ${result.error.message}`);
+            vscode.window.showErrorMessage(getMessage('review.recordFailed', { error: result.error.message }));
             return;
         }
-        vscode.window.showInformationMessage(`HEADROOM: ${decision.label} recorded for this evidence bundle.`);
+        const decisionMessage = decision.value === 'APPROVE'
+            ? getMessage('review.approveChanges') : getMessage('review.requestChanges');
+        vscode.window.showInformationMessage(getMessage('review.recorded', { decision: decisionMessage }));
     }
     async _reviewPlan(plan) {
         if (!plan || typeof plan !== 'object') {
-            vscode.window.showWarningMessage('HEADROOM: No execution plan was provided for review.');
+            vscode.window.showWarningMessage(getMessage('plan.missing'));
             return;
         }
         const serialized = JSON.stringify(plan, null, 2);
         if (Buffer.byteLength(serialized, 'utf8') > 1024 * 1024) {
-            vscode.window.showErrorMessage('HEADROOM: Execution plan exceeds the review display limit.');
+            vscode.window.showErrorMessage(getMessage('plan.tooLarge'));
             return;
         }
         const document = await vscode.workspace.openTextDocument({ language: 'json', content: serialized });
         await vscode.window.showTextDocument(document, { preview: false });
         const agents = new AgentRepository(this._databaseConnection.database).listByRole('CEO');
         if (agents.length !== 1) {
-            vscode.window.showErrorMessage('HEADROOM: Plan approval requires exactly one persisted CEO identity.');
+            vscode.window.showErrorMessage(getMessage('plan.ceo.missing'));
             return;
         }
         const decision = await vscode.window.showQuickPick([
-            { label: 'Approve Plan', description: 'Authorize this plan for execution.', value: 'APPROVED' },
-            { label: 'Reject Plan', description: 'Reject this plan and prevent execution.', value: 'REJECTED' },
-        ], { title: 'HEADROOM — Review Execution Plan', placeHolder: 'Choose a plan decision. Closing this picker records nothing.' });
+            { label: getMessage('plan.approve'), description: getMessage('plan.approve.description'), value: 'APPROVED' },
+            { label: getMessage('plan.reject'), description: getMessage('plan.reject.description'), value: 'REJECTED' },
+        ], { title: getMessage('plan.title'), placeHolder: getMessage('plan.decision.placeholder') });
         if (!decision) return;
         const useCase = createPersistedPlanDecision({ agentRepository: new AgentRepository(this._databaseConnection.database),
             auditRepository: new AuditLogRepository(this._databaseConnection.database),
@@ -260,18 +264,19 @@ export class HeadroomContext {
             clock: { now: () => new Date() }, idFactory: () => randomUUID() });
         const result = await useCase.run({ approverId: agents[0].id, plan, decision: decision.value });
         if (!result.ok) {
-            vscode.window.showErrorMessage(`HEADROOM could not record the plan decision: ${result.error.message}`);
+            vscode.window.showErrorMessage(getMessage('plan.recordFailed', { error: result.error.message }));
             return;
         }
-        vscode.window.showInformationMessage(`HEADROOM: Plan ${decision.value.toLowerCase()} and saved to the audit log.`);
+        const planDecision = decision.value === 'APPROVED' ? getMessage('plan.approve') : getMessage('plan.reject');
+        vscode.window.showInformationMessage(getMessage('plan.recorded', { decision: planDecision.toLowerCase() }));
         return result.value;
     }
     async _pickCredentialProvider() {
         const options = [
-            { label: 'Gemini', description: 'Google AI provider', provider: 'gemini' },
-            { label: 'OpenAI', description: 'OpenAI provider', provider: 'openai' },
+            { label: 'Gemini', description: getMessage('credential.gemini.description'), provider: 'gemini' },
+            { label: 'OpenAI', description: getMessage('credential.openai.description'), provider: 'openai' },
         ];
-        const selected = await vscode.window.showQuickPick(options, { placeHolder: 'Select provider credential' });
+        const selected = await vscode.window.showQuickPick(options, { placeHolder: getMessage('credential.select') });
         return selected?.provider;
     }
     dispose() {
