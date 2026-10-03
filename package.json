@@ -137,6 +137,34 @@
           "maximum": 10,
           "description": "%configuration.parallelLimit.description%"
         },
+        "headroom.workspace.maxFileBytes": {
+          "type": "number",
+          "default": 1048576,
+          "minimum": 1,
+          "maximum": 10485760,
+          "description": "%configuration.maxFileBytes.description%"
+        },
+        "headroom.workspace.maxFilesPerScan": {
+          "type": "number",
+          "default": 500,
+          "minimum": 1,
+          "maximum": 5000,
+          "description": "%configuration.maxFilesPerScan.description%"
+        },
+        "headroom.execution.maxProcessOutputBytes": {
+          "type": "number",
+          "default": 262144,
+          "minimum": 1,
+          "maximum": 1048576,
+          "description": "%configuration.maxProcessOutputBytes.description%"
+        },
+        "headroom.context.maxBytes": {
+          "type": "number",
+          "default": 64000,
+          "minimum": 256,
+          "maximum": 64000,
+          "description": "%configuration.maxContextBytes.description%"
+        },
         "headroom.debug.verbose": {
           "type": "boolean",
           "default": false,

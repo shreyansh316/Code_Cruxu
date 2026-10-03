@@ -20,5 +20,9 @@
   "configuration.reasoningModel.description": "AI model for complex reasoning tasks (Director, planning).",
   "configuration.maxRetries.description": "Maximum retry attempts per task before escalation.",
   "configuration.parallelLimit.description": "Maximum number of tasks to run in parallel.",
+  "configuration.maxFileBytes.description": "Maximum bytes HEADROOM may read or write for one workspace file (1 byte to 10 MiB).",
+  "configuration.maxFilesPerScan.description": "Maximum number of regular files returned by one workspace scan (1 to 5,000).",
+  "configuration.maxProcessOutputBytes.description": "Maximum combined stdout and stderr bytes retained from a tool process (1 byte to 1 MiB).",
+  "configuration.maxContextBytes.description": "Maximum bytes in assembled agent memory context (256 bytes to 64,000 bytes).",
   "configuration.verbose.description": "Enable verbose logging for debugging."
 }

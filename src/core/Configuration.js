@@ -11,11 +11,15 @@ export const CONFIGURATION_DEFAULTS = {
     reasoningModel: 'gemini-2.5-pro',
     maxRetries: 2,
     parallelLimit: 4,
+    maxWorkspaceFileBytes: 1024 * 1024,
+    maxWorkspaceFilesPerScan: 500,
+    maxProcessOutputBytes: 256 * 1024,
+    maxAgentContextBytes: 64_000,
     verbose: false,
 };
-export const MAX_CONFIGURATION_DIAGNOSTICS = 6;
+export const MAX_CONFIGURATION_DIAGNOSTICS = 9;
 function addDiagnostic(diagnostics, code, setting, message) {
-    // The fixed set of six contributed settings bounds diagnostic volume.
+    // The fixed set of nine contributed settings bounds diagnostic volume.
     if (diagnostics.length < MAX_CONFIGURATION_DIAGNOSTICS) {
         diagnostics.push({ source: 'configuration', level: 'warning', code, setting, message });
     }
@@ -84,6 +88,10 @@ export function validateHeadroomConfiguration(reader) {
         reasoningModel: readString(reader, diagnostics, 'ai.reasoningModel', CONFIGURATION_DEFAULTS.reasoningModel),
         maxRetries: readInteger(reader, diagnostics, 'execution.maxRetries', CONFIGURATION_DEFAULTS.maxRetries, 0, 5),
         parallelLimit: readInteger(reader, diagnostics, 'execution.parallelLimit', CONFIGURATION_DEFAULTS.parallelLimit, 1, 10),
+        maxWorkspaceFileBytes: readInteger(reader, diagnostics, 'workspace.maxFileBytes', CONFIGURATION_DEFAULTS.maxWorkspaceFileBytes, 1, 10 * 1024 * 1024),
+        maxWorkspaceFilesPerScan: readInteger(reader, diagnostics, 'workspace.maxFilesPerScan', CONFIGURATION_DEFAULTS.maxWorkspaceFilesPerScan, 1, 5000),
+        maxProcessOutputBytes: readInteger(reader, diagnostics, 'execution.maxProcessOutputBytes', CONFIGURATION_DEFAULTS.maxProcessOutputBytes, 1, 1024 * 1024),
+        maxAgentContextBytes: readInteger(reader, diagnostics, 'context.maxBytes', CONFIGURATION_DEFAULTS.maxAgentContextBytes, 256, 64_000),
         verbose: readBoolean(reader, diagnostics, 'debug.verbose', CONFIGURATION_DEFAULTS.verbose),
     };
     return { configuration, diagnostics };
