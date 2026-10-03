@@ -13,12 +13,18 @@
  */
 import * as vscode from 'vscode';
 import { COMMANDS } from '../constants';
+import {
+  CONFIGURATION_DEFAULTS,
+  validateHeadroomConfiguration,
+  type HeadroomConfiguration,
+} from './Configuration';
 
 export class HeadroomContext implements vscode.Disposable {
   private readonly _context: vscode.ExtensionContext;
   private readonly _disposables: vscode.Disposable[] = [];
   private _statusBarItem: vscode.StatusBarItem | undefined;
   private _initialized = false;
+  private _configuration: HeadroomConfiguration = { ...CONFIGURATION_DEFAULTS };
 
   constructor(context: vscode.ExtensionContext) {
     this._context = context;
@@ -32,10 +38,22 @@ export class HeadroomContext implements vscode.Disposable {
     // 1. Register commands
     this._registerCommands();
 
-    // 2. Set up status bar
+    // 2. Validate contributed settings and report invalid values once.
+    const { configuration, diagnostics } = validateHeadroomConfiguration(
+      vscode.workspace.getConfiguration('headroom'),
+    );
+    this._configuration = configuration;
+    if (diagnostics.length > 0) {
+      console.warn('[HEADROOM] Configuration validation:', JSON.stringify({ diagnostics }));
+      void vscode.window.showWarningMessage(
+        `HEADROOM is using defaults for ${diagnostics.length} invalid setting(s). See the Extension Host log for details.`,
+      );
+    }
+
+    // 3. Set up status bar
     this._setupStatusBar();
 
-    // 3. Mark initialized
+    // 4. Mark initialized
     this._initialized = true;
 
     // Show welcome message on first activation
@@ -122,6 +140,10 @@ export class HeadroomContext implements vscode.Disposable {
 
   get isInitialized(): boolean {
     return this._initialized;
+  }
+
+  get configuration(): Readonly<HeadroomConfiguration> {
+    return this._configuration;
   }
 
   get storagePath(): string {
