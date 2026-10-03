@@ -161,6 +161,20 @@ export const SCHEMA_MIGRATIONS = [
             BEGIN SELECT RAISE(ABORT, 'audit records are append-only'); END;
         `),
     },
+    {
+        version: 8,
+        name: 'owner-and-attribution-query-indexes',
+        up: (database) => database.exec(`
+          CREATE INDEX idx_memories_owner_organization ON memories(scope, organization_id, created_at, id) WHERE organization_id IS NOT NULL;
+          CREATE INDEX idx_memories_owner_office ON memories(scope, office_id, created_at, id) WHERE office_id IS NOT NULL;
+          CREATE INDEX idx_memories_owner_department ON memories(scope, department_id, created_at, id) WHERE department_id IS NOT NULL;
+          CREATE INDEX idx_memories_owner_task ON memories(scope, task_id, created_at, id) WHERE task_id IS NOT NULL;
+          CREATE INDEX idx_memories_owner_project ON memories(scope, project_id, created_at, id) WHERE project_id IS NOT NULL;
+          CREATE INDEX idx_memories_owner_objective ON memories(scope, objective_id, created_at, id) WHERE objective_id IS NOT NULL;
+          CREATE INDEX idx_ai_usages_agent_created ON ai_usages(agent_id, created_at) WHERE agent_id IS NOT NULL;
+          CREATE INDEX idx_audit_task_created ON audit_logs(task_id, created_at) WHERE task_id IS NOT NULL;
+        `),
+    },
 ];
 const CREATE_MIGRATION_LEDGER_SQL = `
   CREATE TABLE IF NOT EXISTS schema_migrations (

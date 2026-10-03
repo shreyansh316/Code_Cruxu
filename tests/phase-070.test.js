@@ -8,10 +8,11 @@ describe('Phase 070 — extension upgrade compatibility', () => {
         const connection = new SqliteConnection();
         const database = connection.open(':memory:');
         expect(inspectUpgradeCompatibility(database)).toMatchObject({ status: 'INITIAL_INSTALL', safeToUpgrade: true });
+        const previousVersion = SCHEMA_MIGRATIONS.at(-1).version - 1;
         applyMigrations(database, SCHEMA_MIGRATIONS.slice(0, -1));
-        expect(inspectUpgradeCompatibility(database)).toMatchObject({ status: 'MIGRATION_REQUIRED', currentVersion: 6,
-            latestVersion: 7, safeToUpgrade: true, backupRecommended: true });
-        expect(database.prepare('SELECT max(version) AS version FROM schema_migrations').get().version).toBe(6);
+        expect(inspectUpgradeCompatibility(database)).toMatchObject({ status: 'MIGRATION_REQUIRED', currentVersion: previousVersion,
+            latestVersion: SCHEMA_MIGRATIONS.at(-1).version, safeToUpgrade: true, backupRecommended: true });
+        expect(database.prepare('SELECT max(version) AS version FROM schema_migrations').get().version).toBe(previousVersion);
         applyMigrations(database);
         expect(assertUpgradeCompatible(database)).toMatchObject({ status: 'CURRENT', safeToUpgrade: true });
         connection.close();
