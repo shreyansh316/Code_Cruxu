@@ -12,7 +12,9 @@
  * This file must remain the single source of initialization order.
  */
 import * as vscode from 'vscode';
+import { join } from 'path';
 import { COMMANDS } from '../constants';
+import { SqliteConnection } from '../storage';
 import {
   CONFIGURATION_DEFAULTS,
   validateHeadroomConfiguration,
@@ -25,6 +27,7 @@ export class HeadroomContext implements vscode.Disposable {
   private _statusBarItem: vscode.StatusBarItem | undefined;
   private _initialized = false;
   private _configuration: HeadroomConfiguration = { ...CONFIGURATION_DEFAULTS };
+  private readonly _databaseConnection = new SqliteConnection();
 
   constructor(context: vscode.ExtensionContext) {
     this._context = context;
@@ -35,39 +38,51 @@ export class HeadroomContext implements vscode.Disposable {
       return;
     }
 
-    // 1. Register commands
-    this._registerCommands();
+    // Open one connection in VS Code's extension-owned global storage.
+    this._databaseConnection.open(join(this.storagePath, 'headroom.sqlite'));
 
-    // 2. Validate contributed settings and report invalid values once.
-    const { configuration, diagnostics } = validateHeadroomConfiguration(
-      vscode.workspace.getConfiguration('headroom'),
-    );
-    this._configuration = configuration;
-    if (diagnostics.length > 0) {
-      console.warn('[HEADROOM] Configuration validation:', JSON.stringify({ diagnostics }));
-      void vscode.window.showWarningMessage(
-        `HEADROOM is using defaults for ${diagnostics.length} invalid setting(s). See the Extension Host log for details.`,
+    try {
+      // 1. Register commands
+      this._registerCommands();
+
+      // 2. Validate contributed settings and report invalid values once.
+      const { configuration, diagnostics } = validateHeadroomConfiguration(
+        vscode.workspace.getConfiguration('headroom'),
       );
-    }
+      this._configuration = configuration;
+      if (diagnostics.length > 0) {
+        console.warn('[HEADROOM] Configuration validation:', JSON.stringify({ diagnostics }));
+        void vscode.window.showWarningMessage(
+          `HEADROOM is using defaults for ${diagnostics.length} invalid setting(s). See the Extension Host log for details.`,
+        );
+      }
 
-    // 3. Set up status bar
-    this._setupStatusBar();
+      // 3. Set up status bar
+      this._setupStatusBar();
 
-    // 4. Mark initialized
-    this._initialized = true;
+      // 4. Mark initialized
+      this._initialized = true;
 
-    // Show welcome message on first activation
-    const isFirstActivation = !this._context.globalState.get<boolean>('headroom.activated');
-    if (isFirstActivation) {
-      await this._context.globalState.update('headroom.activated', true);
-      vscode.window.showInformationMessage(
-        'HEADROOM is active. Open the CEO Dashboard to get started.',
-        'Open Dashboard'
-      ).then(selection => {
-        if (selection === 'Open Dashboard') {
-          vscode.commands.executeCommand(COMMANDS.OPEN_DASHBOARD);
-        }
-      });
+      // Show welcome message on first activation
+      const isFirstActivation = !this._context.globalState.get<boolean>('headroom.activated');
+      if (isFirstActivation) {
+        await this._context.globalState.update('headroom.activated', true);
+        vscode.window.showInformationMessage(
+          'HEADROOM is active. Open the CEO Dashboard to get started.',
+          'Open Dashboard'
+        ).then(selection => {
+          if (selection === 'Open Dashboard') {
+            vscode.commands.executeCommand(COMMANDS.OPEN_DASHBOARD);
+          }
+        });
+      }
+    } catch (error) {
+      try {
+        this.dispose();
+      } catch (cleanupError) {
+        console.error('[HEADROOM] Cleanup after initialization failure:', cleanupError);
+      }
+      throw error;
     }
   }
 
@@ -127,11 +142,24 @@ export class HeadroomContext implements vscode.Disposable {
   }
 
   dispose(): void {
-    for (const d of this._disposables) {
-      d.dispose();
+    let disposalError: unknown;
+    for (const disposable of this._disposables) {
+      try {
+        disposable.dispose();
+      } catch (error) {
+        disposalError ??= error;
+      }
     }
     this._disposables.length = 0;
     this._initialized = false;
+    try {
+      this._databaseConnection.close();
+    } catch (error) {
+      disposalError ??= error;
+    }
+    if (disposalError !== undefined) {
+      throw disposalError;
+    }
   }
 
   get extensionContext(): vscode.ExtensionContext {
@@ -144,6 +172,10 @@ export class HeadroomContext implements vscode.Disposable {
 
   get configuration(): Readonly<HeadroomConfiguration> {
     return this._configuration;
+  }
+
+  get databaseConnection(): SqliteConnection {
+    return this._databaseConnection;
   }
 
   get storagePath(): string {

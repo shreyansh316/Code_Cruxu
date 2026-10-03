@@ -1,7 +1,8 @@
 /** Phase 005 — configuration defaults, bounds, and diagnostics. */
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { readFileSync } from 'fs';
+import { mkdtempSync, readFileSync, rmSync } from 'fs';
 import { join } from 'path';
+import { tmpdir } from 'os';
 import * as vscode from 'vscode';
 import {
   CONFIGURATION_DEFAULTS,
@@ -20,6 +21,7 @@ const manifest = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 
     maximum?: number;
   }> } };
 };
+const temporaryDirectories: string[] = [];
 
 function reader(values: Record<string, unknown> = {}): ConfigurationReader {
   return { get: <T>(key: string) => values[key] as T | undefined };
@@ -29,6 +31,9 @@ describe('Phase 005 — configuration validation', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.clearAllMocks();
+    for (const directory of temporaryDirectories.splice(0)) {
+      rmSync(directory, { recursive: true, force: true });
+    }
   });
 
   it('preserves all contributed defaults when settings are unset', () => {
@@ -150,10 +155,12 @@ describe('Phase 005 — configuration validation', () => {
     } as unknown as vscode.StatusBarItem);
     vi.mocked(vscode.commands.registerCommand).mockReturnValue({ dispose: vi.fn() });
     const warningLog = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const storagePath = mkdtempSync(join(tmpdir(), 'headroom-phase005-'));
+    temporaryDirectories.push(storagePath);
     const extensionContext = {
       subscriptions: [],
       globalState: { get: () => true, update: vi.fn().mockResolvedValue(undefined) },
-      globalStorageUri: { fsPath: 'test-storage' },
+      globalStorageUri: { fsPath: storagePath },
     } as unknown as vscode.ExtensionContext;
     const headroom = new HeadroomContext(extensionContext);
 

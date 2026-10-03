@@ -28,7 +28,7 @@ The repository currently provides the VS Code extension foundation, architecture
 | `HEADROOM: Pause Execution` | Placeholder message; execution controls are planned for a later phase. |
 | `HEADROOM: Resume Execution` | Placeholder message; execution controls are planned for a later phase. |
 
-The Activity Bar container and Organization and Active Tasks views are contributed in the extension manifest; tree data providers are not implemented yet. The SQLite schema defines the initial relational model and is covered by in-memory tests, but the extension does not yet open a runtime database, run migrations, or use repositories. AI provider settings are declared, but no AI provider is connected. No production users, projects, or task records are included.
+The Activity Bar container and Organization and Active Tasks views are contributed in the extension manifest; tree data providers are not implemented yet. On activation, the extension opens one SQLite database under VS Code global storage, enables foreign keys, and closes the connection during disposal. The initial schema is covered by in-memory tests but is not yet applied to the runtime database; migrations and repositories are later phases. AI provider settings are declared, but no AI provider is connected. No production users, projects, or task records are included.
 
 Phases 001–003 established the extension foundation, architecture and SQLite compatibility, and canonical SQLite schema. The reconstructed 100-phase plan is in `headroom_100_phase_roadmap.md`; later phases remain planned until implemented and verified.
 
@@ -95,7 +95,7 @@ src/
   domain/            Domain layer boundary
   application/       Application use-case boundary
   infrastructure/    External adapter boundary
-  storage/           SQLite compatibility check and initial schema
+  storage/           SQLite connection, compatibility check, and initial schema
   agents/             Agent runtime boundary
   constants.ts       Extension identifiers and shared constants
 tests/               Phase-focused Vitest tests
@@ -105,7 +105,7 @@ headroom_100_phase_roadmap.md
                      Reconstructed project roadmap and phase criteria
 ```
 
-The intended dependency direction is VS Code integration → application → domain → infrastructure → storage. The boundaries exist, but later layers are not yet implemented; the roadmap records their planned phases.
+The intended dependency direction is VS Code integration → application → domain → infrastructure → storage. Storage currently provides connection lifecycle and schema foundation; migrations and repositories, domain behavior, application use cases, infrastructure adapters, and agent runtime remain future roadmap work.
 
 ## Extension settings
 

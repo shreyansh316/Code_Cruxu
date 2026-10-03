@@ -19,6 +19,8 @@
  * During unit tests, an in-memory database is used.
  *
  * Initial relational schema is defined in Phase 003.
- * Connection lifecycle and repositories are implemented starting Phase 006.
+ * Connection lifecycle is implemented in Phase 006; migrations and
+ * repositories are implemented in later storage phases.
  */
 export { CORE_SCHEMA_SQL, initializeCoreSchema } from './schema';
+export { SqliteConnection, SqliteConnectionError } from './SqliteConnection';
