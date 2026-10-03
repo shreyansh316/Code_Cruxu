@@ -1,1 +1,1 @@
-export {};
+export { createAgentRequest, createAgentResponse } from './contracts';
