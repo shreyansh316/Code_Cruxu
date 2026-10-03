@@ -11,11 +11,12 @@
  *
  * This layer has NO dependency on VS Code APIs.
  * This layer has NO dependency on the database (infrastructure).
- * Pure TypeScript business logic only.
+ * Pure JavaScript business logic only.
  *
  * Pure domain types and invariants are implemented in Phase 008.
  */
 export { DomainInvariantError } from './errors';
 export { assertObjectiveTransition, canTransitionObjective, OBJECTIVE_TRANSITIONS, transitionObjective, } from './objectiveLifecycle';
+export { assertTaskTransition, canTransitionTask, TASK_TRANSITIONS, transitionTask, } from './taskLifecycle';
 export { assertAgentInvariant, assertCanReportTo, assertDepartmentInvariant, assertObjectiveInvariant, assertOfficeInvariant, assertOrganizationHierarchyInvariant, assertOrganizationInvariant, assertTaskInvariant, } from './invariants';
 export { createEntityId, createSlug } from './values';
