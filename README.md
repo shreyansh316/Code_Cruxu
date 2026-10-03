@@ -1,5 +1,7 @@
 # HEADROOM
 
+HEADROOM is the VS Code extension maintained in the `Code_Cruxu` repository.
+
 HEADROOM is an AI-powered **Visual Studio Code extension** being built as a hierarchical operating system for planning, executing, and verifying development work. It runs in the VS Code Extension Host; this repository is not a website or a Next.js application.
 
 The intended organization is:
