@@ -13,6 +13,28 @@
  * This layer has NO dependency on the database (infrastructure).
  * Pure TypeScript business logic only.
  *
- * Implemented in Phase 008 onwards.
+ * Pure domain types and invariants are implemented in Phase 008.
  */
-export {};
+export { DomainInvariantError, type DomainInvariantCode } from './errors';
+export {
+  assertAgentInvariant,
+  assertCanReportTo,
+  assertDepartmentInvariant,
+  assertObjectiveInvariant,
+  assertOfficeInvariant,
+  assertOrganizationHierarchyInvariant,
+  assertOrganizationInvariant,
+  assertTaskInvariant,
+} from './invariants';
+export type {
+  Agent,
+  AgentStatus,
+  Department,
+  Objective,
+  Office,
+  Organization,
+  OrganizationHierarchy,
+  OrganizationalUnitStatus,
+  Task,
+} from './types';
+export { createEntityId, createSlug, type EntityId, type Slug } from './values';

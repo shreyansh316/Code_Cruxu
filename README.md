@@ -18,7 +18,7 @@ Communication is designed to follow adjacent levels of this hierarchy. Employees
 
 ## Current implementation
 
-The repository currently provides the VS Code extension foundation, architecture boundaries, and a verified initial SQLite schema. The extension activates, registers commands, displays a status bar item, and shows a first-activation welcome message.
+The repository currently provides the VS Code extension foundation, pure domain types and invariants for organization hierarchy, objectives, and tasks, and a verified SQLite schema applied through versioned migrations. The extension activates, registers commands, displays a status bar item, and shows a first-activation welcome message.
 
 | Command | Current behavior |
 |---|---|
@@ -30,7 +30,7 @@ The repository currently provides the VS Code extension foundation, architecture
 
 The Activity Bar container and Organization and Active Tasks views are contributed in the extension manifest; tree data providers are not implemented yet. On activation, the extension opens one SQLite database under VS Code global storage, enables foreign keys, and applies pending versioned schema migrations on that connection. The migration ledger records applied versions atomically with their schema changes. Repositories are a later phase. AI provider settings are declared, but no AI provider is connected. No production users, projects, or task records are included.
 
-Phases 001–007 established the extension foundation, architecture and SQLite compatibility, canonical SQLite schema, configuration validation, connection lifecycle, and versioned schema migrations. The reconstructed 100-phase plan is in `headroom_100_phase_roadmap.md`; later phases remain planned until implemented and verified.
+Phases 001–008 established the extension foundation, architecture and SQLite compatibility, canonical SQLite schema, configuration validation, connection lifecycle, versioned schema migrations, and pure domain contracts. The reconstructed 100-phase plan is in `headroom_100_phase_roadmap.md`; later phases remain planned until implemented and verified.
 
 ## Requirements
 
@@ -92,7 +92,7 @@ This runs the extension build and VS Code packaging tool; it does not publish or
 src/
   extension.ts       VS Code extension activation and deactivation
   core/              Extension context, commands, and lifecycle
-  domain/            Domain layer boundary
+  domain/            Pure entity types, value objects, and invariants
   application/       Application use-case boundary
   infrastructure/    External adapter boundary
   storage/           SQLite connection, migrations, compatibility check, and schema
@@ -105,7 +105,7 @@ headroom_100_phase_roadmap.md
                      Reconstructed project roadmap and phase criteria
 ```
 
-The intended dependency direction is VS Code integration → application → domain → infrastructure → storage. Storage currently provides connection lifecycle and versioned schema migrations; repositories, domain behavior, application use cases, infrastructure adapters, and agent runtime remain future roadmap work.
+The intended dependency direction is VS Code integration → application → domain → infrastructure → storage. The domain currently provides pure types and invariants; storage provides connection lifecycle and versioned schema migrations. Repositories, application use cases, infrastructure adapters, and agent runtime remain future roadmap work.
 
 ## Extension settings
 
