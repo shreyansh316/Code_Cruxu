@@ -5,6 +5,26 @@
   "version": "0.1.0",
   "publisher": "headroom",
   "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shreyansh316/Code_Cruxu.git"
+  },
+  "files": [
+    "out/extension.js",
+    "media/headroom-icon.svg",
+    "package.json",
+    "package.nls.json",
+    "README.md",
+    "node_modules/better-sqlite3/lib/**",
+    "node_modules/better-sqlite3/build/Release/better_sqlite3.node",
+    "node_modules/better-sqlite3/package.json",
+    "node_modules/bindings/bindings.js",
+    "node_modules/bindings/package.json",
+    "node_modules/bindings/LICENSE.md",
+    "node_modules/file-uri-to-path/index.js",
+    "node_modules/file-uri-to-path/package.json",
+    "node_modules/file-uri-to-path/LICENSE"
+  ],
   "engines": {
     "vscode": "^1.100.0",
     "node": ">=22.0.0"
@@ -212,7 +232,8 @@
     "test:vscode": "node ./test/runTest.js",
     "benchmark": "vitest run --config vitest.benchmark.config.js --reporter=verbose",
     "check:sqlite": "node scripts/check-sqlite.js",
-    "package": "npm run compile && vsce package --no-dependencies",
+    "package": "node ./test/runTest.js --package",
+    "test:vscode:vsix": "node ./test/runTest.js --vsix",
     "vscode:prepublish": "npm run compile"
   },
   "dependencies": {

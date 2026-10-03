@@ -1,10 +1,14 @@
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const { execFileSync } = require('child_process');
 const { downloadAndUnzipVSCode, runTests } = require('@vscode/test-electron');
 
 async function main() {
     const root = path.resolve(__dirname, '..');
+    const packageOnly = process.argv.includes('--package');
+    const testVsix = packageOnly || process.argv.includes('--vsix');
+    const extensionManifest = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
     const version = '1.101.0';
     const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'headroom-vscode-'));
     const extensionPath = path.join(temporaryDirectory, 'extension');
@@ -16,6 +20,7 @@ async function main() {
     const nativeAddonBackup = path.join(nativeAddonBackupDirectory, `better-sqlite3-${process.pid}.node`);
     let extensionLinked = false;
     let nativeAddonBackedUp = false;
+    let packagePath;
     try {
         const cachedExecutable = path.join(root, '.vscode-test', `vscode-win32-${process.arch}-archive-${version}`, 'Code.exe');
         const vscodeExecutablePath = fs.existsSync(cachedExecutable)
@@ -49,13 +54,64 @@ async function main() {
             force: true,
             onlyModules: ['better-sqlite3'],
         });
-        fs.symlinkSync(root, extensionPath, 'junction');
-        extensionLinked = true;
+        let extensionDevelopmentPath = extensionPath;
+        let extensionTestsPath = path.join(extensionPath, 'test', 'suite');
+        if (testVsix) {
+            packagePath = packageOnly
+                ? path.join(root, `${extensionManifest.name}-${extensionManifest.version}.vsix`)
+                : path.join(nativeAddonBackupDirectory, `headroom-${process.pid}.vsix`);
+            await require('@vscode/vsce').createVSIX({ cwd: root, packagePath });
+            const files = execFileSync('tar', ['-tf', packagePath], { encoding: 'utf8' }).split(/\r?\n/).filter(Boolean);
+            const required = [
+                'extension/package.json', 'extension/package.nls.json', 'extension/out/extension.js',
+                'extension/media/headroom-icon.svg',
+                'extension/node_modules/better-sqlite3/build/Release/better_sqlite3.node',
+            ];
+            for (const file of required) {
+                if (!files.includes(file)) throw new Error(`VSIX is missing required runtime file: ${file}`);
+            }
+            const forbidden = files.find((file) => /(^|\/)(\.env[^/]*|src|tests|benchmarks|coverage|\.test-cache)(\/|$)/i.test(file)
+                || /(^|\/)(vitest|@vitest|@vscode\/test-electron)(\/|$)/i.test(file));
+            if (forbidden) throw new Error(`VSIX contains excluded development or environment data: ${forbidden}`);
+
+            if (packageOnly) {
+                console.log(`Verified installable VSIX: ${packagePath}`);
+                return;
+            } else {
+                const installData = path.join(temporaryDirectory, 'install-data');
+                const installedExtensions = path.join(temporaryDirectory, 'installed-extensions');
+                const vscodeCli = path.join(path.dirname(vscodeExecutablePath), 'bin', 'code.cmd');
+                if (!fs.existsSync(vscodeCli)) throw new Error('VS Code CLI is missing from the test runtime.');
+                const installArgs = [
+                    `--user-data-dir=${installData}`, `--extensions-dir=${installedExtensions}`,
+                    '--install-extension', packagePath, '--force',
+                ];
+                runVscodeCli(vscodeCli, installArgs, { timeout: 120_000, stdio: 'inherit' });
+                const installed = runVscodeCli(vscodeCli, [
+                    `--user-data-dir=${installData}`, `--extensions-dir=${installedExtensions}`, '--list-extensions', '--show-versions',
+                ], { encoding: 'utf8', timeout: 30_000 });
+                const expectedExtension = `${extensionManifest.publisher}.${extensionManifest.name}@${extensionManifest.version}`.toLowerCase();
+                if (!installed.toLowerCase().split(/\r?\n/).some((line) => line.trim() === expectedExtension)) {
+                    throw new Error('VSIX installation did not appear in the isolated VS Code extensions list.');
+                }
+
+                fs.mkdirSync(extensionPath, { recursive: true });
+                execFileSync('tar', ['-xf', packagePath, '-C', extensionPath], { stdio: 'inherit' });
+                extensionDevelopmentPath = path.join(extensionPath, 'extension');
+                const packagedTestSuite = path.join(extensionDevelopmentPath, 'test', 'suite');
+                fs.mkdirSync(path.dirname(packagedTestSuite), { recursive: true });
+                fs.cpSync(path.join(root, 'test', 'suite'), packagedTestSuite, { recursive: true });
+                extensionTestsPath = packagedTestSuite;
+            }
+        } else {
+            fs.symlinkSync(root, extensionPath, 'junction');
+            extensionLinked = true;
+        }
         const exitCode = await runTests({
             version,
             vscodeExecutablePath,
-            extensionDevelopmentPath: extensionPath,
-            extensionTestsPath: path.join(extensionPath, 'test', 'suite'),
+            extensionDevelopmentPath,
+            extensionTestsPath,
             launchArgs: [
                 `--user-data-dir=${path.join(temporaryDirectory, 'user-data')}`,
                 `--extensions-dir=${path.join(temporaryDirectory, 'extensions')}`,
@@ -78,11 +134,20 @@ async function main() {
             process.exitCode = 1;
         }
         if (fs.existsSync(nativeAddonBackup)) fs.rmSync(nativeAddonBackup, { force: true });
+        if (!packageOnly && packagePath && fs.existsSync(packagePath)) fs.rmSync(packagePath, { force: true });
         if (extensionLinked) {
             fs.unlinkSync(extensionPath);
         }
         fs.rmSync(temporaryDirectory, { recursive: true, force: true });
     }
+}
+
+function runVscodeCli(cliPath, args, options) {
+    const quote = (value) => `'${String(value).replace(/'/g, "''")}'`;
+    const command = `& ${quote(cliPath)} ${args.map(quote).join(' ')}`;
+    return execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', command], {
+        ...options, windowsHide: true,
+    });
 }
 
 main().catch((error) => {

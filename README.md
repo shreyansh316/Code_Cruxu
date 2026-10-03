@@ -69,7 +69,7 @@ Run the complete unit-test suite:
 npm test
 ```
 
-The unit tests run with Vitest in Node.js and use the repository's VS Code API mock where needed. Run `npm run test:vscode` to launch the real VS Code Extension Host, activate HEADROOM, and exercise its primary commands and contributed views. The host test uses VS Code 1.101.0 and rebuilds `better-sqlite3` for its Electron runtime.
+The unit tests run with Vitest in Node.js and use the repository's VS Code API mock where needed. Run `npm run test:vscode` to launch the real VS Code Extension Host against the source checkout. Run `npm run test:vscode:vsix` to package HEADROOM, install the VSIX into an isolated VS Code profile, and activate the packaged artifact in the Extension Host. These host checks use VS Code 1.101.0 and rebuild `better-sqlite3` for its Electron runtime.
 
 Verify that the installed native SQLite module can open and use both in-memory and temporary file databases:
 
@@ -85,7 +85,7 @@ Build a local VS Code extension package (`.vsix`) with:
 npm run package
 ```
 
-This runs the extension build and VS Code packaging tool; it does not publish or deploy HEADROOM. Packaging is currently blocked when a local `.env` file is present: VS Code's packaging tool refuses to include environment files. Do not bypass that protection with `--allow-package-env-file`. The package command also reports that repository and license metadata and an explicit packaging file allowlist are missing. A valid installable `.vsix` has not yet been verified; packaging hardening is tracked as a later roadmap milestone. Any successfully generated `.vsix` is ignored by Git.
+This rebuilds `better-sqlite3` for the VS Code 1.101.0 Electron runtime, then creates a local `.vsix` using the `package.json` file allowlist. Environment files, source, tests, benchmarks, source maps, and development dependencies are excluded. The command does not publish or deploy HEADROOM. VSCE currently warns that the repository has no top-level license file; no license terms are asserted by this package step. Any generated `.vsix` is ignored by Git.
 
 ## Project structure
 
