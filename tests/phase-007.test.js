@@ -111,6 +111,7 @@ describe('Phase 007 — versioned SQLite schema migrations', () => {
             get: () => undefined,
         });
         vi.mocked(vscode.commands.registerCommand).mockReturnValue({ dispose: vi.fn() });
+        vi.mocked(vscode.window.registerTreeDataProvider).mockReturnValue({ dispose: vi.fn() });
         vi.mocked(vscode.window.createStatusBarItem).mockReturnValue({
             name: '', text: '', tooltip: '', command: '',
             show: vi.fn(), hide: vi.fn(), dispose: vi.fn(),

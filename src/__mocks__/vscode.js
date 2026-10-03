@@ -38,6 +38,7 @@ const vscode = {
             show: vi.fn(),
             dispose: vi.fn(),
         }),
+        registerTreeDataProvider: vi.fn().mockReturnValue({ dispose: vi.fn() }),
     },
     // Commands
     commands: {

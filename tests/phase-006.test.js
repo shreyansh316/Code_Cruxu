@@ -28,6 +28,7 @@ function configureVscodeMocks() {
         name: '', text: '', tooltip: '', command: '',
         show: vi.fn(), hide: vi.fn(), dispose: vi.fn(),
     });
+    vi.mocked(vscode.window.registerTreeDataProvider).mockReturnValue({ dispose: vi.fn() });
 }
 afterEach(() => {
     vi.restoreAllMocks();

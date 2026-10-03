@@ -31,6 +31,7 @@ describe('Phase 001 — Constants & Types', () => {
     describe('VIEWS', () => {
         it('defines all view IDs', () => {
             expect(VIEWS.ORGANIZATION).toBe('headroom.organizationView');
+            expect(VIEWS.OBJECTIVES).toBe('headroom.objectiveView');
             expect(VIEWS.TASKS).toBe('headroom.taskView');
         });
     });

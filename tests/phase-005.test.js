@@ -124,6 +124,7 @@ describe('Phase 005 — configuration validation', () => {
             show: vi.fn(), hide: vi.fn(), dispose: vi.fn(),
         });
         vi.mocked(vscode.commands.registerCommand).mockReturnValue({ dispose: vi.fn() });
+        vi.mocked(vscode.window.registerTreeDataProvider).mockReturnValue({ dispose: vi.fn() });
         const warningLog = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
         const storagePath = mkdtempSync(join(tmpdir(), 'headroom-phase005-'));
         temporaryDirectories.push(storagePath);

@@ -15,8 +15,9 @@ import * as vscode from 'vscode';
 import { join } from 'path';
 import { COMMANDS } from '../constants';
 import { ExecutionControl } from '../domain';
-import { applyMigrations, SqliteConnection } from '../storage';
+import { applyMigrations, ObjectiveRepository, SqliteConnection, TaskRepository } from '../storage';
 import { CONFIGURATION_DEFAULTS, validateHeadroomConfiguration, } from './Configuration';
+import { registerStatusTreeViews } from './StatusTreeProviders';
 export class HeadroomContext {
     _context;
     _disposables = [];
@@ -37,6 +38,10 @@ export class HeadroomContext {
             // bring its schema up to date on that same owned handle.
             this._databaseConnection.open(join(this.storagePath, 'headroom.sqlite'));
             applyMigrations(this._databaseConnection.database);
+            this._disposables.push(...registerStatusTreeViews(this._context, {
+                objectives: new ObjectiveRepository(this._databaseConnection.database),
+                tasks: new TaskRepository(this._databaseConnection.database),
+            }));
             // 1. Register commands
             this._registerCommands();
             // 2. Validate contributed settings and report invalid values once.

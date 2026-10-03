@@ -42,6 +42,11 @@
           "type": "tree"
         },
         {
+          "id": "headroom.objectiveView",
+          "name": "Objectives",
+          "type": "tree"
+        },
+        {
           "id": "headroom.taskView",
           "name": "Active Tasks",
           "type": "tree"
@@ -139,7 +144,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:vscode": "node ./out/test/runTest.js",
+    "test:vscode": "node ./test/runTest.js",
     "check:sqlite": "node scripts/check-sqlite.js",
     "package": "npm run compile && vsce package --no-dependencies",
     "vscode:prepublish": "npm run compile"
@@ -148,6 +153,7 @@
     "better-sqlite3": "^11.0.0"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.2.0",
     "@vscode/test-electron": "^2.4.0",
     "@vscode/vsce": "^3.9.2",
     "esbuild": "^0.25.12",

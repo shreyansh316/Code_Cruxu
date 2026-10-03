@@ -22,6 +22,7 @@ export const COMMANDS = {
 // ============================================================
 export const VIEWS = {
     ORGANIZATION: 'headroom.organizationView',
+    OBJECTIVES: 'headroom.objectiveView',
     TASKS: 'headroom.taskView',
 };
 // ============================================================

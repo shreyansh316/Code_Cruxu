@@ -25,6 +25,7 @@ function configureCommands() {
         return { dispose: vi.fn() };
     });
     vi.mocked(vscode.workspace.getConfiguration).mockReturnValue({ get: () => undefined });
+    vi.mocked(vscode.window.registerTreeDataProvider).mockReturnValue({ dispose: vi.fn() });
     vi.mocked(vscode.window.createStatusBarItem).mockReturnValue({
         name: '', text: '', tooltip: '', command: '',
         show: vi.fn(), hide: vi.fn(), dispose: vi.fn(),
