@@ -26,6 +26,7 @@ export { CORE_SCHEMA_SQL, initializeCoreSchema } from './schema';
 export { SqliteConnection, SqliteConnectionError } from './SqliteConnection';
 export { createDatabaseBackupService } from './DatabaseBackup';
 export { diagnoseDatabaseIntegrity } from './DatabaseIntegrity';
+export { assertUpgradeCompatible, inspectUpgradeCompatibility } from './UpgradeCompatibility';
 export { runDataRetention } from './DataRetention';
 export { applyMigrations, SCHEMA_MIGRATIONS, SqliteMigrationError, } from './migrations';
 export * from './repositories';

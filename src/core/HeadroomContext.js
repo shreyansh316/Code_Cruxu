@@ -16,7 +16,7 @@ import { join } from 'path';
 import { randomUUID } from 'node:crypto';
 import { COMMANDS } from '../constants';
 import { ExecutionControl } from '../domain';
-import { AgentRepository, applyMigrations, AuditLogRepository, ObjectiveRepository, SqliteConnection, TaskRepository } from '../storage';
+import { AgentRepository, applyMigrations, assertUpgradeCompatible, AuditLogRepository, ObjectiveRepository, SqliteConnection, TaskRepository } from '../storage';
 import { CONFIGURATION_DEFAULTS, validateHeadroomConfiguration, } from './Configuration';
 import { registerStatusTreeViews } from './StatusTreeProviders';
 import { createSecretStorageAdapter } from '../infrastructure/SecretStorageAdapter';
@@ -44,6 +44,7 @@ export class HeadroomContext {
             // Open one connection in VS Code's extension-owned global storage and
             // bring its schema up to date on that same owned handle.
             this._databaseConnection.open(join(this.storagePath, 'headroom.sqlite'));
+            assertUpgradeCompatible(this._databaseConnection.database);
             applyMigrations(this._databaseConnection.database);
             const statusViews = registerStatusTreeViews(this._context, {
                 objectives: new ObjectiveRepository(this._databaseConnection.database),
