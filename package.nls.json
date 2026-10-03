@@ -5,6 +5,7 @@
   "views.organization.name": "Organization",
   "views.objectives.name": "Objectives",
   "views.tasks.name": "Active Tasks",
+  "views.health.name": "Operational Health",
   "configuration.title": "HEADROOM",
   "command.openDashboard.title": "HEADROOM: Open CEO Dashboard",
   "command.newObjective.title": "HEADROOM: New Objective",

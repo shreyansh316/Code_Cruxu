@@ -33,6 +33,7 @@ describe('Phase 001 — Constants & Types', () => {
             expect(VIEWS.ORGANIZATION).toBe('headroom.organizationView');
             expect(VIEWS.OBJECTIVES).toBe('headroom.objectiveView');
             expect(VIEWS.TASKS).toBe('headroom.taskView');
+            expect(VIEWS.HEALTH).toBe('headroom.healthView');
         });
     });
     describe('AgentRole', () => {

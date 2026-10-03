@@ -81,10 +81,55 @@ export class ActiveTaskTreeProvider {
     }
 }
 
+/** Presents a bounded snapshot of operational checks without exposing diagnostics detail. */
+export class HealthStatusTreeProvider {
+    constructor(readHealth) {
+        if (typeof readHealth !== 'function') throw new TypeError('Health view requires a health snapshot function.');
+        this.readHealth = readHealth;
+        this._changeEmitter = new vscode.EventEmitter();
+        this.onDidChangeTreeData = this._changeEmitter.event;
+    }
+
+    refresh() { this._changeEmitter.fire(undefined); }
+    dispose() { this._changeEmitter.dispose(); }
+
+    getTreeItem(check) {
+        const item = new vscode.TreeItem(`${check.label}: ${check.status}`, vscode.TreeItemCollapsibleState.None);
+        item.id = `health:${check.id}`;
+        item.description = check.detail;
+        item.accessibilityInformation = { label: `${check.label}. ${check.status}. ${check.detail}` };
+        item.contextValue = 'headroom.healthCheck';
+        return item;
+    }
+
+    async getChildren(element) {
+        if (element) return [];
+        let checks;
+        try { checks = await this.readHealth(); }
+        catch { checks = unavailableHealth(); }
+        if (!Array.isArray(checks) || checks.length !== 4) checks = unavailableHealth();
+        return checks.map((check, index) => normalizeHealthCheck(check, index));
+    }
+}
+
+function normalizeHealthCheck(value, index) {
+    const check = value && typeof value === 'object' ? value : {};
+    const labels = ['Database', 'Queue', 'AI provider', 'Verification'];
+    const statuses = new Set(['HEALTHY', 'DEGRADED', 'READY', 'UNAVAILABLE', 'NOT_RUN', 'FAILED']);
+    return Object.freeze({ id: ['database', 'queue', 'provider', 'verification'][index], label: labels[index],
+        status: statuses.has(check.status) ? check.status : 'UNAVAILABLE',
+        detail: typeof check.detail === 'string' ? check.detail.slice(0, 120) : 'Status unavailable.' });
+}
+
+function unavailableHealth() {
+    return ['Database', 'Queue', 'AI provider', 'Verification'].map((label) => ({ status: 'UNAVAILABLE', detail: `${label} status unavailable.` }));
+}
+
 /** Register views that present existing repository records. */
-export function registerStatusTreeViews(context, repositories) {
+export function registerStatusTreeViews(context, repositories, readHealth = unavailableHealth) {
     const objectives = new ObjectiveStatusTreeProvider(repositories.objectives);
     const tasks = new ActiveTaskTreeProvider(repositories.tasks);
+    const health = new HealthStatusTreeProvider(readHealth);
     const disposables = [
         vscode.window.registerTreeDataProvider(
             VIEWS.OBJECTIVES,
@@ -94,9 +139,11 @@ export function registerStatusTreeViews(context, repositories) {
             VIEWS.TASKS,
             tasks,
         ),
+        vscode.window.registerTreeDataProvider(VIEWS.HEALTH, health),
         objectives,
         tasks,
+        health,
     ];
     context.subscriptions.push(...disposables);
-    return { disposables, refresh: () => { objectives.refresh(); tasks.refresh(); } };
+    return { disposables, refresh: () => { objectives.refresh(); tasks.refresh(); health.refresh(); } };
 }

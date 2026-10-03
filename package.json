@@ -50,6 +50,11 @@
           "id": "headroom.taskView",
           "name": "%views.tasks.name%",
           "type": "tree"
+        },
+        {
+          "id": "headroom.healthView",
+          "name": "%views.health.name%",
+          "type": "tree"
         }
       ]
     },

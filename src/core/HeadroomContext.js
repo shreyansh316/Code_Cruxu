@@ -16,7 +16,8 @@ import { join } from 'path';
 import { randomUUID } from 'node:crypto';
 import { COMMANDS } from '../constants';
 import { ExecutionControl } from '../domain';
-import { AgentRepository, applyMigrations, assertUpgradeCompatible, AuditLogRepository, ObjectiveRepository, SqliteConnection, TaskRepository } from '../storage';
+import { AgentRepository, applyMigrations, assertUpgradeCompatible, AuditLogRepository, diagnoseDatabaseIntegrity,
+    ExecutionQueueRepository, ObjectiveRepository, SqliteConnection, TaskRepository } from '../storage';
 import { CONFIGURATION_DEFAULTS, validateHeadroomConfiguration, } from './Configuration';
 import { registerStatusTreeViews } from './StatusTreeProviders';
 import { createSecretStorageAdapter } from '../infrastructure/SecretStorageAdapter';
@@ -25,6 +26,37 @@ import { createHumanCodeReviewDecision } from '../application/humanCodeReview';
 import { createPersistedPlanDecision } from '../application/persistedPlanDecision';
 import { createSqliteUnitOfWork } from '../infrastructure/SqliteUnitOfWork';
 import { getMessage } from './messages';
+const HEALTH_CHECKS = Object.freeze([
+    { id: 'database', label: 'Database' }, { id: 'queue', label: 'Queue' },
+    { id: 'provider', label: 'AI provider' }, { id: 'verification', label: 'Verification' },
+]);
+
+/** Read each health source independently so an unavailable service does not hide the rest. */
+export async function readOperationalHealth(sources) {
+    const values = await Promise.all(HEALTH_CHECKS.map(async ({ id, label }) => {
+        try {
+            const source = sources?.[id];
+            if (typeof source !== 'function') throw new Error('unavailable');
+            const value = await source();
+            if (!value || typeof value !== 'object') throw new Error('unavailable');
+            if (id === 'database') return { id, label, status: value.status,
+                detail: value.status === 'HEALTHY' ? `SQLite healthy; schema ${value.schemaVersion ?? 'unknown'}.`
+                    : `SQLite ${value.status?.toLowerCase() ?? 'unavailable'}; ${value.issues?.length ?? 0} issue(s).` };
+            if (id === 'queue') {
+                if (!Number.isSafeInteger(value.queued) || value.queued < 0 || !Number.isSafeInteger(value.claimed) || value.claimed < 0) {
+                    throw new Error('unavailable');
+                }
+                return { id, label, status: 'HEALTHY', detail: `${value.queued} queued; ${value.claimed} claimed.` };
+            }
+            if (id === 'provider') return { id, label, status: value.status, detail: value.detail };
+            return { id, label, status: value.status, detail: value.detail };
+        } catch {
+            return { id, label, status: 'UNAVAILABLE', detail: `${label} status unavailable.` };
+        }
+    }));
+    return values;
+}
+
 export class HeadroomContext {
     _context;
     _disposables = [];
@@ -47,10 +79,17 @@ export class HeadroomContext {
             this._databaseConnection.open(join(this.storagePath, 'headroom.sqlite'));
             assertUpgradeCompatible(this._databaseConnection.database);
             applyMigrations(this._databaseConnection.database);
+            const queueRepository = new ExecutionQueueRepository(this._databaseConnection.database);
             const statusViews = registerStatusTreeViews(this._context, {
                 objectives: new ObjectiveRepository(this._databaseConnection.database),
                 tasks: new TaskRepository(this._databaseConnection.database),
-            });
+            }, async () => readOperationalHealth({
+                database: () => diagnoseDatabaseIntegrity(this._databaseConnection.database),
+                queue: () => ({ queued: queueRepository.listByState('QUEUED').length,
+                    claimed: queueRepository.listByState('CLAIMED').length }),
+                provider: async () => this._providerHealth(),
+                verification: () => ({ status: 'NOT_RUN', detail: 'No verification result is currently recorded.' }),
+            }));
             this._refreshStatusViews = statusViews.refresh;
             this._disposables.push(...statusViews.disposables);
             // 1. Register commands
@@ -133,6 +172,17 @@ export class HeadroomContext {
             ? getMessage('status.active', { state: this._executionControl.status.toLowerCase() })
             : getMessage('status.inactive');
         vscode.window.showInformationMessage(getMessage('status.message', { status }));
+    }
+    async _providerHealth() {
+        if (this._configuration.aiProvider === 'mock') return { status: 'READY', detail: 'Mock provider selected.' };
+        try {
+            const credentials = createSecretStorageAdapter(this._context.secrets);
+            const configured = await credentials.hasCredential(this._configuration.aiProvider);
+            return configured ? { status: 'READY', detail: `${this._configuration.aiProvider} credential is configured.` }
+                : { status: 'UNAVAILABLE', detail: `${this._configuration.aiProvider} credential is not configured.` };
+        } catch {
+            return { status: 'UNAVAILABLE', detail: 'Provider credential status is unavailable.' };
+        }
     }
     async _createObjective() {
         const title = await vscode.window.showInputBox({

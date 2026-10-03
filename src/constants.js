@@ -28,6 +28,7 @@ export const VIEWS = {
     ORGANIZATION: 'headroom.organizationView',
     OBJECTIVES: 'headroom.objectiveView',
     TASKS: 'headroom.taskView',
+    HEALTH: 'headroom.healthView',
 };
 // ============================================================
 // CONFIGURATION KEYS — must match package.json contributes.configuration
