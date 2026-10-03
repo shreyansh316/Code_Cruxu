@@ -30,4 +30,7 @@ describe('Phase 063 — isolated task worktrees', () => {
         expect(await adapter.cleanup('task-063-clean')).toMatchObject({ status: 'REMOVED' });
         await expect(adapter.recover('task-063-clean')).rejects.toMatchObject({ code: 'task-workspace-not-found' });
     });
+    it('rejects identifiers that could escape the task workspace root', async () => {
+        await expect(adapter.create({ taskId: '../outside' })).rejects.toMatchObject({ code: 'invalid-task-workspace' });
+    });
 });
