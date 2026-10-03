@@ -1,9 +1,9 @@
 /**
  * HEADROOM — Initial relational schema
  *
- * Phase 003 defines the canonical SQLite data model. Connection ownership,
- * versioned migrations, and repositories are intentionally left for later
- * storage phases.
+ * Phase 003 defines the canonical SQLite data model. Phase 007 applies this
+ * schema through its initial versioned migration; repositories remain later
+ * storage work.
  */
 import type Database from 'better-sqlite3';
 

@@ -14,7 +14,7 @@
 import * as vscode from 'vscode';
 import { join } from 'path';
 import { COMMANDS } from '../constants';
-import { SqliteConnection } from '../storage';
+import { applyMigrations, SqliteConnection } from '../storage';
 import {
   CONFIGURATION_DEFAULTS,
   validateHeadroomConfiguration,
@@ -38,10 +38,12 @@ export class HeadroomContext implements vscode.Disposable {
       return;
     }
 
-    // Open one connection in VS Code's extension-owned global storage.
-    this._databaseConnection.open(join(this.storagePath, 'headroom.sqlite'));
-
     try {
+      // Open one connection in VS Code's extension-owned global storage and
+      // bring its schema up to date on that same owned handle.
+      this._databaseConnection.open(join(this.storagePath, 'headroom.sqlite'));
+      applyMigrations(this._databaseConnection.database);
+
       // 1. Register commands
       this._registerCommands();
 
