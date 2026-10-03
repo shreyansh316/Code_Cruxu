@@ -12,6 +12,29 @@ export const SCHEMA_MIGRATIONS = [
         name: 'initial-core-schema',
         up: initializeCoreSchema,
     },
+    {
+        version: 2,
+        name: 'durable-event-delivery',
+        up: (database) => {
+            database.exec(`
+              ALTER TABLE events ADD COLUMN event_version INTEGER NOT NULL DEFAULT 1 CHECK (event_version > 0);
+              ALTER TABLE events ADD COLUMN aggregate_id TEXT NOT NULL DEFAULT '';
+              ALTER TABLE events ADD COLUMN occurred_at TEXT NOT NULL DEFAULT '';
+              UPDATE events SET aggregate_id = id, occurred_at = created_at
+                WHERE aggregate_id = '' OR occurred_at = '';
+              CREATE TABLE event_deliveries (
+                event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+                subscriber_id TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'PROCESSING', 'SUCCEEDED', 'FAILED')),
+                attempts INTEGER NOT NULL DEFAULT 0 CHECK (attempts >= 0),
+                error TEXT,
+                updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+                PRIMARY KEY (event_id, subscriber_id)
+              );
+              CREATE INDEX idx_event_deliveries_status ON event_deliveries(status, updated_at);
+            `);
+        },
+    },
 ];
 const CREATE_MIGRATION_LEDGER_SQL = `
   CREATE TABLE IF NOT EXISTS schema_migrations (
