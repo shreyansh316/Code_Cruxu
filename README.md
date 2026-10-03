@@ -18,7 +18,7 @@ Communication is designed to follow adjacent levels of this hierarchy. Employees
 
 ## Current implementation
 
-The repository currently provides the VS Code extension foundation, pure domain types and invariants for organization hierarchy, objectives, and tasks, explicit objective lifecycle transitions, and typed SQLite CRUD/query repositories for core records. Its schema is applied through versioned migrations. The extension activates, registers commands, displays a status bar item, and shows a first-activation welcome message.
+The repository currently provides the VS Code extension foundation, pure domain contracts and invariants for organization hierarchy, objectives, and tasks, explicit objective lifecycle transitions, and SQLite CRUD/query repositories for core records. Its schema is applied through versioned migrations. The extension activates, registers commands, displays a status bar item, and shows a first-activation welcome message. The executable and test code is JavaScript; runtime checks enforce identifier constraints that were previously represented by TypeScript brands.
 
 | Command | Current behavior |
 |---|---|
@@ -61,10 +61,9 @@ The compiled extension entry point is written to `out/extension.js`. Build outpu
 
 ## Verify changes
 
-Run the TypeScript check and complete unit-test suite:
+Run the complete unit-test suite:
 
 ```sh
-npx tsc --noEmit
 npm test
 ```
 
@@ -90,15 +89,15 @@ This runs the extension build and VS Code packaging tool; it does not publish or
 
 ```text
 src/
-  extension.ts       VS Code extension activation and deactivation
+  extension.js       VS Code extension activation and deactivation
   core/              Extension context, commands, and lifecycle
   domain/            Pure entity types, value objects, and invariants
   application/       Application use-case boundary
   infrastructure/    External adapter boundary
   storage/           SQLite connection, migrations, core repositories, and schema
-  shared/            Cross-layer branded identifier contracts
+  shared/            Cross-layer runtime identifier validation
   agents/             Agent runtime boundary
-  constants.ts       Extension identifiers and shared constants
+  constants.js       Extension identifiers and shared constants
 tests/               Phase-focused Vitest tests
 scripts/             Standalone development checks
 media/               Extension assets

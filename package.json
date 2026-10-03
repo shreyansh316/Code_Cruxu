@@ -136,7 +136,6 @@
   "scripts": {
     "compile": "node esbuild.js",
     "watch": "node esbuild.js --watch",
-    "lint": "eslint src --ext ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
@@ -149,14 +148,9 @@
     "better-sqlite3": "^11.0.0"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13",
-    "@types/node": "^22.20.5",
-    "@types/vscode": "^1.100.0",
     "@vscode/test-electron": "^2.4.0",
     "@vscode/vsce": "^3.9.2",
     "esbuild": "^0.25.12",
-    "eslint": "^9.0.0",
-    "typescript": "^5.9.3",
     "vitest": "^2.1.0"
   }
 }

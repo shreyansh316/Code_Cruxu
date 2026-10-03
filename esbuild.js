@@ -5,7 +5,7 @@ const isWatch = process.argv.includes('--watch');
 
 /** @type {import('esbuild').BuildOptions} */
 const buildOptions = {
-  entryPoints: ['./src/extension.ts'],
+  entryPoints: ['./src/extension.js'],
   bundle: true,
   outfile: './out/extension.js',
   external: ['vscode', 'better-sqlite3'],
