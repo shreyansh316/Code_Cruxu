@@ -13,3 +13,4 @@ export { createTaskScheduler } from './taskScheduler';
 export { createExecutionRecoveryUseCase } from './executionRecovery';
 export { createExecutionOrchestrator } from './executionOrchestrator';
 export { createAuthorizedAgentRuntime } from './authorizedAgentRuntime';
+export { createAIProviderPort, createAIProviderRequest, validateAIProviderResponse } from './aiProvider';
