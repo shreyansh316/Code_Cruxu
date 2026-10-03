@@ -177,6 +177,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:vscode": "node ./test/runTest.js",
+    "benchmark": "vitest run --config vitest.benchmark.config.js --reporter=verbose",
     "check:sqlite": "node scripts/check-sqlite.js",
     "package": "npm run compile && vsce package --no-dependencies",
     "vscode:prepublish": "npm run compile"
