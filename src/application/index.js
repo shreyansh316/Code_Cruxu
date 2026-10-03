@@ -16,3 +16,4 @@ export { createAuthorizedAgentRuntime } from './authorizedAgentRuntime';
 export { createAIProviderPort, createAIProviderRequest, validateAIProviderResponse } from './aiProvider';
 export { createProviderCredentialUseCases } from './providerCredentials';
 export { createBoundedAIProvider, DEFAULT_AI_REQUEST_BUDGET } from './aiRequestPolicy';
+export { createDirectorObjectiveAnalysis } from './directorAnalysis';
