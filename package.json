@@ -1,24 +1,161 @@
 {
   "name": "headroom",
+  "displayName": "HEADROOM — AI CEO Office",
+  "description": "AI-powered CEO operating system inside VS Code. Hierarchical AI organization for planning, executing, and verifying development work.",
   "version": "0.1.0",
+  "publisher": "headroom",
   "private": true,
+  "engines": {
+    "vscode": "^1.100.0",
+    "node": ">=20.0.0"
+  },
+  "categories": [
+    "AI",
+    "Other"
+  ],
+  "keywords": [
+    "ai",
+    "ceo",
+    "organization",
+    "agent",
+    "automation"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "headroom",
+          "title": "HEADROOM",
+          "icon": "media/headroom-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "headroom": [
+        {
+          "id": "headroom.organizationView",
+          "name": "Organization",
+          "type": "tree"
+        },
+        {
+          "id": "headroom.taskView",
+          "name": "Active Tasks",
+          "type": "tree"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "headroom.openDashboard",
+        "title": "HEADROOM: Open CEO Dashboard",
+        "category": "HEADROOM"
+      },
+      {
+        "command": "headroom.newObjective",
+        "title": "HEADROOM: New Objective",
+        "category": "HEADROOM"
+      },
+      {
+        "command": "headroom.showStatus",
+        "title": "HEADROOM: Show Status",
+        "category": "HEADROOM"
+      },
+      {
+        "command": "headroom.pauseExecution",
+        "title": "HEADROOM: Pause Execution",
+        "category": "HEADROOM"
+      },
+      {
+        "command": "headroom.resumeExecution",
+        "title": "HEADROOM: Resume Execution",
+        "category": "HEADROOM"
+      }
+    ],
+    "configuration": {
+      "title": "HEADROOM",
+      "properties": {
+        "headroom.ai.provider": {
+          "type": "string",
+          "enum": [
+            "mock",
+            "gemini",
+            "openai"
+          ],
+          "default": "mock",
+          "description": "AI provider for HEADROOM agents. Use 'mock' for testing without API keys."
+        },
+        "headroom.ai.defaultModel": {
+          "type": "string",
+          "default": "gemini-2.0-flash",
+          "description": "Default AI model for standard agent tasks."
+        },
+        "headroom.ai.reasoningModel": {
+          "type": "string",
+          "default": "gemini-2.5-pro",
+          "description": "AI model for complex reasoning tasks (Director, planning)."
+        },
+        "headroom.execution.maxRetries": {
+          "type": "number",
+          "default": 2,
+          "minimum": 0,
+          "maximum": 5,
+          "description": "Maximum retry attempts per task before escalation."
+        },
+        "headroom.execution.parallelLimit": {
+          "type": "number",
+          "default": 4,
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Maximum number of tasks to run in parallel."
+        },
+        "headroom.debug.verbose": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable verbose logging for debugging."
+        }
+      }
+    },
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "headroom.openDashboard"
+        },
+        {
+          "command": "headroom.newObjective"
+        },
+        {
+          "command": "headroom.showStatus"
+        }
+      ]
+    }
+  },
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
+    "compile": "node esbuild.js",
+    "watch": "node esbuild.js --watch",
+    "lint": "eslint src --ext ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:vscode": "node ./out/test/runTest.js",
+    "package": "npm run compile && vsce package --no-dependencies",
+    "vscode:prepublish": "npm run compile"
   },
   "dependencies": {
-    "next": "16.3.8",
-    "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "better-sqlite3": "^11.0.0"
   },
   "devDependencies": {
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.3.8",
-    "typescript": "^5"
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^22.20.5",
+    "@types/vscode": "^1.100.0",
+    "@vscode/test-electron": "^2.4.0",
+    "@vscode/vsce": "^3.9.2",
+    "esbuild": "^0.25.12",
+    "eslint": "^9.0.0",
+    "typescript": "^5.9.3",
+    "vitest": "^2.1.0"
   }
 }

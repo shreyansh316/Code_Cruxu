@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <!-- HEADROOM icon: circuit board representing AI organization -->
+  <rect width="24" height="24" rx="4" fill="none"/>
+  <!-- Circuit board lines -->
+  <path d="M4 8h3M17 8h3M4 16h3M17 16h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M8 4v3M16 4v3M8 17v3M16 17v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Central node -->
+  <rect x="8" y="8" width="8" height="8" rx="2" stroke="currentColor" stroke-width="1.5"/>
+  <!-- Inner dots representing the hierarchy -->
+  <circle cx="10.5" cy="11" r="1" fill="currentColor"/>
+  <circle cx="13.5" cy="11" r="1" fill="currentColor"/>
+  <circle cx="12" cy="13.5" r="1" fill="currentColor"/>
+</svg>
