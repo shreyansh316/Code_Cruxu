@@ -8,6 +8,7 @@ export { createPlanApprovalUseCase } from './planApproval';
 export { createTaskCreationUseCase } from './taskCreation';
 export { createTaskResultSubmissionUseCase } from './taskResultSubmission';
 export { createEmployeeResultVerificationUseCase } from './employeeResultVerification';
+export { createHierarchyMessageRouter } from './hierarchyMessageRouter';
 export { createTaskReviewUseCase } from './taskReview';
 export { createExecutionQueueUseCase } from './executionQueue';
 export { createTaskScheduler } from './taskScheduler';
