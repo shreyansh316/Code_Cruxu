@@ -25,6 +25,7 @@ describe('Phase 062 — read-only Git state adapter', () => {
         const headBefore = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
         const state = await adapter.getState();
         expect(state.branch).toBe('phase-062-test');
+        expect(state.head).toMatch(/^[a-f0-9]{40,64}$/i);
         expect(state.status.map(({ path }) => path).sort()).toEqual(['base.txt', 'new.txt']);
         expect(state.status.find(({ path }) => path === 'new.txt').untracked).toBe(true);
         expect(state.stagedDiff).toContain('working edit');

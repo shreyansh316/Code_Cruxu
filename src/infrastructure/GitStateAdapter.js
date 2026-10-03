@@ -16,10 +16,11 @@ export async function createGitStateAdapter({ workspaceRoot, gitExecutable = 'gi
     return Object.freeze({
         getState: async () => {
             const branchResult = await run(['branch', '--show-current']);
+            const headResult = await run(['rev-parse', '--verify', 'HEAD']);
             const statusResult = await run(['status', '--porcelain=v1', '-z', '--untracked-files=all']);
             const staged = await run(['diff', '--no-ext-diff', '--no-color', '--binary', '--cached', '--']);
             const working = await run(['diff', '--no-ext-diff', '--no-color', '--binary', '--']);
-            return Object.freeze({ branch: branchResult.stdout.trim() || null,
+            return Object.freeze({ branch: branchResult.stdout.trim() || null, head: headResult.stdout.trim(),
                 status: Object.freeze(parseStatus(statusResult.stdout)), stagedDiff: staged.stdout,
                 workingDiff: working.stdout });
         },
