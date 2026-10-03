@@ -24,5 +24,6 @@
  */
 export { CORE_SCHEMA_SQL, initializeCoreSchema } from './schema';
 export { SqliteConnection, SqliteConnectionError } from './SqliteConnection';
+export { createDatabaseBackupService } from './DatabaseBackup';
 export { applyMigrations, SCHEMA_MIGRATIONS, SqliteMigrationError, } from './migrations';
 export * from './repositories';
