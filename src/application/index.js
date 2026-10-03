@@ -17,3 +17,4 @@ export { createAIProviderPort, createAIProviderRequest, validateAIProviderRespon
 export { createProviderCredentialUseCases } from './providerCredentials';
 export { createBoundedAIProvider, DEFAULT_AI_REQUEST_BUDGET } from './aiRequestPolicy';
 export { createDirectorObjectiveAnalysis } from './directorAnalysis';
+export { createDirectorPlanProposal } from './directorPlanProposal';
