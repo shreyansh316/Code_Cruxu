@@ -52,4 +52,15 @@ export class ExecutionQueueRepository {
             .run(nextState, taskId, expectedState).changes;
         return changed === 1 ? this.getByTaskId(taskId) : null;
     }
+
+    /** Reopen a completed queue entry only while review has returned its task to work. */
+    requeueAfterReview(taskId) {
+        taskId = assertEntityId(taskId, 'Queued task id');
+        const changed = this.database.prepare(`UPDATE execution_queue SET state = 'QUEUED',
+          updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+          WHERE task_id = ? AND state = 'COMPLETED'
+            AND EXISTS (SELECT 1 FROM tasks WHERE id = ? AND status = 'IN_PROGRESS')`)
+            .run(taskId, taskId).changes;
+        return changed === 1 ? this.getByTaskId(taskId) : null;
+    }
 }

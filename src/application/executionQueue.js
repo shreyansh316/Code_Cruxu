@@ -10,6 +10,7 @@ export function createExecutionQueueUseCase({
     if (typeof taskRepository?.list !== 'function' || typeof taskRepository?.getById !== 'function'
         || typeof dependencyRepository?.list !== 'function' || typeof queueRepository?.enqueue !== 'function'
         || typeof queueRepository?.getByTaskId !== 'function' || typeof queueRepository?.listByState !== 'function'
+        || typeof queueRepository?.requeueAfterReview !== 'function'
         || typeof hierarchyProvider?.getSnapshot !== 'function' || typeof auditRepository?.append !== 'function'
         || typeof eventPublisher?.append !== 'function' || typeof unitOfWork?.run !== 'function'
         || typeof clock?.now !== 'function' || typeof idFactory !== 'function') {
@@ -23,7 +24,7 @@ export function createExecutionQueueUseCase({
             const tasks = dependencies.taskRepository.list();
             const dependenciesList = dependencies.dependencyRepository.list();
             const hierarchy = dependencies.hierarchyProvider.getSnapshot();
-            const eligible = tasks.filter((task) => task.status === TaskStatus.ASSIGNED);
+            const eligible = tasks.filter(isExecutionCandidate);
             for (const task of eligible) {
                 assertTaskAssignment({ creatorId: task.creatorId, assigneeId: task.assigneeId }, hierarchy);
             }
@@ -31,10 +32,19 @@ export function createExecutionQueueUseCase({
             const queued = dependencies.unitOfWork.run(() => {
                 const created = [];
                 for (const task of ready) {
-                    if (dependencies.queueRepository.getByTaskId(task.id)) continue;
-                    const entry = dependencies.queueRepository.enqueue({
-                        id: createEntityId(dependencies.idFactory()), taskId: task.id,
-                    });
+                    const existing = dependencies.queueRepository.getByTaskId(task.id);
+                    let entry;
+                    if (existing) {
+                        if (existing.state !== 'COMPLETED' || task.status !== TaskStatus.IN_PROGRESS
+                            || typeof task.result?.reviewFeedback !== 'string' || !task.result.reviewFeedback.trim()) continue;
+                        entry = dependencies.queueRepository.requeueAfterReview(task.id);
+                        if (!entry) continue;
+                    }
+                    else {
+                        entry = dependencies.queueRepository.enqueue({
+                            id: createEntityId(dependencies.idFactory()), taskId: task.id,
+                        });
+                    }
                     const time = dependencies.clock.now();
                     const occurredAt = (time instanceof Date ? time : new Date(time)).toISOString();
                     dependencies.auditRepository.append({
@@ -54,11 +64,17 @@ export function createExecutionQueueUseCase({
             const selected = dependencies.queueRepository.listByState('QUEUED', { limit: 1000 })
                 .flatMap((entry) => {
                     const task = dependencies.taskRepository.getById(entry.taskId);
-                    if (!task || task.status !== TaskStatus.ASSIGNED) return [];
+                    if (!task || !isExecutionCandidate(task)) return [];
                     assertTaskAssignment({ creatorId: task.creatorId, assigneeId: task.assigneeId }, hierarchy);
                     return getTaskReadiness(task.id, tasks, dependenciesList).ready ? [{ queue: entry, task }] : [];
                 });
             return { queued, ready: selected };
         },
     });
+}
+
+function isExecutionCandidate(task) {
+    return task.status === TaskStatus.ASSIGNED
+        || (task.status === TaskStatus.IN_PROGRESS && typeof task.result?.reviewFeedback === 'string'
+            && task.result.reviewFeedback.trim().length > 0);
 }

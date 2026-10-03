@@ -11,3 +11,4 @@ export { createTaskReviewUseCase } from './taskReview';
 export { createExecutionQueueUseCase } from './executionQueue';
 export { createTaskScheduler } from './taskScheduler';
 export { createExecutionRecoveryUseCase } from './executionRecovery';
+export { createExecutionOrchestrator } from './executionOrchestrator';
