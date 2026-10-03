@@ -9,3 +9,4 @@ export { createTaskCreationUseCase } from './taskCreation';
 export { createTaskResultSubmissionUseCase } from './taskResultSubmission';
 export { createTaskReviewUseCase } from './taskReview';
 export { createExecutionQueueUseCase } from './executionQueue';
+export { createTaskScheduler } from './taskScheduler';
