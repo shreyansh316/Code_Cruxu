@@ -3,6 +3,7 @@ import { DomainInvariantError } from '../domain/errors';
 /** Required asynchronous/synchronous operations for replaceable adapters. */
 export const ADAPTER_CONTRACTS = Object.freeze({
     persistence: Object.freeze(['get', 'put', 'delete']),
+    transaction: Object.freeze(['run']),
     clock: Object.freeze(['now']),
     filesystem: Object.freeze(['readFile', 'writeFile']),
     process: Object.freeze(['execute']),

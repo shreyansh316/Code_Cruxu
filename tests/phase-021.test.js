@@ -6,7 +6,7 @@ import { DomainInvariantError } from '../src/domain';
 describe('Phase 021 — adapter contracts', () => {
     it('declares persistence, clock, filesystem, process, and provider ports', () => {
         expect(Object.keys(ADAPTER_CONTRACTS).sort()).toEqual([
-            'aiProvider', 'clock', 'filesystem', 'persistence', 'process',
+            'aiProvider', 'clock', 'filesystem', 'persistence', 'process', 'transaction',
         ]);
         expect(ADAPTER_CONTRACTS.filesystem).toEqual(['readFile', 'writeFile']);
     });

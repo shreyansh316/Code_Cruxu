@@ -183,6 +183,11 @@ export class DirectorQuestionRepository extends BaseSqliteRepository {
     listByObjective(objectiveId) {
         return this.query('objective_id = ?', [objectiveId], 'sort_order, created_at, id');
     }
+    nextSortOrder(objectiveId) {
+        objectiveId = assertEntityId(objectiveId, 'Question objective id');
+        return this.database.prepare('SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_order FROM director_questions WHERE objective_id = ?')
+            .get(objectiveId).next_order;
+    }
     listByStatus(status) {
         return this.query('status = ?', [status]);
     }

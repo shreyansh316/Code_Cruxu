@@ -24,6 +24,7 @@ export { evaluateTaskRetry, MAX_TASK_RETRIES } from './taskRetryPolicy';
 export { getTaskEscalationRoute } from './taskEscalation';
 export { createDomainEvent, DOMAIN_EVENT_VERSION } from './events';
 export { retrieveScopedMemories } from './memoryRetrieval';
+export { canTransitionQuestion, QuestionStatus, transitionQuestion } from './questionLifecycle';
 export { assertTaskAssignment } from './assignmentValidation';
 export { assertObjectiveTransition, canTransitionObjective, OBJECTIVE_TRANSITIONS, transitionObjective, } from './objectiveLifecycle';
 export { assertTaskTransition, canTransitionTask, TASK_TRANSITIONS, transitionTask, } from './taskLifecycle';
