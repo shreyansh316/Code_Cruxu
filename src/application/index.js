@@ -6,3 +6,4 @@ export { createObjectiveIntakeUseCase } from './objectiveIntake';
 export { createObjectiveQuestionWorkflow } from './objectiveQuestions';
 export { createPlanApprovalUseCase } from './planApproval';
 export { createTaskCreationUseCase } from './taskCreation';
+export { createTaskResultSubmissionUseCase } from './taskResultSubmission';

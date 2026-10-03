@@ -101,19 +101,29 @@ export class TaskRepository extends BaseSqliteRepository {
 }
 
 function serializeTask(value) {
-    if (!value || !Object.hasOwn(value, 'acceptanceCriteria') || value.acceptanceCriteria == null
-        || typeof value.acceptanceCriteria === 'string') return value;
-    return { ...value, acceptanceCriteria: JSON.stringify(value.acceptanceCriteria) };
+    if (!value) return value;
+    const serialized = { ...value };
+    for (const field of ['acceptanceCriteria', 'result']) {
+        if (Object.hasOwn(value, field) && value[field] != null && typeof value[field] !== 'string') {
+            serialized[field] = JSON.stringify(value[field]);
+        }
+    }
+    return serialized;
 }
 
 function mapTask(row) {
-    if (!row || typeof row.acceptanceCriteria !== 'string') return row;
-    try {
-        return { ...row, acceptanceCriteria: JSON.parse(row.acceptanceCriteria) };
+    if (!row) return row;
+    const mapped = { ...row };
+    for (const field of ['acceptanceCriteria', 'result']) {
+        if (typeof row[field] !== 'string') continue;
+        try {
+            mapped[field] = JSON.parse(row[field]);
+        }
+        catch {
+            // Preserve legacy or malformed text values rather than hiding data.
+        }
     }
-    catch {
-        return row;
-    }
+    return mapped;
 }
 
 const MEMORY_SCOPE_OWNERS = {

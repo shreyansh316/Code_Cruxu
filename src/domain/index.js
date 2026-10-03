@@ -20,6 +20,7 @@ export { ExecutionControl } from './executionControl';
 export { assertTaskDependencyGraph, getTaskReadiness } from './taskDependencies';
 export { calculateTaskProgress } from './taskProgress';
 export { validateTaskAcceptanceCriteria } from './taskAcceptanceCriteria';
+export { validateTaskResult } from './taskResult';
 export { evaluateTaskRetry, MAX_TASK_RETRIES } from './taskRetryPolicy';
 export { getTaskEscalationRoute } from './taskEscalation';
 export { createDomainEvent, DOMAIN_EVENT_VERSION } from './events';
