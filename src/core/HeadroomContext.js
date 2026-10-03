@@ -14,6 +14,7 @@
 import * as vscode from 'vscode';
 import { join } from 'path';
 import { COMMANDS } from '../constants';
+import { ExecutionControl } from '../domain';
 import { applyMigrations, SqliteConnection } from '../storage';
 import { CONFIGURATION_DEFAULTS, validateHeadroomConfiguration, } from './Configuration';
 export class HeadroomContext {
@@ -23,6 +24,7 @@ export class HeadroomContext {
     _initialized = false;
     _configuration = { ...CONFIGURATION_DEFAULTS };
     _databaseConnection = new SqliteConnection();
+    _executionControl = new ExecutionControl();
     constructor(context) {
         this._context = context;
     }
@@ -79,11 +81,15 @@ export class HeadroomContext {
         }), vscode.commands.registerCommand(COMMANDS.SHOW_STATUS, () => {
             this._showStatus();
         }), vscode.commands.registerCommand(COMMANDS.PAUSE_EXECUTION, () => {
-            // Phase 013: Execution control
-            vscode.window.showWarningMessage('HEADROOM: Execution paused.');
+            const result = this._executionControl.pause();
+            vscode.window.showInformationMessage(result.changed
+                ? 'HEADROOM: Execution paused.'
+                : 'HEADROOM: Execution is already paused.');
         }), vscode.commands.registerCommand(COMMANDS.RESUME_EXECUTION, () => {
-            // Phase 013: Execution control
-            vscode.window.showInformationMessage('HEADROOM: Execution resumed.');
+            const result = this._executionControl.resume();
+            vscode.window.showInformationMessage(result.changed
+                ? 'HEADROOM: Execution resumed.'
+                : 'HEADROOM: Execution is already running.');
         }));
         // Register all disposables with extension context
         this._context.subscriptions.push(...this._disposables);
@@ -100,7 +106,7 @@ export class HeadroomContext {
     }
     _showStatus() {
         const status = this._initialized
-            ? 'Active — Phase 001: Foundation initialized.'
+            ? `Active — Execution ${this._executionControl.status.toLowerCase()}.`
             : 'Not initialized.';
         vscode.window.showInformationMessage(`HEADROOM Status: ${status}`);
     }
@@ -137,6 +143,9 @@ export class HeadroomContext {
     }
     get databaseConnection() {
         return this._databaseConnection;
+    }
+    get executionState() {
+        return this._executionControl.status;
     }
     get storagePath() {
         return this._context.globalStorageUri.fsPath;
