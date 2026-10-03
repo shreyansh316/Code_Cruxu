@@ -69,7 +69,7 @@ Run the complete unit-test suite:
 npm test
 ```
 
-The unit tests run with Vitest in Node.js and use the repository's VS Code API mock where needed. They do not launch the VS Code Extension Host.
+The unit tests run with Vitest in Node.js and use the repository's VS Code API mock where needed. Run `npm run test:vscode` to launch the real VS Code Extension Host, activate HEADROOM, and exercise its primary commands and contributed views. The host test uses VS Code 1.101.0 and rebuilds `better-sqlite3` for its Electron runtime.
 
 Verify that the installed native SQLite module can open and use both in-memory and temporary file databases:
 

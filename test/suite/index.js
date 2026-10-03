@@ -21,6 +21,20 @@ async function run() {
     const views = extension.packageJSON.contributes.views.headroom.map((view) => view.id);
     assert.ok(views.includes('headroom.objectiveView'), 'Objectives view must be contributed.');
     assert.ok(views.includes('headroom.taskView'), 'Active Tasks view must be contributed.');
+    assert.ok(views.includes('headroom.healthView'), 'Operational Health view must be contributed.');
+
+    for (const [command, argument] of [
+        ['headroom.openDashboard'],
+        ['headroom.showStatus'],
+        ['headroom.pauseExecution'],
+        ['headroom.resumeExecution'],
+        ['headroom.reviewTaskChanges', 'missing-task'],
+        ['headroom.reviewPlan'],
+    ]) {
+        assert.ok(commandIds.includes(command), `Expected primary workflow command ${command}.`);
+        await vscode.commands.executeCommand(command, argument);
+    }
+    assert.equal(extension.isActive, true, 'HEADROOM remains active after primary native workflows.');
 }
 
 module.exports = { run };
