@@ -17,6 +17,12 @@
  */
 export { DomainInvariantError, type DomainInvariantCode } from './errors';
 export {
+  assertObjectiveTransition,
+  canTransitionObjective,
+  OBJECTIVE_TRANSITIONS,
+  transitionObjective,
+} from './objectiveLifecycle';
+export {
   assertAgentInvariant,
   assertCanReportTo,
   assertDepartmentInvariant,

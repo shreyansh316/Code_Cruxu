@@ -3,7 +3,8 @@ export type DomainInvariantCode =
   | 'invalid-identifier'
   | 'invalid-slug'
   | 'invalid-entity'
-  | 'invalid-hierarchy';
+  | 'invalid-hierarchy'
+  | 'invalid-objective-transition';
 
 export class DomainInvariantError extends Error {
   constructor(
