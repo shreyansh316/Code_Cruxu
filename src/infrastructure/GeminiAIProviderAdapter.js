@@ -13,7 +13,39 @@ export function createGeminiAIProviderAdapter({ credentialStore, fetchImpl = glo
         throw new TypeError(`Gemini timeout must be between 1 and ${MAX_TIMEOUT_MS} milliseconds.`);
     }
     return Object.freeze({
-        async generate(request, { signal } = {}) {
+        async countInputTokens(request, { signal } = {}) {
+            if (signal?.aborted) throw codedError('provider-cancelled');
+            const credential = await getCredential(credentialStore);
+            if (signal?.aborted) throw codedError('provider-cancelled');
+            const controller = new AbortController();
+            let timedOut = false;
+            const onAbort = () => controller.abort();
+            signal?.addEventListener('abort', onAbort, { once: true });
+            const timer = setTimeout(() => { timedOut = true; controller.abort(); }, timeoutMs);
+            try {
+                const result = await fetchImpl(`${GEMINI_ENDPOINT}${encodeURIComponent(request.model)}:countTokens`, {
+                    method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': credential },
+                    body: JSON.stringify({ generateContentRequest: generationRequest(request) }),
+                    signal: controller.signal,
+                });
+                if (!result?.ok) throw codedError(mapHttpError(result?.status));
+                let payload;
+                try { payload = await result.json(); }
+                catch { throw codedError('provider-invalid-response'); }
+                if (!Number.isSafeInteger(payload?.totalTokens) || payload.totalTokens < 0) {
+                    throw codedError('provider-invalid-response');
+                }
+                return payload.totalTokens;
+            }
+            catch (error) {
+                if (signal?.aborted) throw codedError('provider-cancelled');
+                if (timedOut) throw codedError('provider-timeout');
+                if (error?.code) throw error;
+                throw codedError('provider-network-error');
+            }
+            finally { clearTimeout(timer); signal?.removeEventListener('abort', onAbort); }
+        },
+        async generate(request, { signal, budget } = {}) {
             if (signal?.aborted) return response(request, 'CANCELLED');
             let credential;
             try { credential = await credentialStore.getCredential('gemini'); }
@@ -32,14 +64,14 @@ export function createGeminiAIProviderAdapter({ credentialStore, fetchImpl = glo
                 controller.abort();
             }, timeoutMs);
             try {
+                if (budget?.maxOutputTokens !== undefined
+                    && (!Number.isSafeInteger(budget.maxOutputTokens) || budget.maxOutputTokens < 1 || budget.maxOutputTokens > 8192)) {
+                    throw new TypeError('Gemini output token budget must be between 1 and 8192.');
+                }
                 const result = await fetchImpl(`${GEMINI_ENDPOINT}${encodeURIComponent(request.model)}:generateContent`, {
                     method: 'POST',
                     headers: { 'content-type': 'application/json', 'x-goog-api-key': credential.trim() },
-                    body: JSON.stringify({
-                        systemInstruction: { parts: [{ text: request.systemPrompt }] },
-                        contents: [{ role: 'user', parts: [{ text: JSON.stringify(request.input) }] }],
-                        generationConfig: { responseMimeType: 'application/json', responseSchema: request.outputSchema },
-                    }),
+                    body: JSON.stringify(generationRequest(request, budget?.maxOutputTokens)),
                     signal: controller.signal,
                 });
                 if (!result?.ok) return response(request, 'ERROR', { errorCode: mapHttpError(result?.status) });
@@ -60,6 +92,32 @@ export function createGeminiAIProviderAdapter({ credentialStore, fetchImpl = glo
             }
         },
     });
+}
+
+function generationRequest(request, maxOutputTokens) {
+    const generationConfig = { responseMimeType: 'application/json', responseSchema: request.outputSchema };
+    if (maxOutputTokens !== undefined) generationConfig.maxOutputTokens = maxOutputTokens;
+    return {
+        systemInstruction: { parts: [{ text: request.systemPrompt }] },
+        contents: [{ role: 'user', parts: [{ text: JSON.stringify(request.input) }] }],
+        generationConfig,
+    };
+}
+
+async function getCredential(credentialStore) {
+    let credential;
+    try { credential = await credentialStore.getCredential('gemini'); }
+    catch { throw codedError('provider-credential-unavailable'); }
+    if (typeof credential !== 'string' || credential.trim() === '') {
+        throw codedError('provider-credential-missing');
+    }
+    return credential.trim();
+}
+
+function codedError(code) {
+    const error = new Error(code);
+    error.code = code;
+    return error;
 }
 
 function mapGeminiResponse(request, payload) {

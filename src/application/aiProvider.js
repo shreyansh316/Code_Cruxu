@@ -74,13 +74,16 @@ export function createAIProviderPort(adapter) {
         throw new TypeError('AI provider adapters must implement generate(request, { signal }).');
     }
     return Object.freeze({
-        async generate(value, { signal } = {}) {
+        async generate(value, { signal, budget } = {}) {
             const request = createAIProviderRequest(value);
             if (signal !== undefined && !isAbortSignal(signal)) {
                 invalid('AI provider cancellation must use an AbortSignal.');
             }
             if (signal?.aborted) return cancelledResponse(request);
-            const response = await adapter.generate(request, signal ? { signal } : {});
+            const options = {};
+            if (signal) options.signal = signal;
+            if (budget) options.budget = budget;
+            const response = await adapter.generate(request, options);
             if (signal?.aborted) return cancelledResponse(request);
             return validateAIProviderResponse(request, response);
         },

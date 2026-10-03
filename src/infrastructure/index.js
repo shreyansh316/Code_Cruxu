@@ -6,3 +6,4 @@ export { SqliteEventBus } from './SqliteEventBus';
 export { createSqliteUnitOfWork } from './SqliteUnitOfWork';
 export { createSecretStorageAdapter } from './SecretStorageAdapter';
 export { createGeminiAIProviderAdapter } from './GeminiAIProviderAdapter';
+export { createAIUsageRecorder } from './AIUsageRecorder';
