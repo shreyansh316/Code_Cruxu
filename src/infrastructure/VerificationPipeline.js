@@ -1,4 +1,5 @@
 import { DomainInvariantError } from '../domain/errors';
+import { validateCommandArguments } from './commandPolicy';
 
 const MAX_VERIFICATION_CHECKS = 20;
 
@@ -18,6 +19,7 @@ export function createVerificationPipeline({ commandRunner, checks }) {
             throw new DomainInvariantError('invalid-verification-check',
                 'Each check requires a unique id, executable, string arguments, and optional working directory.');
         }
+        validateCommandArguments(check.args ?? []);
         ids.add(check.id);
         return Object.freeze({ id: check.id, command: check.command, args: [...(check.args ?? [])], cwd: check.cwd });
     });

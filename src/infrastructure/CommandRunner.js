@@ -1,6 +1,6 @@
 import { spawn } from 'child_process';
-import { resolve } from 'path';
 import { DomainInvariantError } from '../domain/errors';
+import { normalizeAllowedExecutable, validateCommandArguments } from './commandPolicy';
 
 const HARD_MAX_TIMEOUT_MS = 120_000;
 const HARD_MAX_OUTPUT_BYTES = 1024 * 1024;
@@ -13,17 +13,18 @@ export function createCommandRunner({ allowedCommands, timeoutMs = 30_000, maxOu
         || !Number.isInteger(maxOutputBytes) || maxOutputBytes < 1 || maxOutputBytes > HARD_MAX_OUTPUT_BYTES) {
         throw new DomainInvariantError('invalid-command-runner-options', 'Runner requires commands and bounded timeout/output limits.');
     }
-    const allowlist = new Set(allowedCommands.map((command) => resolve(command)));
+    const allowlist = new Set(allowedCommands.map(normalizeAllowedExecutable));
 
     return Object.freeze({
         execute({ command, args = [], cwd, signal } = {}) {
-            const executable = typeof command === 'string' ? resolve(command) : '';
+            let executable = '';
+            try { executable = normalizeAllowedExecutable(command); }
+            catch { return Promise.reject(new DomainInvariantError('command-not-allowed', 'Executable is not on the command allowlist.')); }
             if (!allowlist.has(executable)) {
                 return Promise.reject(new DomainInvariantError('command-not-allowed', 'Executable is not on the command allowlist.'));
             }
-            if (!Array.isArray(args) || args.some((argument) => typeof argument !== 'string')) {
-                return Promise.reject(new DomainInvariantError('invalid-command-arguments', 'Command arguments must be strings.'));
-            }
+            try { validateCommandArguments(args); }
+            catch (error) { return Promise.reject(error); }
             if (cwd !== undefined && (typeof cwd !== 'string' || cwd.trim() === '')) {
                 return Promise.reject(new DomainInvariantError('invalid-command-working-directory', 'Working directory must be a non-empty path.'));
             }

@@ -1,6 +1,7 @@
 import { realpath } from 'fs/promises';
-import { isAbsolute, relative, resolve, sep } from 'path';
+import { isAbsolute, relative, sep } from 'path';
 import { DomainInvariantError } from '../domain/errors';
+import { normalizeAllowedExecutable, validateCommandArguments } from './commandPolicy';
 
 /** Restrict existing workspace/process adapters to a task's explicit permission manifest. */
 export async function createTaskScopedTools({ workspaceRoot, filesystem, processRunner, permissions } = {}) {
@@ -17,8 +18,9 @@ export async function createTaskScopedTools({ workspaceRoot, filesystem, process
     for (const permission of permissions.commands) {
         if (!permission || typeof permission.command !== 'string' || !permission.command.trim()
             || !Array.isArray(permission.args) || permission.args.length > 100
-            || permission.args.some((argument) => typeof argument !== 'string' || argument.length > 2000)) invalid();
-        const executable = resolve(permission.command);
+            || permission.args.some((argument) => typeof argument !== 'string')) invalid();
+        validateCommandArguments(permission.args);
+        const executable = normalizeAllowedExecutable(permission.command);
         if (commands.has(executable)) invalid();
         commands.set(executable, Object.freeze([...permission.args]));
     }
@@ -35,9 +37,13 @@ export async function createTaskScopedTools({ workspaceRoot, filesystem, process
         }),
         process: Object.freeze({
             async execute(request = {}) {
-                const executable = typeof request.command === 'string' ? resolve(request.command) : '';
+                let executable = '';
+                try { executable = normalizeAllowedExecutable(request.command); }
+                catch { throw denied(); }
                 const allowedArgs = commands.get(executable);
-                if (!allowedArgs || !Array.isArray(request.args) || !sameArray(request.args, allowedArgs)) throw denied();
+                try { validateCommandArguments(request.args); }
+                catch { throw denied(); }
+                if (!allowedArgs || !sameArray(request.args, allowedArgs)) throw denied();
                 const cwd = request.cwd === undefined ? root : await realpath(request.cwd);
                 const rel = relative(root, cwd);
                 if (rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel)) throw denied();
