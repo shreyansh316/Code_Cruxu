@@ -12,7 +12,7 @@ export const TASK_TRANSITIONS = {
     [TaskStatus.STARTED]: [TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED, TaskStatus.FAILED, TaskStatus.CANCELLED],
     [TaskStatus.IN_PROGRESS]: [TaskStatus.BLOCKED, TaskStatus.REVIEW, TaskStatus.FAILED, TaskStatus.CANCELLED],
     [TaskStatus.BLOCKED]: [TaskStatus.IN_PROGRESS, TaskStatus.FAILED, TaskStatus.CANCELLED],
-    [TaskStatus.REVIEW]: [TaskStatus.COMPLETED, TaskStatus.FAILED],
+    [TaskStatus.REVIEW]: [TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED, TaskStatus.FAILED],
     [TaskStatus.COMPLETED]: [],
     [TaskStatus.FAILED]: [],
     [TaskStatus.CANCELLED]: [],
