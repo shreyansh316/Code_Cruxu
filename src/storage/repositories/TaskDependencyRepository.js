@@ -25,4 +25,10 @@ export class TaskDependencyRepository {
           dependency_task_id AS dependencyTaskId FROM task_dependencies
           WHERE dependent_task_id = ? OR dependency_task_id = ? ORDER BY id`).all(taskId, taskId);
     }
+
+    list() {
+        return this.database.prepare(`SELECT id, dependent_task_id AS dependentTaskId,
+          dependency_task_id AS dependencyTaskId FROM task_dependencies
+          ORDER BY dependent_task_id, dependency_task_id`).all();
+    }
 }

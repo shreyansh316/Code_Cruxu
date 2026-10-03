@@ -113,6 +113,20 @@ export const SCHEMA_MIGRATIONS = [
             BEGIN SELECT RAISE(ABORT, 'audit records are append-only'); END;
         `),
     },
+    {
+        version: 5,
+        name: 'durable-execution-queue',
+        up: (database) => database.exec(`
+          CREATE TABLE execution_queue (
+            id TEXT PRIMARY KEY NOT NULL,
+            task_id TEXT NOT NULL UNIQUE REFERENCES tasks(id) ON DELETE CASCADE,
+            state TEXT NOT NULL DEFAULT 'QUEUED' CHECK (state IN ('QUEUED', 'CLAIMED', 'COMPLETED', 'CANCELLED')),
+            queued_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+            updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+          );
+          CREATE INDEX idx_execution_queue_ready ON execution_queue(state, queued_at, task_id);
+        `),
+    },
 ];
 const CREATE_MIGRATION_LEDGER_SQL = `
   CREATE TABLE IF NOT EXISTS schema_migrations (
