@@ -88,6 +88,11 @@
         "command": "headroom.clearProviderCredential",
         "title": "HEADROOM: Clear AI Provider Credential",
         "category": "HEADROOM"
+      },
+      {
+        "command": "headroom.reviewTaskChanges",
+        "title": "HEADROOM: Review Task Changes",
+        "category": "HEADROOM"
       }
     ],
     "configuration": {
@@ -150,6 +155,9 @@
         },
         {
           "command": "headroom.clearProviderCredential"
+        },
+        {
+          "command": "headroom.reviewTaskChanges"
         }
       ]
     }

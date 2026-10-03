@@ -18,6 +18,7 @@ const vscode = {
         showWarningMessage: vi.fn().mockResolvedValue(undefined),
         showErrorMessage: vi.fn().mockResolvedValue(undefined),
         showQuickPick: vi.fn().mockResolvedValue(undefined),
+        showTextDocument: vi.fn().mockResolvedValue(undefined),
         showInputBox: vi.fn().mockResolvedValue(undefined),
         createStatusBarItem: vi.fn().mockReturnValue({
             id: '',
@@ -54,6 +55,7 @@ const vscode = {
             get: vi.fn().mockReturnValue(undefined),
             update: vi.fn().mockResolvedValue(undefined),
         }),
+        openTextDocument: vi.fn().mockResolvedValue({ uri: { fsPath: 'review-evidence.json' } }),
         onDidChangeConfiguration: vi.fn().mockReturnValue({ dispose: vi.fn() }),
         fs: {
             readFile: vi.fn(),

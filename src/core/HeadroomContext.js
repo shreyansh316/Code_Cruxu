@@ -16,11 +16,13 @@ import { join } from 'path';
 import { randomUUID } from 'node:crypto';
 import { COMMANDS } from '../constants';
 import { ExecutionControl } from '../domain';
-import { applyMigrations, ObjectiveRepository, SqliteConnection, TaskRepository } from '../storage';
+import { AgentRepository, applyMigrations, AuditLogRepository, ObjectiveRepository, SqliteConnection, TaskRepository } from '../storage';
 import { CONFIGURATION_DEFAULTS, validateHeadroomConfiguration, } from './Configuration';
 import { registerStatusTreeViews } from './StatusTreeProviders';
 import { createSecretStorageAdapter } from '../infrastructure/SecretStorageAdapter';
 import { createObjectiveIntakeUseCase } from '../application/objectiveIntake';
+import { createHumanCodeReviewDecision } from '../application/humanCodeReview';
+import { createSqliteUnitOfWork } from '../infrastructure/SqliteUnitOfWork';
 export class HeadroomContext {
     _context;
     _disposables = [];
@@ -104,6 +106,8 @@ export class HeadroomContext {
             await this._configureProviderCredential();
         }), vscode.commands.registerCommand(COMMANDS.CLEAR_PROVIDER_CREDENTIAL, async () => {
             await this._clearProviderCredential();
+        }), vscode.commands.registerCommand(COMMANDS.REVIEW_TASK_CHANGES, async (taskId, bundle) => {
+            await this._reviewTaskChanges(taskId, bundle);
         }));
         // Register all disposables with extension context
         this._context.subscriptions.push(...this._disposables);
@@ -182,6 +186,47 @@ export class HeadroomContext {
         catch {
             vscode.window.showErrorMessage(`HEADROOM could not remove the ${provider} credential from VS Code SecretStorage.`);
         }
+    }
+    async _reviewTaskChanges(taskId, bundle) {
+        if (typeof taskId !== 'string' || !bundle || bundle.taskId !== taskId || bundle.schemaVersion !== 1) {
+            vscode.window.showWarningMessage('HEADROOM: No matching review evidence bundle was provided.');
+            return;
+        }
+        const serialized = JSON.stringify(bundle, null, 2);
+        if (Buffer.byteLength(serialized, 'utf8') > 2 * 1024 * 1024) {
+            vscode.window.showErrorMessage('HEADROOM: Review evidence exceeds the display limit.');
+            return;
+        }
+        const document = await vscode.workspace.openTextDocument({ language: 'json', content: serialized });
+        await vscode.window.showTextDocument(document, { preview: false });
+        const agents = new AgentRepository(this._databaseConnection.database).listByRole('CEO');
+        if (agents.length !== 1) {
+            vscode.window.showErrorMessage('HEADROOM: Review requires exactly one persisted CEO identity.');
+            return;
+        }
+        const task = new TaskRepository(this._databaseConnection.database).getById(taskId);
+        if (!task) {
+            vscode.window.showErrorMessage('HEADROOM: The reviewed task no longer exists.');
+            return;
+        }
+        const decision = await vscode.window.showQuickPick([
+            { label: 'Approve Changes', description: 'Record approval for this exact evidence bundle.', value: 'APPROVE' },
+            { label: 'Request Changes', description: 'Record that these changes need more work.', value: 'REQUEST_CHANGES' },
+        ], { title: `HEADROOM — Review ${task.title}`, placeHolder: 'Choose a review decision. Closing this picker records nothing.' });
+        if (!decision) return;
+        const useCase = createHumanCodeReviewDecision({
+            agentRepository: new AgentRepository(this._databaseConnection.database),
+            taskRepository: new TaskRepository(this._databaseConnection.database),
+            auditRepository: new AuditLogRepository(this._databaseConnection.database),
+            unitOfWork: createSqliteUnitOfWork(this._databaseConnection.database),
+            clock: { now: () => new Date() }, idFactory: () => randomUUID(),
+        });
+        const result = await useCase.run({ reviewerId: agents[0].id, taskId, bundle, decision: decision.value });
+        if (!result.ok) {
+            vscode.window.showErrorMessage(`HEADROOM could not record the review: ${result.error.message}`);
+            return;
+        }
+        vscode.window.showInformationMessage(`HEADROOM: ${decision.label} recorded for this evidence bundle.`);
     }
     async _pickCredentialProvider() {
         const options = [

@@ -14,6 +14,7 @@ export { createDirectorOfficeOrchestration } from './directorOfficeOrchestration
 export { createCEOExecutionReport } from './ceoExecutionReport';
 export { createCEOExecutionControl } from './ceoExecutionControl';
 export { createReviewEvidenceBundle } from './reviewEvidenceBundle';
+export { createHumanCodeReviewDecision } from './humanCodeReview';
 export { createTaskReviewUseCase } from './taskReview';
 export { createExecutionQueueUseCase } from './executionQueue';
 export { createTaskScheduler } from './taskScheduler';

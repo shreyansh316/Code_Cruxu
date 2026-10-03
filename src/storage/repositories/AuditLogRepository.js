@@ -58,6 +58,18 @@ export class AuditLogRepository {
           SELECT * FROM audit_logs WHERE task_id = ? ORDER BY created_at, rowid LIMIT ?
         `).all(taskId, limit).map(mapAudit);
     }
+
+    hasTaskReviewDecision(taskId, evidenceHash) {
+        taskId = assertEntityId(taskId, 'Review task id');
+        if (typeof evidenceHash !== 'string' || !/^[a-f0-9]{64}$/.test(evidenceHash)) {
+            throw new TypeError('Review evidence hash must be a SHA-256 digest.');
+        }
+        return Boolean(this.database.prepare(`
+          SELECT 1 FROM audit_logs WHERE task_id = ?
+            AND action IN ('CODE_CHANGES_APPROVED', 'CODE_CHANGES_REJECTED')
+            AND json_extract(details, '$.evidenceHash') = ? LIMIT 1
+        `).get(taskId, evidenceHash));
+    }
 }
 
 function validateLimit(limit) {
