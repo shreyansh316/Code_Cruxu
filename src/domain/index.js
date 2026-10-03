@@ -26,6 +26,7 @@ export { createDomainEvent, DOMAIN_EVENT_VERSION } from './events';
 export { retrieveScopedMemories } from './memoryRetrieval';
 export { canTransitionQuestion, QuestionStatus, transitionQuestion } from './questionLifecycle';
 export { assertExecutionPlan } from './executionPlan';
+export { assertPlanApproved, PlanDecision, recordPlanDecision } from './planApproval';
 export { assertTaskAssignment } from './assignmentValidation';
 export { assertObjectiveTransition, canTransitionObjective, OBJECTIVE_TRANSITIONS, transitionObjective, } from './objectiveLifecycle';
 export { assertTaskTransition, canTransitionTask, TASK_TRANSITIONS, transitionTask, } from './taskLifecycle';
