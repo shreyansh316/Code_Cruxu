@@ -20,6 +20,7 @@ export { ExecutionControl } from './executionControl';
 export { assertTaskDependencyGraph, getTaskReadiness } from './taskDependencies';
 export { calculateTaskProgress } from './taskProgress';
 export { validateTaskAcceptanceCriteria } from './taskAcceptanceCriteria';
+export { evaluateTaskRetry, MAX_TASK_RETRIES } from './taskRetryPolicy';
 export { assertTaskAssignment } from './assignmentValidation';
 export { assertObjectiveTransition, canTransitionObjective, OBJECTIVE_TRANSITIONS, transitionObjective, } from './objectiveLifecycle';
 export { assertTaskTransition, canTransitionTask, TASK_TRANSITIONS, transitionTask, } from './taskLifecycle';
