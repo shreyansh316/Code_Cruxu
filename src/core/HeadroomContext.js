@@ -13,12 +13,14 @@
  */
 import * as vscode from 'vscode';
 import { join } from 'path';
+import { randomUUID } from 'node:crypto';
 import { COMMANDS } from '../constants';
 import { ExecutionControl } from '../domain';
 import { applyMigrations, ObjectiveRepository, SqliteConnection, TaskRepository } from '../storage';
 import { CONFIGURATION_DEFAULTS, validateHeadroomConfiguration, } from './Configuration';
 import { registerStatusTreeViews } from './StatusTreeProviders';
 import { createSecretStorageAdapter } from '../infrastructure/SecretStorageAdapter';
+import { createObjectiveIntakeUseCase } from '../application/objectiveIntake';
 export class HeadroomContext {
     _context;
     _disposables = [];
@@ -27,6 +29,7 @@ export class HeadroomContext {
     _configuration = { ...CONFIGURATION_DEFAULTS };
     _databaseConnection = new SqliteConnection();
     _executionControl = new ExecutionControl();
+    _refreshStatusViews = () => {};
     constructor(context) {
         this._context = context;
     }
@@ -39,10 +42,12 @@ export class HeadroomContext {
             // bring its schema up to date on that same owned handle.
             this._databaseConnection.open(join(this.storagePath, 'headroom.sqlite'));
             applyMigrations(this._databaseConnection.database);
-            this._disposables.push(...registerStatusTreeViews(this._context, {
+            const statusViews = registerStatusTreeViews(this._context, {
                 objectives: new ObjectiveRepository(this._databaseConnection.database),
                 tasks: new TaskRepository(this._databaseConnection.database),
-            }));
+            });
+            this._refreshStatusViews = statusViews.refresh;
+            this._disposables.push(...statusViews.disposables);
             // 1. Register commands
             this._registerCommands();
             // 2. Validate contributed settings and report invalid values once.
@@ -81,9 +86,8 @@ export class HeadroomContext {
         this._disposables.push(vscode.commands.registerCommand(COMMANDS.OPEN_DASHBOARD, () => {
             // Phase 015: WebviewPanel implementation
             vscode.window.showInformationMessage('HEADROOM: CEO Dashboard — Phase 015');
-        }), vscode.commands.registerCommand(COMMANDS.NEW_OBJECTIVE, () => {
-            // Phase 052: Objective creation UI
-            vscode.window.showInformationMessage('HEADROOM: New Objective — Phase 052');
+        }), vscode.commands.registerCommand(COMMANDS.NEW_OBJECTIVE, async () => {
+            await this._createObjective();
         }), vscode.commands.registerCommand(COMMANDS.SHOW_STATUS, () => {
             this._showStatus();
         }), vscode.commands.registerCommand(COMMANDS.PAUSE_EXECUTION, () => {
@@ -119,6 +123,33 @@ export class HeadroomContext {
             ? `Active — Execution ${this._executionControl.status.toLowerCase()}.`
             : 'Not initialized.';
         vscode.window.showInformationMessage(`HEADROOM Status: ${status}`);
+    }
+    async _createObjective() {
+        const title = await vscode.window.showInputBox({
+            title: 'HEADROOM — New CEO Objective', prompt: 'Enter a concise objective title.',
+            placeHolder: 'Objective title', ignoreFocusOut: true,
+            validateInput: (value) => typeof value === 'string' && value.trim().length >= 1 && value.trim().length <= 200
+                ? undefined : 'Title must contain 1 to 200 characters.',
+        });
+        if (title === undefined) return;
+        const description = await vscode.window.showInputBox({
+            title: 'HEADROOM — Objective Details', prompt: 'Describe the outcome and constraints.',
+            placeHolder: 'Objective description', ignoreFocusOut: true,
+            validateInput: (value) => typeof value === 'string' && value.trim().length >= 1 && value.trim().length <= 10_000
+                ? undefined : 'Description must contain 1 to 10000 characters.',
+        });
+        if (description === undefined) return;
+        const intake = createObjectiveIntakeUseCase({
+            objectiveRepository: new ObjectiveRepository(this._databaseConnection.database),
+            idFactory: () => randomUUID(),
+        });
+        const result = await intake.run({ title, description });
+        if (!result.ok) {
+            vscode.window.showErrorMessage(`HEADROOM could not create the objective: ${result.error.message}`);
+            return;
+        }
+        this._refreshStatusViews();
+        vscode.window.showInformationMessage('HEADROOM objective created and saved.');
     }
     async _configureProviderCredential() {
         const provider = await this._pickCredentialProvider();

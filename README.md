@@ -24,7 +24,7 @@ The repository currently provides application workflows for objectives, Director
 |---|---|
 | `HEADROOM: Show Status` | Reports whether the extension context initialized. |
 | `HEADROOM: Open CEO Dashboard` | Placeholder message; the dashboard UI is planned for a later phase. |
-| `HEADROOM: New Objective` | Placeholder message; objective intake is planned for a later phase. |
+| `HEADROOM: New Objective` | Collects a bounded title and description, persists a new objective, and refreshes the Objectives view. |
 | `HEADROOM: Pause Execution` | Sets the in-memory execution state to paused; repeated pauses are safe. |
 | `HEADROOM: Resume Execution` | Sets the in-memory execution state to running; repeated resumes are safe. |
 | `HEADROOM: Configure AI Provider Credential` | Collects a provider credential in a password input and stores it in VS Code SecretStorage. |
@@ -32,7 +32,7 @@ The repository currently provides application workflows for objectives, Director
 
 The Activity Bar container and organization, objective, and active task views are contributed in the manifest and backed by repository data providers. On activation, the extension opens one SQLite database under VS Code global storage, enables foreign keys, and applies pending versioned schema migrations on that connection. The migration ledger records applied versions atomically with their schema changes. No production users, projects, or task records are included.
 
-Phases 001–050 establish the extension foundation, application and infrastructure contracts, SQLite persistence, task workflows and orchestration, bounded provider access, Director proposals, and Office Head routing. Phases 051 onward remain planned until implemented and verified. The reconstructed 100-phase plan is in `headroom_100_phase_roadmap.md`.
+Phases 001–052 establish the extension foundation, application and infrastructure contracts, SQLite persistence, task workflows and orchestration, bounded provider access, Director proposals, Office Head routing, and VS Code objective intake. Phases 053 onward remain planned until implemented and verified. The reconstructed 100-phase plan is in `headroom_100_phase_roadmap.md`.
 
 ## Requirements
 

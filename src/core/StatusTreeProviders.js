@@ -11,7 +11,12 @@ const TERMINAL_TASK_STATUSES = new Set([
 export class ObjectiveStatusTreeProvider {
     constructor(repository) {
         this.repository = repository;
+        this._changeEmitter = new vscode.EventEmitter();
+        this.onDidChangeTreeData = this._changeEmitter.event;
     }
+
+    refresh() { this._changeEmitter.fire(undefined); }
+    dispose() { this._changeEmitter.dispose(); }
 
     getTreeItem(objective) {
         const item = new vscode.TreeItem(objective.title, vscode.TreeItemCollapsibleState.None);
@@ -42,7 +47,12 @@ export class ObjectiveStatusTreeProvider {
 export class ActiveTaskTreeProvider {
     constructor(repository) {
         this.repository = repository;
+        this._changeEmitter = new vscode.EventEmitter();
+        this.onDidChangeTreeData = this._changeEmitter.event;
     }
+
+    refresh() { this._changeEmitter.fire(undefined); }
+    dispose() { this._changeEmitter.dispose(); }
 
     getTreeItem(task) {
         const item = new vscode.TreeItem(task.title, vscode.TreeItemCollapsibleState.None);
@@ -67,16 +77,20 @@ export class ActiveTaskTreeProvider {
 
 /** Register views that present existing repository records. */
 export function registerStatusTreeViews(context, repositories) {
+    const objectives = new ObjectiveStatusTreeProvider(repositories.objectives);
+    const tasks = new ActiveTaskTreeProvider(repositories.tasks);
     const disposables = [
         vscode.window.registerTreeDataProvider(
             VIEWS.OBJECTIVES,
-            new ObjectiveStatusTreeProvider(repositories.objectives),
+            objectives,
         ),
         vscode.window.registerTreeDataProvider(
             VIEWS.TASKS,
-            new ActiveTaskTreeProvider(repositories.tasks),
+            tasks,
         ),
+        objectives,
+        tasks,
     ];
     context.subscriptions.push(...disposables);
-    return disposables;
+    return { disposables, refresh: () => { objectives.refresh(); tasks.refresh(); } };
 }
