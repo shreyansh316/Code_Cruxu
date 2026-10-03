@@ -70,6 +70,15 @@ export class AuditLogRepository {
             AND json_extract(details, '$.evidenceHash') = ? LIMIT 1
         `).get(taskId, evidenceHash));
     }
+
+    hasEntityAction(entity, entityId, action) {
+        if (typeof entity !== 'string' || !entity.trim() || typeof action !== 'string' || !action.trim()) {
+            throw new TypeError('Audit entity and action must be non-empty strings.');
+        }
+        entityId = assertEntityId(entityId, 'Audit entity id');
+        return Boolean(this.database.prepare('SELECT 1 FROM audit_logs WHERE entity = ? AND entity_id = ? AND action = ? LIMIT 1')
+            .get(entity.trim(), entityId, action.trim()));
+    }
 }
 
 function validateLimit(limit) {

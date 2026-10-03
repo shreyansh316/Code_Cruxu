@@ -6,7 +6,7 @@ import { tmpdir } from 'os';
 import * as vscode from 'vscode';
 import { COMMANDS } from '../src/constants';
 import { HeadroomContext } from '../src/core/HeadroomContext';
-import { ObjectiveRepository } from '../src/storage';
+import { AgentRepository, AuditLogRepository, ObjectiveRepository } from '../src/storage';
 
 const temporaryDirectories = [];
 afterEach(() => {
@@ -82,6 +82,31 @@ describe('Phase 052 — CEO objective interaction', () => {
             await handlers.get(COMMANDS.NEW_OBJECTIVE)();
             expect(objectiveChange).toHaveBeenCalledWith(undefined);
             expect(taskChange).toHaveBeenCalledWith(undefined);
+        }
+        finally { context.dispose(); }
+    });
+
+    it('presents the full plan in VS Code and persists the CEO plan decision', async () => {
+        const { context, handlers } = setup();
+        try {
+            await context.initialize();
+            const database = context.databaseConnection.database;
+            new AgentRepository(database).create({ id: 'ceo-052', name: 'CEO', role: 'CEO' });
+            const plan = { id: 'plan-052', objectiveId: 'objective-052', projects: [{ id: 'project-052', name: 'Project' }],
+                milestones: [{ id: 'milestone-052', projectId: 'project-052', title: 'Release' }],
+                tasks: [{ id: 'task-052', taskCode: 'PH052-001', title: 'Deliver', projectId: 'project-052', milestoneId: 'milestone-052',
+                    acceptanceCriteria: [{ id: 'criterion-052', description: 'Release is ready', required: true, met: false }] }],
+                dependencies: [] };
+            vi.mocked(vscode.window.showQuickPick).mockResolvedValueOnce({ label: 'Approve Plan', value: 'APPROVED' });
+            const approved = await handlers.get(COMMANDS.REVIEW_PLAN)(plan);
+            expect(approved.approval).toMatchObject({ decision: 'APPROVED', approverId: 'ceo-052', approverRole: 'CEO' });
+            expect(vscode.workspace.openTextDocument).toHaveBeenCalledWith(expect.objectContaining({ language: 'json' }));
+            expect(vscode.window.showTextDocument).toHaveBeenCalled();
+            expect(new AuditLogRepository(database).listByEntity('execution-plan', 'plan-052'))
+                .toMatchObject([{ action: 'PLAN_DECISION_RECORDED', actorId: 'ceo-052', details: { decision: 'APPROVED' } }]);
+            vi.mocked(vscode.window.showQuickPick).mockResolvedValueOnce({ label: 'Reject Plan', value: 'REJECTED' });
+            await handlers.get(COMMANDS.REVIEW_PLAN)(plan);
+            expect(new AuditLogRepository(database).listByEntity('execution-plan', 'plan-052')).toHaveLength(1);
         }
         finally { context.dispose(); }
     });

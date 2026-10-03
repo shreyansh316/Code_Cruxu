@@ -93,6 +93,11 @@
         "command": "headroom.reviewTaskChanges",
         "title": "HEADROOM: Review Task Changes",
         "category": "HEADROOM"
+      },
+      {
+        "command": "headroom.reviewPlan",
+        "title": "HEADROOM: Review Execution Plan",
+        "category": "HEADROOM"
       }
     ],
     "configuration": {
@@ -158,6 +163,9 @@
         },
         {
           "command": "headroom.reviewTaskChanges"
+        },
+        {
+          "command": "headroom.reviewPlan"
         }
       ]
     }

@@ -22,6 +22,7 @@ import { registerStatusTreeViews } from './StatusTreeProviders';
 import { createSecretStorageAdapter } from '../infrastructure/SecretStorageAdapter';
 import { createObjectiveIntakeUseCase } from '../application/objectiveIntake';
 import { createHumanCodeReviewDecision } from '../application/humanCodeReview';
+import { createPersistedPlanDecision } from '../application/persistedPlanDecision';
 import { createSqliteUnitOfWork } from '../infrastructure/SqliteUnitOfWork';
 export class HeadroomContext {
     _context;
@@ -108,6 +109,8 @@ export class HeadroomContext {
             await this._clearProviderCredential();
         }), vscode.commands.registerCommand(COMMANDS.REVIEW_TASK_CHANGES, async (taskId, bundle) => {
             await this._reviewTaskChanges(taskId, bundle);
+        }), vscode.commands.registerCommand(COMMANDS.REVIEW_PLAN, async (plan) => {
+            return await this._reviewPlan(plan);
         }));
         // Register all disposables with extension context
         this._context.subscriptions.push(...this._disposables);
@@ -227,6 +230,40 @@ export class HeadroomContext {
             return;
         }
         vscode.window.showInformationMessage(`HEADROOM: ${decision.label} recorded for this evidence bundle.`);
+    }
+    async _reviewPlan(plan) {
+        if (!plan || typeof plan !== 'object') {
+            vscode.window.showWarningMessage('HEADROOM: No execution plan was provided for review.');
+            return;
+        }
+        const serialized = JSON.stringify(plan, null, 2);
+        if (Buffer.byteLength(serialized, 'utf8') > 1024 * 1024) {
+            vscode.window.showErrorMessage('HEADROOM: Execution plan exceeds the review display limit.');
+            return;
+        }
+        const document = await vscode.workspace.openTextDocument({ language: 'json', content: serialized });
+        await vscode.window.showTextDocument(document, { preview: false });
+        const agents = new AgentRepository(this._databaseConnection.database).listByRole('CEO');
+        if (agents.length !== 1) {
+            vscode.window.showErrorMessage('HEADROOM: Plan approval requires exactly one persisted CEO identity.');
+            return;
+        }
+        const decision = await vscode.window.showQuickPick([
+            { label: 'Approve Plan', description: 'Authorize this plan for execution.', value: 'APPROVED' },
+            { label: 'Reject Plan', description: 'Reject this plan and prevent execution.', value: 'REJECTED' },
+        ], { title: 'HEADROOM — Review Execution Plan', placeHolder: 'Choose a plan decision. Closing this picker records nothing.' });
+        if (!decision) return;
+        const useCase = createPersistedPlanDecision({ agentRepository: new AgentRepository(this._databaseConnection.database),
+            auditRepository: new AuditLogRepository(this._databaseConnection.database),
+            unitOfWork: createSqliteUnitOfWork(this._databaseConnection.database),
+            clock: { now: () => new Date() }, idFactory: () => randomUUID() });
+        const result = await useCase.run({ approverId: agents[0].id, plan, decision: decision.value });
+        if (!result.ok) {
+            vscode.window.showErrorMessage(`HEADROOM could not record the plan decision: ${result.error.message}`);
+            return;
+        }
+        vscode.window.showInformationMessage(`HEADROOM: Plan ${decision.value.toLowerCase()} and saved to the audit log.`);
+        return result.value;
     }
     async _pickCredentialProvider() {
         const options = [
