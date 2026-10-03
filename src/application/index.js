@@ -10,6 +10,7 @@ export { createTaskResultSubmissionUseCase } from './taskResultSubmission';
 export { createEmployeeResultVerificationUseCase } from './employeeResultVerification';
 export { createHierarchyMessageRouter } from './hierarchyMessageRouter';
 export { createOfficeHeadCoordinationUseCase } from './officeHeadCoordination';
+export { createDirectorOfficeOrchestration } from './directorOfficeOrchestration';
 export { createTaskReviewUseCase } from './taskReview';
 export { createExecutionQueueUseCase } from './executionQueue';
 export { createTaskScheduler } from './taskScheduler';
