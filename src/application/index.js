@@ -33,3 +33,4 @@ export { getPromptContract, listPromptContractIds } from './promptRegistry';
 export { assembleBoundedAgentContext } from './contextAssembly';
 export { validateStructuredAIOutput } from './structuredOutput';
 export { createProviderFallbackPolicy } from './providerFallback';
+export { classifyStoredData, createMemoryPrivacyControls, redactSensitiveText } from './privacyControls';

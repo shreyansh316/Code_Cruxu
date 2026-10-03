@@ -177,6 +177,34 @@ export class MemoryRepository extends BaseSqliteRepository {
         const where = ownerColumns.map((column) => `${column} = ?`).join(' OR ');
         return this.query(`scope = ? AND (${where})`, [scope, ...ownerColumns.map(() => assertEntityId(ownerId))], 'created_at, id', limit);
     }
+    getByOwner(scope, ownerId, memoryId) {
+        assertMemoryScope(scope);
+        ownerId = assertEntityId(ownerId);
+        memoryId = assertEntityId(memoryId, 'Memory id');
+        const property = MEMORY_SCOPE_OWNERS[scope];
+        if (property) {
+            return this.database.prepare(`SELECT ${this.selectList()} FROM memories WHERE id = ? AND scope = ? AND ${MEMORY_OWNER_COLUMNS[property]} = ?`)
+                .get(memoryId, scope, ownerId);
+        }
+        const ownerColumns = Object.values(MEMORY_OWNER_COLUMNS);
+        const where = ownerColumns.map((column) => `${column} = ?`).join(' OR ');
+        return this.database.prepare(`SELECT ${this.selectList()} FROM memories WHERE id = ? AND scope = ? AND (${where})`)
+            .get(memoryId, scope, ...ownerColumns.map(() => ownerId));
+    }
+    deleteByOwner(scope, ownerId, memoryId) {
+        assertMemoryScope(scope);
+        ownerId = assertEntityId(ownerId);
+        memoryId = assertEntityId(memoryId, 'Memory id');
+        const property = MEMORY_SCOPE_OWNERS[scope];
+        if (property) {
+            return this.database.prepare(`DELETE FROM memories WHERE id = ? AND scope = ? AND ${MEMORY_OWNER_COLUMNS[property]} = ?`)
+                .run(memoryId, scope, ownerId).changes > 0;
+        }
+        const ownerColumns = Object.values(MEMORY_OWNER_COLUMNS);
+        const where = ownerColumns.map((column) => `${column} = ?`).join(' OR ');
+        return this.database.prepare(`DELETE FROM memories WHERE id = ? AND scope = ? AND (${where})`)
+            .run(memoryId, scope, ...ownerColumns.map(() => ownerId)).changes > 0;
+    }
     update(id, changes) { return this.updateById(id, changes); }
     delete(id) { return this.deleteById(id); }
 }
