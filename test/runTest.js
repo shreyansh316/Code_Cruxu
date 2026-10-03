@@ -2,7 +2,6 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const { downloadAndUnzipVSCode, runTests } = require('@vscode/test-electron');
-const { rebuild } = require('@electron/rebuild');
 
 async function main() {
     const root = path.resolve(__dirname, '..');
@@ -10,11 +9,18 @@ async function main() {
     const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'headroom-vscode-'));
     const extensionPath = path.join(temporaryDirectory, 'extension');
     const nativeAddon = path.join(root, 'node_modules', 'better-sqlite3', 'build', 'Release', 'better_sqlite3.node');
-    const nativeAddonBackup = path.join(temporaryDirectory, 'better_sqlite3.node');
+    // Keep the backup outside the temp tree used by VS Code/Electron so an
+    // interrupted native rebuild cannot remove the only working Node addon.
+    const nativeAddonBackupDirectory = path.join(root, '.test-cache');
+    fs.mkdirSync(nativeAddonBackupDirectory, { recursive: true });
+    const nativeAddonBackup = path.join(nativeAddonBackupDirectory, `better-sqlite3-${process.pid}.node`);
     let extensionLinked = false;
     let nativeAddonBackedUp = false;
     try {
-        const vscodeExecutablePath = await downloadAndUnzipVSCode({ version });
+        const cachedExecutable = path.join(root, '.vscode-test', `vscode-win32-${process.arch}-archive-${version}`, 'Code.exe');
+        const vscodeExecutablePath = fs.existsSync(cachedExecutable)
+            ? cachedExecutable
+            : await downloadAndUnzipVSCode({ version });
         const installPath = path.dirname(vscodeExecutablePath);
         const appRoot = [installPath, ...fs.readdirSync(installPath, { withFileTypes: true })
             .filter((entry) => entry.isDirectory())
@@ -32,6 +38,10 @@ async function main() {
         }
         fs.copyFileSync(nativeAddon, nativeAddonBackup);
         nativeAddonBackedUp = true;
+        // Electron rebuild derives its cache directory from the current user's
+        // profile. Import it only after the caller has had a chance to provide
+        // a workspace-local USERPROFILE in restricted environments.
+        const { rebuild } = require('@electron/rebuild');
         await rebuild({
             buildPath: root,
             electronVersion,
@@ -59,9 +69,15 @@ async function main() {
         }
     }
     finally {
-        if (nativeAddonBackedUp) {
+        if (nativeAddonBackedUp && fs.existsSync(nativeAddonBackup)) {
+            fs.mkdirSync(path.dirname(nativeAddon), { recursive: true });
             fs.copyFileSync(nativeAddonBackup, nativeAddon);
         }
+        else if (nativeAddonBackedUp) {
+            console.error('The saved better-sqlite3 addon backup is missing; the Node addon could not be restored.');
+            process.exitCode = 1;
+        }
+        if (fs.existsSync(nativeAddonBackup)) fs.rmSync(nativeAddonBackup, { force: true });
         if (extensionLinked) {
             fs.unlinkSync(extensionPath);
         }

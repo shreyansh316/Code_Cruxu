@@ -18,6 +18,7 @@ import { ExecutionControl } from '../domain';
 import { applyMigrations, ObjectiveRepository, SqliteConnection, TaskRepository } from '../storage';
 import { CONFIGURATION_DEFAULTS, validateHeadroomConfiguration, } from './Configuration';
 import { registerStatusTreeViews } from './StatusTreeProviders';
+import { createSecretStorageAdapter } from '../infrastructure/SecretStorageAdapter';
 export class HeadroomContext {
     _context;
     _disposables = [];
@@ -95,6 +96,10 @@ export class HeadroomContext {
             vscode.window.showInformationMessage(result.changed
                 ? 'HEADROOM: Execution resumed.'
                 : 'HEADROOM: Execution is already running.');
+        }), vscode.commands.registerCommand(COMMANDS.CONFIGURE_PROVIDER_CREDENTIAL, async () => {
+            await this._configureProviderCredential();
+        }), vscode.commands.registerCommand(COMMANDS.CLEAR_PROVIDER_CREDENTIAL, async () => {
+            await this._clearProviderCredential();
         }));
         // Register all disposables with extension context
         this._context.subscriptions.push(...this._disposables);
@@ -114,6 +119,46 @@ export class HeadroomContext {
             ? `Active — Execution ${this._executionControl.status.toLowerCase()}.`
             : 'Not initialized.';
         vscode.window.showInformationMessage(`HEADROOM Status: ${status}`);
+    }
+    async _configureProviderCredential() {
+        const provider = await this._pickCredentialProvider();
+        if (!provider) return;
+        const credential = await vscode.window.showInputBox({
+            prompt: `Enter the ${provider} API credential. It will be stored in VS Code SecretStorage.`,
+            password: true, ignoreFocusOut: true,
+            validateInput: (value) => typeof value === 'string' && value.trim().length > 0
+                && value.length <= 4096 && !/[\r\n]/.test(value)
+                ? undefined : 'Enter a non-empty, single-line credential of at most 4096 characters.',
+        });
+        if (credential === undefined) return;
+        const store = createSecretStorageAdapter(this._context.secrets);
+        try {
+            await store.storeCredential(provider, credential);
+            vscode.window.showInformationMessage(`HEADROOM: ${provider} credential stored securely.`);
+        }
+        catch {
+            vscode.window.showErrorMessage(`HEADROOM could not store the ${provider} credential in VS Code SecretStorage.`);
+        }
+    }
+    async _clearProviderCredential() {
+        const provider = await this._pickCredentialProvider();
+        if (!provider) return;
+        const store = createSecretStorageAdapter(this._context.secrets);
+        try {
+            await store.deleteCredential(provider);
+            vscode.window.showInformationMessage(`HEADROOM: ${provider} credential removed.`);
+        }
+        catch {
+            vscode.window.showErrorMessage(`HEADROOM could not remove the ${provider} credential from VS Code SecretStorage.`);
+        }
+    }
+    async _pickCredentialProvider() {
+        const options = [
+            { label: 'Gemini', description: 'Google AI provider', provider: 'gemini' },
+            { label: 'OpenAI', description: 'OpenAI provider', provider: 'openai' },
+        ];
+        const selected = await vscode.window.showQuickPick(options, { placeHolder: 'Select provider credential' });
+        return selected?.provider;
     }
     dispose() {
         let disposalError;

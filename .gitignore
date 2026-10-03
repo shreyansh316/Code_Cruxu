@@ -45,3 +45,7 @@ Thumbs.db
 /test-results/
 /.vscode-test/
 /.nyc_output/
+/.npm-cache/
+/.node-gyp-cache/
+/.extension-test-profile/
+/.test-cache/

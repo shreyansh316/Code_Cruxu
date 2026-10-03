@@ -16,6 +16,8 @@ export const COMMANDS = {
     SHOW_STATUS: 'headroom.showStatus',
     PAUSE_EXECUTION: 'headroom.pauseExecution',
     RESUME_EXECUTION: 'headroom.resumeExecution',
+    CONFIGURE_PROVIDER_CREDENTIAL: 'headroom.configureProviderCredential',
+    CLEAR_PROVIDER_CREDENTIAL: 'headroom.clearProviderCredential',
 };
 // ============================================================
 // VIEW IDs — must match package.json contributes.views

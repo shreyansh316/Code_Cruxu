@@ -18,7 +18,7 @@ Communication is designed to follow adjacent levels of this hierarchy. Employees
 
 ## Current implementation
 
-The repository currently provides the VS Code extension foundation, pure domain contracts and invariants for organization hierarchy, objectives, and tasks, explicit objective and task lifecycle transitions, hierarchy-aware task assignment checks, task dependency validation and readiness, in-memory execution controls, and SQLite CRUD/query repositories for core records. Its schema is applied through versioned migrations. The extension activates, registers commands, displays a status bar item, and shows a first-activation welcome message. The executable and test code is JavaScript; runtime checks enforce identifier constraints that were previously represented by TypeScript brands.
+The repository currently provides application workflows for objectives, approved plans, task assignment, results, reviews, durable dependency-ready queueing, bounded scheduling, interruption recovery, and deterministic execution reports. SQLite stores core records, audit history, provider usage, and the durable queue through versioned migrations. Agent runtime contracts enforce repository-resolved identity and hierarchy authorization. A provider-neutral AI request/response port exists, but no real provider adapter is connected. Provider credentials are configured through VS Code SecretStorage commands. The extension registers tree views and commands, displays a status bar item, and shows a first-activation welcome message. Executable and test code is JavaScript; runtime checks enforce identifier constraints that were previously represented by TypeScript brands.
 
 | Command | Current behavior |
 |---|---|
@@ -27,10 +27,12 @@ The repository currently provides the VS Code extension foundation, pure domain 
 | `HEADROOM: New Objective` | Placeholder message; objective intake is planned for a later phase. |
 | `HEADROOM: Pause Execution` | Sets the in-memory execution state to paused; repeated pauses are safe. |
 | `HEADROOM: Resume Execution` | Sets the in-memory execution state to running; repeated resumes are safe. |
+| `HEADROOM: Configure AI Provider Credential` | Collects a provider credential in a password input and stores it in VS Code SecretStorage. |
+| `HEADROOM: Clear AI Provider Credential` | Removes a provider credential from VS Code SecretStorage. |
 
-The Activity Bar container and Organization and Active Tasks views are contributed in the extension manifest; tree data providers are not implemented yet. On activation, the extension opens one SQLite database under VS Code global storage, enables foreign keys, and applies pending versioned schema migrations on that connection. The migration ledger records applied versions atomically with their schema changes. Repositories provide persistence for core records; VS Code views and application workflows are still planned. AI provider settings are declared, but no AI provider is connected. No production users, projects, or task records are included.
+The Activity Bar container and organization, objective, and active task views are contributed in the manifest and backed by repository data providers. On activation, the extension opens one SQLite database under VS Code global storage, enables foreign keys, and applies pending versioned schema migrations on that connection. The migration ledger records applied versions atomically with their schema changes. No production users, projects, or task records are included.
 
-Phases 001–014 established the extension foundation, architecture and SQLite compatibility, canonical SQLite schema, configuration validation, connection lifecycle, versioned schema migrations, pure domain contracts, core entity repositories, objective and task lifecycle rules, hierarchy-aware task assignment checks, in-memory pause/resume controls, and task dependency validation and readiness. The reconstructed 100-phase plan is in `headroom_100_phase_roadmap.md`; later phases remain planned until implemented and verified.
+Phases 001–045 establish the extension foundation, application and infrastructure contracts, SQLite persistence, task workflows and orchestration, secure credential storage, and provider-neutral AI interfaces. Phases 046 onward remain planned until implemented and verified. The reconstructed 100-phase plan is in `headroom_100_phase_roadmap.md`.
 
 ## Requirements
 
@@ -105,7 +107,7 @@ headroom_100_phase_roadmap.md
                      Reconstructed project roadmap and phase criteria
 ```
 
-The intended dependency direction is VS Code integration → application → domain → infrastructure → storage. The domain provides pure types, invariants, and objective lifecycle rules; storage provides connection lifecycle, versioned schema migrations, and typed core repositories. Application use cases, infrastructure adapters, and agent runtime remain future roadmap work.
+The dependency direction keeps VS Code integration at the edge, application use cases on ports, domain rules pure, and infrastructure/storage behind adapters and repositories. Agent runtime and provider interfaces are implemented; production AI provider integration remains planned.
 
 ## Extension settings
 
@@ -113,14 +115,14 @@ The extension contributes these settings in VS Code:
 
 | Setting | Default | Purpose |
 |---|---:|---|
-| `headroom.ai.provider` | `mock` | Selects the configured provider name (`mock`, `gemini`, or `openai`); provider integration is not implemented yet. |
+| `headroom.ai.provider` | `mock` | Selects the configured provider name (`mock`, `gemini`, or `openai`). Provider calls are not implemented yet. |
 | `headroom.ai.defaultModel` | `gemini-2.0-flash` | Default model setting for future standard tasks. |
 | `headroom.ai.reasoningModel` | `gemini-2.5-pro` | Model setting for future reasoning tasks. |
 | `headroom.execution.maxRetries` | `2` | Configured maximum retry count for future execution behavior. |
 | `headroom.execution.parallelLimit` | `4` | Configured concurrency limit for future execution behavior. |
 | `headroom.debug.verbose` | `false` | Verbose-debug setting. |
 
-These are manifest settings only; API credentials and provider calls are not part of the current implementation.
+Provider credentials can be entered or removed with **HEADROOM: Configure AI Provider Credential** and **HEADROOM: Clear AI Provider Credential**. They are stored through VS Code SecretStorage and are not contributed as settings. Provider calls remain planned.
 
 ## Roadmap and project status
 

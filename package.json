@@ -78,6 +78,16 @@
         "command": "headroom.resumeExecution",
         "title": "HEADROOM: Resume Execution",
         "category": "HEADROOM"
+      },
+      {
+        "command": "headroom.configureProviderCredential",
+        "title": "HEADROOM: Configure AI Provider Credential",
+        "category": "HEADROOM"
+      },
+      {
+        "command": "headroom.clearProviderCredential",
+        "title": "HEADROOM: Clear AI Provider Credential",
+        "category": "HEADROOM"
       }
     ],
     "configuration": {
@@ -91,7 +101,7 @@
             "openai"
           ],
           "default": "mock",
-          "description": "AI provider for HEADROOM agents. Use 'mock' for testing without API keys."
+          "description": "AI provider for HEADROOM agents. Configure provider credentials with the credential commands."
         },
         "headroom.ai.defaultModel": {
           "type": "string",
@@ -134,6 +144,12 @@
         },
         {
           "command": "headroom.showStatus"
+        },
+        {
+          "command": "headroom.configureProviderCredential"
+        },
+        {
+          "command": "headroom.clearProviderCredential"
         }
       ]
     }
