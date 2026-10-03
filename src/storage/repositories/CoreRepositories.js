@@ -89,14 +89,31 @@ export class TaskRepository extends BaseSqliteRepository {
             timeBudgetMs: 'time_budget_ms', startedAt: 'started_at', completedAt: 'completed_at',
         });
     }
-    create(value) { return this.insert(value); }
-    list() { return this.query(); }
-    listByStatus(status) { return this.query('status = ?', [status]); }
-    listByProject(projectId) { return this.query('project_id = ?', [projectId]); }
+    create(value) { return this.insert(serializeTask(value)); }
+    getById(id) { return mapTask(super.getById(id)); }
+    list() { return this.query().map(mapTask); }
+    listByStatus(status) { return this.query('status = ?', [status]).map(mapTask); }
+    listByProject(projectId) { return this.query('project_id = ?', [projectId]).map(mapTask); }
     update(id, changes) {
-        return this.updateById(id, changes);
+        return this.updateById(id, serializeTask(changes));
     }
     delete(id) { return this.deleteById(id); }
+}
+
+function serializeTask(value) {
+    if (!value || !Object.hasOwn(value, 'acceptanceCriteria') || value.acceptanceCriteria == null
+        || typeof value.acceptanceCriteria === 'string') return value;
+    return { ...value, acceptanceCriteria: JSON.stringify(value.acceptanceCriteria) };
+}
+
+function mapTask(row) {
+    if (!row || typeof row.acceptanceCriteria !== 'string') return row;
+    try {
+        return { ...row, acceptanceCriteria: JSON.parse(row.acceptanceCriteria) };
+    }
+    catch {
+        return row;
+    }
 }
 
 const MEMORY_SCOPE_OWNERS = {
