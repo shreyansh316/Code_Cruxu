@@ -2,7 +2,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createAIProviderPort, createAIProviderRequest, createBoundedAIProvider } from '../src/application';
 import { createAIUsageRecorder, createGeminiAIProviderAdapter } from '../src/infrastructure';
-import { AIUsageRepository, SqliteConnection, applyMigrations } from '../src/storage';
+import { AgentRepository, AIUsageRepository, ObjectiveRepository, ProjectRepository,
+    SCHEMA_MIGRATIONS, SqliteConnection, TaskRepository, applyMigrations } from '../src/storage';
 
 const request = createAIProviderRequest({ requestId: 'request-047', model: 'gemini-test-model',
     systemPrompt: 'Return structured JSON.', input: { instruction: 'Summarize.' },
@@ -54,6 +55,8 @@ describe('Phase 047 — bounded AI request policy', () => {
         const result = await bounded.generate(request, { budget });
         expect(provider.generate).toHaveBeenCalledTimes(2);
         expect(usageRecorder.recordUsage).toHaveBeenCalledTimes(2);
+        expect(usageRecorder.recordUsage.mock.calls.map(([entry]) => [entry.requestId, entry.attempt]))
+            .toEqual([['request-047', 1], ['request-047', 2]]);
         expect(result.finishReason).toBe('STOP');
         expect(result.usage).toEqual({ inputTokens: 16, outputTokens: 3 });
 
@@ -116,14 +119,37 @@ describe('Phase 047 — bounded AI request policy', () => {
         connections.push(connection);
         const database = connection.open(':memory:');
         applyMigrations(database);
+        new AgentRepository(database).create({ id: 'usage-agent-047', name: 'Agent', role: 'CEO' });
+        const objective = new ObjectiveRepository(database).create({ id: 'usage-objective-047',
+            title: 'Usage objective', description: 'Usage attribution' });
+        const project = new ProjectRepository(database).create({ id: 'usage-project-047', name: 'Usage project', objectiveId: objective.id });
+        new TaskRepository(database).create({ id: 'usage-task-047', taskCode: 'USAGE-047', title: 'Usage task', projectId: project.id });
         const usageRepository = new AIUsageRepository(database);
-        const usageRecorder = createAIUsageRecorder({ usageRepository, purpose: 'bounded-test',
-            estimateCost: () => 0, idFactory: () => 'usage-policy-047' });
+        let usageId = 0;
+        const usageRecorder = createAIUsageRecorder({ usageRepository, agentId: 'usage-agent-047', taskId: 'usage-task-047',
+            purpose: 'bounded-test', estimateCost: () => 0, idFactory: () => `usage-policy-047-${++usageId}` });
         const provider = { generate: vi.fn(async () => response()) };
         const bounded = createBoundedAIProvider({ provider, inputTokenCounter: async () => 12, usageRecorder });
         await bounded.generate(request, { budget });
-        expect(usageRepository.getById('usage-policy-047')).toMatchObject({
+        expect(usageRepository.getById('usage-policy-047-1')).toMatchObject({
+            requestId: request.requestId, attempt: 1, agentId: 'usage-agent-047', taskId: 'usage-task-047',
             model: request.model, inputTokens: 8, outputTokens: 3, purpose: 'bounded-test', success: true,
+        });
+        expect(usageRepository.listByTask('usage-task-047')).toHaveLength(1);
+    });
+
+    it('adds request correlation without losing existing usage rows during migration', () => {
+        const connection = new SqliteConnection();
+        connections.push(connection);
+        const database = connection.open(':memory:');
+        applyMigrations(database, SCHEMA_MIGRATIONS.slice(0, 5));
+        database.prepare(`INSERT INTO ai_usages
+            (id, model, input_tokens, output_tokens, estimated_cost, duration_ms)
+            VALUES (?, ?, ?, ?, ?, ?)`)
+            .run('usage-before-correlation', 'legacy-model', 4, 2, 0, 1);
+        applyMigrations(database);
+        expect(new AIUsageRepository(database).getById('usage-before-correlation')).toMatchObject({
+            requestId: null, attempt: 1, model: 'legacy-model', inputTokens: 4, outputTokens: 2,
         });
     });
 

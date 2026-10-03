@@ -10,10 +10,10 @@ export function createAIUsageRecorder({ usageRepository, agentId = null, taskId 
         throw new TypeError('AI usage cost and identifier providers must be functions.');
     }
     return Object.freeze({
-        recordUsage({ model, usage, durationMs, success, purpose: requestPurpose } = {}) {
+        recordUsage({ requestId, attempt = 1, model, usage, durationMs, success, purpose: requestPurpose } = {}) {
             const estimatedCost = estimateCost(model, usage);
             return usageRepository.record({
-                id: idFactory(), agentId, taskId, model,
+                id: idFactory(), requestId, attempt, agentId, taskId, model,
                 inputTokens: usage?.inputTokens, outputTokens: usage?.outputTokens,
                 estimatedCost, durationMs, purpose: requestPurpose ?? purpose,
                 success,

@@ -102,7 +102,7 @@ describe('Phase 039 — execution queue', () => {
         const legacyTasks = new TaskRepository(oldDatabase);
         legacyTasks.create({ id: 'legacy-task-039', taskCode: 'LEGACY-039', title: 'Preserve me',
             status: TaskStatus.ASSIGNED, acceptanceCriteria: [] });
-        expect(applyMigrations(oldDatabase)).toBe(5);
+        expect(applyMigrations(oldDatabase)).toBe(SCHEMA_MIGRATIONS.at(-1).version);
         expect(new TaskRepository(oldDatabase).getById('legacy-task-039').title).toBe('Preserve me');
         expect(new ExecutionQueueRepository(oldDatabase).listByState()).toEqual([]);
         oldConnection.close();

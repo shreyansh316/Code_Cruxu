@@ -127,6 +127,16 @@ export const SCHEMA_MIGRATIONS = [
           CREATE INDEX idx_execution_queue_ready ON execution_queue(state, queued_at, task_id);
         `),
     },
+    {
+        version: 6,
+        name: 'ai-usage-request-correlation',
+        up: (database) => database.exec(`
+          ALTER TABLE ai_usages ADD COLUMN request_id TEXT;
+          ALTER TABLE ai_usages ADD COLUMN attempt INTEGER NOT NULL DEFAULT 1 CHECK (attempt > 0);
+          CREATE UNIQUE INDEX idx_ai_usages_request_attempt ON ai_usages(request_id, attempt)
+            WHERE request_id IS NOT NULL;
+        `),
+    },
 ];
 const CREATE_MIGRATION_LEDGER_SQL = `
   CREATE TABLE IF NOT EXISTS schema_migrations (

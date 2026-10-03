@@ -34,9 +34,9 @@ export function createBoundedAIProvider({ provider, inputTokenCounter, usageReco
                 timedOut = true;
                 controller.abort();
             }, limits.timeoutMs);
-            const record = async (usage, success) => {
+            const record = async (usage, success, attempt = 1) => {
                 try {
-                    await usageRecorder.recordUsage({ requestId: request.requestId, model: request.model,
+                    await usageRecorder.recordUsage({ requestId: request.requestId, attempt, model: request.model,
                         usage, durationMs: Math.max(0, Date.now() - startedAt), success, purpose });
                 }
                 catch {
@@ -95,7 +95,7 @@ export function createBoundedAIProvider({ provider, inputTokenCounter, usageReco
                         inputTokens: totalUsage.inputTokens + response.usage.inputTokens,
                         outputTokens: totalUsage.outputTokens + response.usage.outputTokens,
                     };
-                    await record(response.usage, response.finishReason === 'STOP');
+                    await record(response.usage, response.finishReason === 'STOP', attempt + 1);
                     finalResponse = response;
                     if (signal?.aborted && response.finishReason === 'CANCELLED') {
                         return Object.freeze({ ...response, usage: Object.freeze(totalUsage) });

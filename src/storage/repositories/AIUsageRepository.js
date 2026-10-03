@@ -14,15 +14,18 @@ export class AIUsageRepository {
     record(value) {
         validateUsage(value);
         const id = assertEntityId(value.id, 'AI usage id');
+        const requestId = value.requestId == null ? null : assertEntityId(value.requestId, 'AI request id');
+        const attempt = value.attempt ?? 1;
         const agentId = value.agentId == null ? null : assertEntityId(value.agentId, 'AI usage agent id');
         const taskId = value.taskId == null ? null : assertEntityId(value.taskId, 'AI usage task id');
         this.database.prepare(`
           INSERT INTO ai_usages (
             id, agent_id, task_id, model, input_tokens, output_tokens,
-            estimated_cost, duration_ms, purpose, success
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            estimated_cost, duration_ms, purpose, success, request_id, attempt
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(id, agentId, taskId, value.model.trim(), value.inputTokens, value.outputTokens,
-            value.estimatedCost, value.durationMs, value.purpose?.trim() || null, Number(value.success ?? true));
+            value.estimatedCost, value.durationMs, value.purpose?.trim() || null, Number(value.success ?? true),
+            requestId, attempt);
         return this.getById(id);
     }
 
@@ -50,6 +53,8 @@ export class AIUsageRepository {
 
 function validateUsage(value) {
     if (!value || typeof value.model !== 'string' || value.model.trim() === ''
+        || (value.requestId != null && (typeof value.requestId !== 'string' || value.requestId.trim() === ''))
+        || !Number.isSafeInteger(value.attempt ?? 1) || (value.attempt ?? 1) < 1 || (value.attempt ?? 1) > 4
         || !Number.isSafeInteger(value.inputTokens) || value.inputTokens < 0
         || !Number.isSafeInteger(value.outputTokens) || value.outputTokens < 0
         || !Number.isFinite(value.estimatedCost) || value.estimatedCost < 0
@@ -63,7 +68,8 @@ function validateUsage(value) {
 function mapUsage(row) {
     if (!row) return undefined;
     return {
-        id: row.id, agentId: row.agent_id, taskId: row.task_id, model: row.model,
+        id: row.id, requestId: row.request_id, attempt: row.attempt,
+        agentId: row.agent_id, taskId: row.task_id, model: row.model,
         inputTokens: row.input_tokens, outputTokens: row.output_tokens,
         estimatedCost: row.estimated_cost, durationMs: row.duration_ms,
         purpose: row.purpose, success: row.success === 1, createdAt: row.created_at,
