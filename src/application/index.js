@@ -29,6 +29,7 @@ export { createDirectorObjectiveAnalysis } from './directorAnalysis';
 export { createDirectorPlanProposal } from './directorPlanProposal';
 export { createOfficeHeadRouting } from './officeHeadRouting';
 export { createOfficeConfigurationUseCase } from './officeConfiguration';
+export { createOfficeWorkforceConfigurationUseCase } from './officeWorkforceConfiguration';
 export { createDepartmentTaskDecomposition } from './departmentDecomposition';
 export { getPromptContract, listPromptContractIds } from './promptRegistry';
 export { assembleBoundedAgentContext } from './contextAssembly';
