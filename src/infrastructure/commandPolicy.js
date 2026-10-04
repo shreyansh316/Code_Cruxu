@@ -1,4 +1,4 @@
-import { basename, resolve } from 'path';
+import { resolve } from 'path';
 import { DomainInvariantError } from '../domain/errors';
 
 const MAX_ARGUMENTS = 100;
@@ -9,7 +9,7 @@ const SHELLS = new Set(['sh', 'bash', 'dash', 'zsh', 'fish', 'cmd', 'powershell'
 export function normalizeAllowedExecutable(command) {
     if (typeof command !== 'string' || !command.trim()) throw new DomainInvariantError('invalid-command-allowlist', 'Allowed executable paths must be non-empty.');
     const executable = resolve(command);
-    const name = basename(executable).toLowerCase().replace(/\.exe$/, '');
+    const name = command.split(/[\\/]/).at(-1).toLowerCase().replace(/\.exe$/, '');
     if (SHELLS.has(name)) throw new DomainInvariantError('command-shell-not-allowed', 'Shell interpreters cannot be added to the command allowlist.');
     return executable;
 }
