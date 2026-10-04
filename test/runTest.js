@@ -2,7 +2,11 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const { execFileSync } = require('child_process');
-const { downloadAndUnzipVSCode, runTests } = require('@vscode/test-electron');
+const {
+    downloadAndUnzipVSCode,
+    resolveCliPathFromVSCodeExecutablePath,
+    runTests,
+} = require('@vscode/test-electron');
 
 async function main() {
     const root = path.resolve(__dirname, '..');
@@ -23,20 +27,13 @@ async function main() {
     let nativeAddonBackedUp = false;
     let packagePath;
     try {
-        const cachedExecutable = path.join(root, '.vscode-test', `vscode-win32-${process.arch}-archive-${version}`, 'Code.exe');
-        const vscodeExecutablePath = fs.existsSync(cachedExecutable)
-            ? cachedExecutable
-            : await downloadAndUnzipVSCode({ version });
-        const installPath = path.dirname(vscodeExecutablePath);
-        const appRoot = [installPath, ...fs.readdirSync(installPath, { withFileTypes: true })
-            .filter((entry) => entry.isDirectory())
-            .map((entry) => path.join(installPath, entry.name))]
-            .find((candidate) => fs.existsSync(path.join(candidate, 'resources', 'app', 'package.json')));
+        const vscodeExecutablePath = await downloadAndUnzipVSCode({ version });
+        const appRoot = findVSCodeAppRoot(vscodeExecutablePath);
         if (!appRoot) {
             throw new Error(`Could not locate VS Code ${version} runtime metadata.`);
         }
         const appPackage = JSON.parse(fs.readFileSync(
-            path.join(appRoot, 'resources', 'app', 'package.json'), 'utf8',
+            path.join(appRoot, 'package.json'), 'utf8',
         ));
         const electronVersion = appPackage.devDependencies?.electron;
         if (!electronVersion) {
@@ -85,7 +82,7 @@ async function main() {
             } else {
                 const installData = path.join(temporaryDirectory, 'install-data');
                 const installedExtensions = path.join(temporaryDirectory, 'installed-extensions');
-                const vscodeCli = path.join(path.dirname(vscodeExecutablePath), 'bin', 'code.cmd');
+                const vscodeCli = resolveCliPathFromVSCodeExecutablePath(vscodeExecutablePath);
                 if (!fs.existsSync(vscodeCli)) throw new Error('VS Code CLI is missing from the test runtime.');
                 const installArgs = [
                     `--user-data-dir=${installData}`, `--extensions-dir=${installedExtensions}`,
@@ -109,7 +106,7 @@ async function main() {
                 extensionTestsPath = packagedTestSuite;
             }
         } else {
-            fs.symlinkSync(root, extensionPath, 'junction');
+            fs.symlinkSync(root, extensionPath, process.platform === 'win32' ? 'junction' : 'dir');
             extensionLinked = true;
         }
         const exitCode = await runTests({
@@ -148,11 +145,31 @@ async function main() {
 }
 
 function runVscodeCli(cliPath, args, options) {
-    const quote = (value) => `'${String(value).replace(/'/g, "''")}'`;
-    const command = `& ${quote(cliPath)} ${args.map(quote).join(' ')}`;
-    return execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', command], {
-        ...options, windowsHide: true,
+    if (process.platform === 'win32') {
+        const quote = (value) => `'${String(value).replace(/'/g, "''")}'`;
+        const command = `& ${quote(cliPath)} ${args.map(quote).join(' ')}`;
+        return execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', command], {
+            ...options,
+            windowsHide: true,
+        });
+    }
+    return execFileSync(cliPath, args, {
+        ...options,
     });
+}
+
+function findVSCodeAppRoot(vscodeExecutablePath) {
+    let directory = path.dirname(vscodeExecutablePath);
+    for (let depth = 0; depth < 6; depth += 1) {
+        for (const resourcesDirectory of ['resources', 'Resources']) {
+            const candidate = path.join(directory, resourcesDirectory, 'app');
+            if (fs.existsSync(path.join(candidate, 'package.json'))) return candidate;
+        }
+        const parent = path.dirname(directory);
+        if (parent === directory) break;
+        directory = parent;
+    }
+    return undefined;
 }
 
 main().catch((error) => {

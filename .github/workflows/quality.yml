@@ -16,8 +16,18 @@ concurrency:
 
 jobs:
   quality:
-    name: Windows x64 quality gates
-    runs-on: windows-latest
+    name: ${{ matrix.target }} quality gates
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2025
+            target: win32-x64
+          - os: ubuntu-24.04
+            target: linux-x64
+          - os: macos-15-intel
+            target: darwin-x64
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     steps:
       - name: Check out repository
@@ -37,6 +47,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Verify runner target
+        run: node scripts/check-platform.js ${{ matrix.target }}
+
       - name: JavaScript static checks
         run: npm run typecheck
 
@@ -52,20 +65,30 @@ jobs:
       - name: Check native SQLite
         run: npm run check:sqlite
 
-      - name: Test Extension Host
+      - name: Test Extension Host (headless Linux)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npm run test:vscode
+
+      - name: Test Extension Host (Windows and macOS)
+        if: runner.os != 'Linux'
         run: npm run test:vscode
 
       - name: Build installable VSIX
         run: npm run package
 
       - name: Verify VSIX packaging and installed Extension Host
+        if: runner.os != 'Linux'
         run: npm run test:vscode:vsix
+
+      - name: Verify VSIX packaging and installed Extension Host (headless Linux)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npm run test:vscode:vsix
 
       - name: Upload VSIX artifact
         if: always() && hashFiles('*.vsix') != ''
         uses: actions/upload-artifact@v4
         with:
-          name: headroom-quality-${{ runner.os }}-x64
+          name: headroom-quality-${{ matrix.target }}
           path: |
             *.vsix
           if-no-files-found: error
