@@ -59,7 +59,7 @@ async function main() {
                 ? path.join(root, `${extensionManifest.name}-${extensionManifest.version}-${vsceTarget}.vsix`)
                 : path.join(nativeAddonBackupDirectory, `headroom-${process.pid}.vsix`);
             await require('@vscode/vsce').createVSIX({ cwd: root, packagePath, target: vsceTarget });
-            const files = execFileSync('tar', ['-tf', packagePath], { encoding: 'utf8' }).split(/\r?\n/).filter(Boolean);
+            const files = listVSIXFiles(packagePath);
             const required = [
                 'extension/package.json', 'extension/package.nls.json', 'extension/out/extension.js',
                 'extension/media/headroom-icon.svg', 'extension/changelog.md',
@@ -71,7 +71,7 @@ async function main() {
             const forbidden = files.find((file) => /(^|\/)(\.env[^/]*|src|tests|benchmarks|coverage|\.test-cache)(\/|$)/i.test(file)
                 || /(^|\/)(vitest|@vitest|@vscode\/test-electron)(\/|$)/i.test(file));
             if (forbidden) throw new Error(`VSIX contains excluded development or environment data: ${forbidden}`);
-            const vsixManifest = execFileSync('tar', ['-xOf', packagePath, 'extension.vsixmanifest'], { encoding: 'utf8' });
+            const vsixManifest = readVSIXFile(packagePath, 'extension.vsixmanifest');
             if (!vsixManifest.includes(`TargetPlatform="${vsceTarget}"`)) {
                 throw new Error(`VSIX target does not match the native package target ${vsceTarget}.`);
             }
@@ -98,7 +98,7 @@ async function main() {
                 }
 
                 fs.mkdirSync(extensionPath, { recursive: true });
-                execFileSync('tar', ['-xf', packagePath, '-C', extensionPath], { stdio: 'inherit' });
+                extractVSIX(packagePath, extensionPath);
                 extensionDevelopmentPath = path.join(extensionPath, 'extension');
                 const packagedTestSuite = path.join(extensionDevelopmentPath, 'test', 'suite');
                 fs.mkdirSync(path.dirname(packagedTestSuite), { recursive: true });
@@ -170,6 +170,28 @@ function findVSCodeAppRoot(vscodeExecutablePath) {
         directory = parent;
     }
     return undefined;
+}
+
+function listVSIXFiles(packagePath) {
+    const args = process.platform === 'win32' ? ['-tf', packagePath] : ['-Z1', packagePath];
+    const command = process.platform === 'win32' ? 'tar' : 'unzip';
+    return execFileSync(command, args, { encoding: 'utf8' }).split(/\r?\n/).filter(Boolean);
+}
+
+function readVSIXFile(packagePath, filePath) {
+    const args = process.platform === 'win32'
+        ? ['-xOf', packagePath, filePath]
+        : ['-p', packagePath, filePath];
+    const command = process.platform === 'win32' ? 'tar' : 'unzip';
+    return execFileSync(command, args, { encoding: 'utf8' });
+}
+
+function extractVSIX(packagePath, destination) {
+    const args = process.platform === 'win32'
+        ? ['-xf', packagePath, '-C', destination]
+        : ['-q', packagePath, '-d', destination];
+    const command = process.platform === 'win32' ? 'tar' : 'unzip';
+    execFileSync(command, args, { stdio: 'inherit' });
 }
 
 main().catch((error) => {
