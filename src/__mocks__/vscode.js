@@ -42,6 +42,7 @@ const vscode = {
             dispose: vi.fn(),
         }),
         registerTreeDataProvider: vi.fn().mockReturnValue({ dispose: vi.fn() }),
+        createWebviewPanel: vi.fn(),
     },
     // Commands
     commands: {
@@ -73,6 +74,7 @@ const vscode = {
         Left: 1,
         Right: 2,
     },
+    ViewColumn: { One: 1 },
     // Disposable
     Disposable: class {
         dispose() { }
@@ -130,7 +132,7 @@ const vscode = {
     },
 };
 export const {
-    ExtensionContext, window, commands, workspace, Uri, StatusBarAlignment,
+    ExtensionContext, window, commands, workspace, Uri, StatusBarAlignment, ViewColumn,
     Disposable, EventEmitter, TreeItem, TreeItemCollapsibleState, ThemeIcon, MarkdownString,
 } = vscode;
 export default vscode;

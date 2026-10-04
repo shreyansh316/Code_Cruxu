@@ -49,7 +49,7 @@ describe('Phase 084 — extension lifecycle hardening', () => {
         expect(context.isInitialized).toBe(true);
         expect(vscode.commands.registerCommand).toHaveBeenCalledTimes(9);
         expect(vscode.window.registerTreeDataProvider).toHaveBeenCalledTimes(3);
-        expect(extension.subscriptions).toHaveLength(registrations.length + 4);
+        expect(extension.subscriptions).toHaveLength(registrations.length + 5);
         context.dispose();
         context.dispose();
         expect(disposals).toEqual([...created].reverse());

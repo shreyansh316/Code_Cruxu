@@ -20,6 +20,7 @@ import { AgentRepository, applyMigrations, assertUpgradeCompatible, AuditLogRepo
     ExecutionQueueRepository, ObjectiveRepository, SqliteConnection, TaskRepository } from '../storage';
 import { CONFIGURATION_DEFAULTS, validateHeadroomConfiguration, } from './Configuration';
 import { registerStatusTreeViews } from './StatusTreeProviders';
+import { CommandCenterPanel, createCommandCenterSnapshot } from './CommandCenterPanel';
 import { createSecretStorageAdapter } from '../infrastructure/SecretStorageAdapter';
 import { createObjectiveIntakeUseCase } from '../application/objectiveIntake';
 import { createHumanCodeReviewDecision } from '../application/humanCodeReview';
@@ -67,6 +68,7 @@ export class HeadroomContext {
     _databaseConnection = new SqliteConnection();
     _executionControl = new ExecutionControl();
     _refreshStatusViews = () => {};
+    _commandCenter;
     constructor(context) {
         this._context = context;
     }
@@ -87,9 +89,11 @@ export class HeadroomContext {
             assertUpgradeCompatible(this._databaseConnection.database);
             applyMigrations(this._databaseConnection.database);
             const queueRepository = new ExecutionQueueRepository(this._databaseConnection.database);
+            const objectiveRepository = new ObjectiveRepository(this._databaseConnection.database);
+            const taskRepository = new TaskRepository(this._databaseConnection.database);
             const statusViews = registerStatusTreeViews(this._context, {
-                objectives: new ObjectiveRepository(this._databaseConnection.database),
-                tasks: new TaskRepository(this._databaseConnection.database),
+                objectives: objectiveRepository,
+                tasks: taskRepository,
             }, async () => readOperationalHealth({
                 database: () => diagnoseDatabaseIntegrity(this._databaseConnection.database),
                 queue: () => ({ queued: queueRepository.listByState('QUEUED').length,
@@ -99,6 +103,12 @@ export class HeadroomContext {
             }));
             this._refreshStatusViews = statusViews.refresh;
             for (const disposable of statusViews.disposables) this._addDisposable(disposable);
+            this._commandCenter = new CommandCenterPanel(() => createCommandCenterSnapshot({
+                objectives: objectiveRepository.list(),
+                tasks: taskRepository.list(),
+                executionStatus: this._executionControl.status,
+            }));
+            this._addDisposable(this._commandCenter);
             // 1. Register commands
             this._registerCommands();
             // 2. Validate contributed settings and report invalid values once.
@@ -136,8 +146,7 @@ export class HeadroomContext {
     }
     _registerCommands() {
         this._addDisposable(vscode.commands.registerCommand(COMMANDS.OPEN_DASHBOARD, () => {
-            // Phase 015: WebviewPanel implementation
-            vscode.window.showInformationMessage(getMessage('dashboard.placeholder'));
+            this._commandCenter.show();
         }));
         this._addDisposable(vscode.commands.registerCommand(COMMANDS.NEW_OBJECTIVE, async () => {
             await this._createObjective();
@@ -231,6 +240,7 @@ export class HeadroomContext {
             return;
         }
         this._refreshStatusViews();
+        this._commandCenter?.refresh();
         vscode.window.showInformationMessage(getMessage('objective.created'));
     }
     async _configureProviderCredential() {
