@@ -1,5 +1,6 @@
 const assert = require('assert/strict');
 const vscode = require('vscode');
+const { runWorkflow } = require('./workflow');
 
 async function run() {
     const extension = vscode.extensions.all.find((entry) => entry.packageJSON.name === 'headroom');
@@ -35,6 +36,9 @@ async function run() {
         await vscode.commands.executeCommand(command, argument);
     }
     assert.equal(extension.isActive, true, 'HEADROOM remains active after primary native workflows.');
+    const workflowApiPath = process.env.HEADROOM_WORKFLOW_API;
+    assert.ok(workflowApiPath, 'The Extension Host must receive the bundled workflow API.');
+    await runWorkflow(require(workflowApiPath));
 }
 
 module.exports = { run };

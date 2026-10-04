@@ -2,19 +2,20 @@ import { createUseCase } from './useCase';
 
 const MAX_PARALLEL_LIMIT = 10;
 
-/** Run queued work up to a strict concurrency bound and honor pause/cancel controls. */
-export function createTaskScheduler({ queueWorkflow, queueRepository, executor, executionControl, parallelLimit } = {}) {
+/** Run queued work up to a strict concurrency bound; onStart persists lifecycle synchronously. */
+export function createTaskScheduler({ queueWorkflow, queueRepository, executor, executionControl, parallelLimit, onStart } = {}) {
     if (typeof queueWorkflow?.run !== 'function' || typeof queueRepository?.transition !== 'function'
         || typeof executor?.execute !== 'function' || typeof executionControl?.status !== 'string'
         || typeof executionControl?.pause !== 'function' || typeof executionControl?.resume !== 'function'
         || typeof executionControl?.cancel !== 'function' || !Number.isInteger(parallelLimit)
-        || parallelLimit < 1 || parallelLimit > MAX_PARALLEL_LIMIT) {
+        || parallelLimit < 1 || parallelLimit > MAX_PARALLEL_LIMIT
+        || (onStart !== undefined && typeof onStart !== 'function')) {
         throw new TypeError(`Task scheduler requires queue ports, execution control, and parallelLimit from 1 to ${MAX_PARALLEL_LIMIT}.`);
     }
     const active = new Map();
     const workflow = createUseCase({
         name: 'task-scheduler',
-        dependencies: { queueWorkflow, queueRepository, executor, executionControl, parallelLimit, active },
+        dependencies: { queueWorkflow, queueRepository, executor, executionControl, parallelLimit, onStart, active },
         execute: async ({ dependencies }) => {
             if (dependencies.executionControl.status !== 'RUNNING') {
                 return { started: [], activeCount: active.size, status: dependencies.executionControl.status };
@@ -41,6 +42,20 @@ export function createTaskScheduler({ queueWorkflow, queueRepository, executor, 
     async function runClaimed(candidate, controller, dependencies) {
         const taskId = candidate.task.id;
         try {
+            if (controller.signal.aborted) {
+                dependencies.queueRepository.transition(taskId, 'CLAIMED', 'CANCELLED');
+                return { taskId, status: 'CANCELLED' };
+            }
+            if (dependencies.onStart) {
+                const started = dependencies.onStart(candidate.task, { signal: controller.signal });
+                if (started && typeof started.then === 'function') {
+                    throw new TypeError('Task scheduler onStart must persist lifecycle changes synchronously.');
+                }
+            }
+            if (controller.signal.aborted) {
+                dependencies.queueRepository.transition(taskId, 'CLAIMED', 'CANCELLED');
+                return { taskId, status: 'CANCELLED' };
+            }
             const outcome = await waitForExecutionOrCancellation(
                 () => dependencies.executor.execute({ task: candidate.task, signal: controller.signal }), controller.signal);
             if (outcome.kind === 'cancelled') {

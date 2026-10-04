@@ -23,6 +23,7 @@ async function main() {
     const nativeAddonBackupDirectory = path.join(root, '.test-cache');
     fs.mkdirSync(nativeAddonBackupDirectory, { recursive: true });
     const nativeAddonBackup = path.join(nativeAddonBackupDirectory, `better-sqlite3-${process.pid}.node`);
+    const workflowApiPath = path.join(nativeAddonBackupDirectory, `workflow-api-${process.pid}.cjs`);
     let extensionLinked = false;
     let nativeAddonBackedUp = false;
     let packagePath;
@@ -109,11 +110,24 @@ async function main() {
             fs.symlinkSync(root, extensionPath, process.platform === 'win32' ? 'junction' : 'dir');
             extensionLinked = true;
         }
+        await require('esbuild').build({
+            entryPoints: [path.join(root, 'test', 'workflowApi.js')],
+            outfile: workflowApiPath,
+            bundle: true,
+            platform: 'node',
+            format: 'cjs',
+            target: 'node20',
+            external: ['better-sqlite3'],
+        });
         const exitCode = await runTests({
             version,
             vscodeExecutablePath,
             extensionDevelopmentPath,
             extensionTestsPath,
+            extensionTestsEnv: {
+                HEADROOM_WORKFLOW_API: workflowApiPath,
+                HEADROOM_WORKFLOW_TEMP_ROOT: nativeAddonBackupDirectory,
+            },
             launchArgs: [
                 `--user-data-dir=${path.join(temporaryDirectory, 'user-data')}`,
                 `--extensions-dir=${path.join(temporaryDirectory, 'extensions')}`,
@@ -136,6 +150,7 @@ async function main() {
             process.exitCode = 1;
         }
         if (fs.existsSync(nativeAddonBackup)) fs.rmSync(nativeAddonBackup, { force: true });
+        if (fs.existsSync(workflowApiPath)) fs.rmSync(workflowApiPath, { force: true });
         if (!packageOnly && packagePath && fs.existsSync(packagePath)) fs.rmSync(packagePath, { force: true });
         if (extensionLinked) {
             fs.unlinkSync(extensionPath);
