@@ -27,6 +27,8 @@ export function createOfficeHeadRouting({ agentRepository, hierarchyProvider } =
             if (!office || office.status !== 'ACTIVE') {
                 throw new ApplicationError('office-access-denied', 'The Office Head Manager may route only work for their active office.');
             }
+            const crossOfficeDependencies = validateDirectorDependencies(input.crossOfficeDependencies ?? [],
+                office.id, manager.id, plan, hierarchy.agents);
             if (!Array.isArray(input.routes) || input.routes.length !== plan.tasks.length) {
                 throw new ApplicationError('invalid-office-routes', 'Every approved plan task requires exactly one department route.');
             }
@@ -75,8 +77,37 @@ export function createOfficeHeadRouting({ agentRepository, hierarchyProvider } =
             return Object.freeze({ planId: plan.id, officeId: office.id,
                 departments: Object.freeze([...grouped.values()].map((entry) => Object.freeze({
                     ...entry, tasks: Object.freeze(entry.tasks), dependencies: Object.freeze(entry.dependencies),
-                }))), officeHeadDependencies: Object.freeze(officeHeadDependencies) });
+                }))), officeHeadDependencies: Object.freeze(officeHeadDependencies),
+                crossOfficeDependencies: Object.freeze(crossOfficeDependencies) });
         } });
+}
+
+function validateDirectorDependencies(edges, officeId, headManagerId, plan, agents) {
+    if (!Array.isArray(edges) || edges.length > 200) {
+        throw new ApplicationError('invalid-office-routes', 'Cross-office dependencies must be a bounded array.');
+    }
+    const taskIds = new Set(plan.tasks.map(({ id }) => id));
+    return Object.freeze(edges.map((edge) => {
+        const expectedKeys = 'dependencyTaskId,dependentHeadManagerId,dependentOfficeId,dependentTaskId,directorId,prerequisiteHeadManagerId,prerequisiteOfficeId,routedThrough';
+        if (!edge || Object.keys(edge).sort().join(',') !== expectedKeys
+            || edge.routedThrough !== 'DIRECTOR' || typeof edge.directorId !== 'string'
+            || typeof edge.dependentTaskId !== 'string' || typeof edge.dependencyTaskId !== 'string'
+            || edge.dependentOfficeId === edge.prerequisiteOfficeId) {
+            throw new ApplicationError('invalid-office-routes', 'A cross-office dependency must be a Director-routed edge between distinct offices.');
+        }
+        const director = agents.find(({ id, role, status }) => id === edge.directorId && role === AgentRole.DIRECTOR
+            && !['OFFLINE', 'ERROR'].includes(status));
+        const dependentSide = edge.dependentOfficeId === officeId && edge.dependentHeadManagerId === headManagerId
+            && taskIds.has(edge.dependentTaskId);
+        const prerequisiteSide = edge.prerequisiteOfficeId === officeId && edge.prerequisiteHeadManagerId === headManagerId
+            && taskIds.has(edge.dependencyTaskId);
+        if (!director || dependentSide === prerequisiteSide) {
+            throw new ApplicationError('invalid-office-routes', 'The Office Head cannot accept a dependency routed for another office or an unavailable Director.');
+        }
+        return Object.freeze({ dependentTaskId: edge.dependentTaskId, dependencyTaskId: edge.dependencyTaskId,
+            dependentOfficeId: edge.dependentOfficeId, prerequisiteOfficeId: edge.prerequisiteOfficeId,
+            directorId: director.id, routedBy: headManagerId });
+    }));
 }
 
 function copyTask(task) {
