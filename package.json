@@ -225,6 +225,8 @@
     }
   },
   "scripts": {
+    "typecheck": "node scripts/quality-gate.js typecheck",
+    "lint": "node scripts/quality-gate.js lint",
     "compile": "node esbuild.js",
     "watch": "node esbuild.js --watch",
     "test": "vitest run",

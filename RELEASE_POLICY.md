@@ -21,3 +21,11 @@ The latest migration is the authoritative schema version (`SCHEMA_MIGRATIONS.at(
 ## Release checks
 
 Before a release, run the full unit suite, compile, SQLite compatibility check, JavaScript-only source/test scan, `npm run test:vscode`, `npm run package`, and `npm run test:vscode:vsix`. The package command builds only for the current target. Do not claim another target until its package and host checks pass. Review the VSCE warning about the missing top-level license file before any Marketplace publication.
+
+## Continuous integration
+
+The `Quality gates` workflow runs on pushes and pull requests to `main`. It runs the JavaScript static checks and lint, unit tests, compile, native SQLite check, source Extension Host test, VSIX packaging, and packaged Extension Host test. Its current runner is Windows x64, matching the only native VSIX target verified by this policy. The workflow uploads a generated VSIX for 14 days; GitHub retains the full job log according to repository settings.
+
+HEADROOM has no semantic static type system. `npm run typecheck` parses every JavaScript source and test file with Node and enforces the JavaScript-only source rule; it does not claim TypeScript-style type analysis. `npm run lint` checks for debugger statements, trailing whitespace, and unresolved merge markers.
+
+Repository administrators must mark the `Windows x64 quality gates` check as required in GitHub branch protection to block merges when it fails. A workflow file cannot enable that repository-level setting. Release validation still requires the checks listed above; CI does not publish a release.
