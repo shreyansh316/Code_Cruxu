@@ -133,6 +133,13 @@ export const OFFICES = {
     APP: 'app-development', // Future
     RESEARCH: 'research-making', // Future
 };
+/** Supported office catalog; organizations persist only offices they explicitly enable. */
+export const OFFICE_CATALOG = Object.freeze([
+    Object.freeze({ key: 'GAME', name: 'Game Development', slug: OFFICES.GAME }),
+    Object.freeze({ key: 'WEBSITE', name: 'Website Development', slug: OFFICES.WEBSITE }),
+    Object.freeze({ key: 'APP', name: 'App Development', slug: OFFICES.APP }),
+    Object.freeze({ key: 'RESEARCH', name: 'Research/Making', slug: OFFICES.RESEARCH }),
+]);
 // ============================================================
 // WEBSITE DEV OFFICE — Department slugs
 // ============================================================

@@ -13,6 +13,40 @@ export class OrganizationRepository extends BaseSqliteRepository {
     }
     delete(id) { return this.deleteById(id); }
 }
+export class OfficeRepository extends BaseSqliteRepository {
+    constructor(database) {
+        super(database, 'offices', {
+            id: 'id', organizationId: 'organization_id', name: 'name', slug: 'slug', description: 'description',
+            status: 'status', createdAt: 'created_at', updatedAt: 'updated_at',
+        }, {
+            id: 'id', organizationId: 'organization_id', name: 'name', slug: 'slug', description: 'description', status: 'status',
+        });
+    }
+    create(value) { return this.insert(value); }
+    list() { return this.query(); }
+    listByOrganization(organizationId) { return this.query('organization_id = ?', [assertEntityId(organizationId)], 'slug, id'); }
+    getBySlug(slug) {
+        if (typeof slug !== 'string' || !slug.trim()) throw new TypeError('Office slug must be non-empty.');
+        return this.database.prepare(`SELECT ${this.selectList()} FROM offices WHERE slug = ?`).get(slug.trim());
+    }
+    update(id, changes) { return this.updateById(id, changes); }
+    delete(id) { return this.deleteById(id); }
+}
+export class DepartmentRepository extends BaseSqliteRepository {
+    constructor(database) {
+        super(database, 'departments', {
+            id: 'id', officeId: 'office_id', name: 'name', slug: 'slug', description: 'description',
+            status: 'status', createdAt: 'created_at', updatedAt: 'updated_at',
+        }, {
+            id: 'id', officeId: 'office_id', name: 'name', slug: 'slug', description: 'description', status: 'status',
+        });
+    }
+    create(value) { return this.insert(value); }
+    list() { return this.query(); }
+    listByOffice(officeId) { return this.query('office_id = ?', [assertEntityId(officeId)], 'slug, id'); }
+    update(id, changes) { return this.updateById(id, changes); }
+    delete(id) { return this.deleteById(id); }
+}
 export class ObjectiveRepository extends BaseSqliteRepository {
     constructor(database) {
         super(database, 'objectives', {
