@@ -1,10 +1,85 @@
 # HEADROOM
 
-HEADROOM is the VS Code extension maintained in the `Code_Cruxu` repository.
+<p align="center">
+  <strong>AI-powered development orchestration inside Visual Studio Code.</strong>
+</p>
 
-HEADROOM is an AI-powered **Visual Studio Code extension** being built as a hierarchical operating system for planning, executing, and verifying development work. It runs in the VS Code Extension Host; this repository is not a website or a Next.js application.
+<p align="center">
+  Plan smarter. Build faster. Verify with confidence.
+</p>
 
-The intended organization is:
+---
+
+## What is HEADROOM?
+
+**HEADROOM** is an AI-powered Visual Studio Code extension designed to help developers organize, plan, execute, and verify software development work without leaving VS Code.
+
+Instead of treating AI as only a coding assistant, HEADROOM is being built around a structured development workflow where objectives can be turned into actionable work, progress can be monitored, and results can be verified.
+
+HEADROOM is designed to help with:
+
+- Planning development work
+- Breaking objectives into actionable tasks
+- Organizing AI-assisted development
+- Tracking active work
+- Reviewing implementation decisions
+- Verifying results
+- Understanding why an implementation was chosen
+- Improving development workflows
+
+> **HEADROOM brings structured AI development workflows directly into VS Code.**
+
+---
+
+## Why HEADROOM?
+
+Modern AI coding tools can generate code quickly, but development is more than writing code.
+
+Real projects also require:
+
+- Planning
+- Prioritization
+- Coordination
+- Testing
+- Verification
+- Review
+- Debugging
+- Decision making
+- Maintaining project context
+
+HEADROOM focuses on connecting these activities into a more structured development experience.
+
+---
+
+## Built for Developers
+
+HEADROOM is designed to work alongside your existing development workflow.
+
+You continue working in:
+
+**Visual Studio Code**
+
+while HEADROOM provides an additional layer for:
+
+```text
+Objectives
+    ↓
+Planning
+    ↓
+Execution
+    ↓
+Verification
+    ↓
+Review
+    ↓
+Progress
+```
+
+---
+
+## Organization Hierarchy
+
+HEADROOM organizes AI development workflows through an explicit hierarchy:
 
 ```text
 CEO
@@ -14,7 +89,7 @@ CEO
          └─ Four AI Employees
 ```
 
-Communication is designed to follow adjacent levels of this hierarchy. Employees do not communicate with one another, department managers do not communicate directly, and cross-department coordination is routed through the Office Head Manager. This describes the planned architecture; agent orchestration is not implemented yet.
+Communication follows adjacent levels of this hierarchy. Employees do not communicate with one another, department managers do not communicate directly, and cross-department coordination is routed through the Office Head Manager. Application workflows validate Office Head, Department Manager, and employee assignments; autonomous end-to-end agent execution is not yet exposed as a user workflow.
 
 ## Current implementation
 
@@ -33,6 +108,8 @@ The repository currently provides application workflows for objectives, Director
 The Activity Bar container and organization, objective, and active task views are contributed in the manifest and backed by repository data providers. On activation, the extension opens one SQLite database under VS Code global storage, enables foreign keys, and applies pending versioned schema migrations on that connection. The migration ledger records applied versions atomically with their schema changes. No production users, projects, or task records are included.
 
 The reconstructed 100-phase plan, acceptance criteria, and verification evidence are in `headroom_100_phase_roadmap.md`. Consult each milestone's evidence before treating planned work as implemented.
+
+For the current release blocker list, platform qualification limits, and publication/rollback evidence requirements, see [PRODUCTION_READINESS.md](PRODUCTION_READINESS.md).
 
 For database, migration, interrupted-task, provider-credential, and workspace recovery procedures, see the [operational recovery guide](OPERATIONS_RECOVERY.md). The guide calls out recovery actions that are internal APIs rather than user-facing extension commands.
 
