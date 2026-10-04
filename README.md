@@ -1,208 +1,52 @@
 # HEADROOM
 
-<p align="center">
-  <strong>AI-powered development orchestration inside Visual Studio Code.</strong>
-</p>
+**Plan, organize, and verify AI-assisted development work inside Visual Studio Code.**
 
-<p align="center">
-  Plan smarter. Build faster. Verify with confidence.
-</p>
+HEADROOM is an early-stage VS Code extension for bringing more structure to software development workflows. It provides objective capture, work tracking, and supporting planning and verification capabilities in the editor.
 
----
+## Current status
 
-## What is HEADROOM?
-
-**HEADROOM** is an AI-powered Visual Studio Code extension designed to help developers organize, plan, execute, and verify software development work without leaving VS Code.
-
-Instead of treating AI as only a coding assistant, HEADROOM is being built around a structured development workflow where objectives can be turned into actionable work, progress can be monitored, and results can be verified.
-
-HEADROOM is designed to help with:
-
-- Planning development work
-- Breaking objectives into actionable tasks
-- Organizing AI-assisted development
-- Tracking active work
-- Reviewing implementation decisions
-- Verifying results
-- Understanding why an implementation was chosen
-- Improving development workflows
-
-> **HEADROOM brings structured AI development workflows directly into VS Code.**
-
----
-
-## Why HEADROOM?
-
-Modern AI coding tools can generate code quickly, but development is more than writing code.
-
-Real projects also require:
-
-- Planning
-- Prioritization
-- Coordination
-- Testing
-- Verification
-- Review
-- Debugging
-- Decision making
-- Maintaining project context
-
-HEADROOM focuses on connecting these activities into a more structured development experience.
-
----
-
-## Built for Developers
-
-HEADROOM is designed to work alongside your existing development workflow.
-
-You continue working in:
-
-**Visual Studio Code**
-
-while HEADROOM provides an additional layer for:
-
-```text
-Objectives
-    ↓
-Planning
-    ↓
-Execution
-    ↓
-Verification
-    ↓
-Review
-    ↓
-Progress
-```
-
----
-
-## Organization Hierarchy
-
-HEADROOM organizes AI development workflows through an explicit hierarchy:
-
-```text
-CEO
-└─ AI Director
-   └─ Office Head Manager
-      └─ Department Manager
-         └─ Four AI Employees
-```
-
-Communication follows adjacent levels of this hierarchy. Employees do not communicate with one another, department managers do not communicate directly, and cross-department coordination is routed through the Office Head Manager. Application workflows validate Office Head, Department Manager, and employee assignments; autonomous end-to-end agent execution is not yet exposed as a user workflow.
-
-## Current implementation
-
-The repository currently provides application workflows for objectives, Director ambiguity analysis and validated plan proposals, Office Head routing, task assignment, results, reviews, durable dependency-ready queueing, bounded scheduling, interruption recovery, and deterministic execution reports. Director outputs remain proposals: objective questions are not auto-answered and plans are not approved or activated. SQLite stores core records, audit history, request-correlated provider usage, and the durable queue through versioned migrations. Agent runtime contracts enforce repository-resolved identity and hierarchy authorization. A provider-neutral AI request/response port and Gemini REST adapter are available with bounded input/output budgets, cancellation, timeout, transient retries, and per-attempt usage recording. Provider credentials are configured through VS Code SecretStorage commands. The extension registers tree views and commands, displays a status bar item, and shows a first-activation welcome message. Executable and test code is JavaScript; runtime checks enforce identifier constraints that were previously represented by TypeScript brands.
-
-| Command | Current behavior |
-|---|---|
-| `HEADROOM: Show Status` | Reports whether the extension context initialized. |
-| `HEADROOM: Open CEO Dashboard` | Placeholder message; the dashboard UI is planned for a later phase. |
-| `HEADROOM: New Objective` | Collects a bounded title and description, persists a new objective, and refreshes the Objectives view. |
-| `HEADROOM: Pause Execution` | Sets the in-memory execution state to paused; repeated pauses are safe. |
-| `HEADROOM: Resume Execution` | Sets the in-memory execution state to running; repeated resumes are safe. |
-| `HEADROOM: Configure AI Provider Credential` | Collects a provider credential in a password input and stores it in VS Code SecretStorage. |
-| `HEADROOM: Clear AI Provider Credential` | Removes a provider credential from VS Code SecretStorage. |
-
-The Activity Bar container and organization, objective, and active task views are contributed in the manifest and backed by repository data providers. On activation, the extension opens one SQLite database under VS Code global storage, enables foreign keys, and applies pending versioned schema migrations on that connection. The migration ledger records applied versions atomically with their schema changes. No production users, projects, or task records are included.
-
-The reconstructed 100-phase plan, acceptance criteria, and verification evidence are in `headroom_100_phase_roadmap.md`. Consult each milestone's evidence before treating planned work as implemented.
-
-For the current release blocker list, platform qualification limits, and publication/rollback evidence requirements, see [PRODUCTION_READINESS.md](PRODUCTION_READINESS.md).
-
-For database, migration, interrupted-task, provider-credential, and workspace recovery procedures, see the [operational recovery guide](OPERATIONS_RECOVERY.md). The guide calls out recovery actions that are internal APIs rather than user-facing extension commands.
+HEADROOM is under active development. The extension currently supports creating and storing objectives, browsing organization and task views, pausing and resuming execution state, and configuring an AI provider credential through VS Code's secure credential storage. Some dashboard and end-to-end AI-assisted workflows are still in development. See [Production readiness](PRODUCTION_READINESS.md) for verified release status and known limitations.
 
 ## Requirements
 
 - Visual Studio Code 1.101 or newer
-- Node.js 20 or newer for development; the VS Code Extension Host supplies the runtime
-- npm (included with Node.js)
+- Node.js 20 or newer for development
+- npm
 
-The `better-sqlite3` dependency includes a native Node module. If installation or loading fails on your platform, use the SQLite compatibility check below to see the native-module error.
+## Try the extension from source
 
-## Set up for development
+1. Clone this repository and open its folder in VS Code.
+2. Install dependencies with `npm install`.
+3. Press **F5** and select **Run HEADROOM Extension** to open an Extension Development Host.
 
-1. Open this repository folder in VS Code.
-2. Install the project dependencies:
-
-   ```sh
-   npm install
-   ```
-
-3. Press **F5** and select **Run HEADROOM Extension**. The launch configuration compiles the extension and opens a separate Extension Development Host window.
-
-To compile from a terminal:
+To compile the extension from a terminal, run:
 
 ```sh
 npm run compile
 ```
 
-The compiled extension entry point is written to `out/extension.js`. Build output is generated and is not committed.
-
 ## Verify changes
-
-Run the complete unit-test suite:
 
 ```sh
 npm test
-```
-
-The unit tests run with Vitest in Node.js and use the repository's VS Code API mock where needed. Run `npm run test:vscode` to launch the real VS Code Extension Host against the source checkout. Run `npm run test:vscode:vsix` to package HEADROOM, install the VSIX into an isolated VS Code profile, and activate the packaged artifact in the Extension Host. These host checks use VS Code 1.101.0 and rebuild `better-sqlite3` for its Electron runtime.
-
-Verify that the installed native SQLite module can open and use both in-memory and temporary file databases:
-
-```sh
+npm run typecheck
+npm run lint
 npm run check:sqlite
+npm run test:vscode
 ```
+
+To test activation of the packaged extension as well, run `npm run test:vscode:vsix`.
 
 ## Package locally
-
-Build a local VS Code extension package (`.vsix`) with:
 
 ```sh
 npm run package
 ```
 
-This rebuilds `better-sqlite3` for the VS Code 1.101.0 Electron runtime, then creates a platform-targeted local `.vsix` using the `package.json` file allowlist. The artifact is labeled for the current OS and architecture because it contains a platform-specific native module. Environment files, source, tests, benchmarks, source maps, and development dependencies are excluded. The command does not publish or deploy HEADROOM. VSCE currently warns that the repository has no top-level license file. Any generated `.vsix` is ignored by Git.
+This creates a platform-specific `.vsix` file for local review. Packaging does not publish the extension. The project license must be selected by the project owner before a public release.
 
-## Project structure
+## Recovery and release information
 
-```text
-src/
-  extension.js       VS Code extension activation and deactivation
-  core/              Extension context, commands, and lifecycle
-  domain/            Pure entity types, value objects, and invariants
-  application/       Application use-case boundary
-  infrastructure/    External adapter boundary
-  storage/           SQLite connection, migrations, core repositories, and schema
-  shared/            Cross-layer runtime identifier validation
-  agents/             Agent runtime boundary
-  constants.js       Extension identifiers and shared constants
-tests/               Phase-focused Vitest tests
-scripts/             Standalone development checks
-media/               Extension assets
-headroom_100_phase_roadmap.md
-                     Reconstructed project roadmap and phase criteria
-```
-
-The dependency direction keeps VS Code integration at the edge, application use cases on ports, domain rules pure, and infrastructure/storage behind adapters and repositories. Agent runtime and provider interfaces are implemented; production AI provider integration remains planned.
-
-## Extension settings
-
-The extension contributes these settings in VS Code:
-
-| Setting | Default | Purpose |
-|---|---:|---|
-| `headroom.ai.provider` | `mock` | Selects the configured provider name (`mock`, `gemini`, or `openai`). Agent workflows do not invoke providers yet. |
-| `headroom.ai.defaultModel` | `gemini-2.0-flash` | Default model setting for future standard tasks. |
-| `headroom.ai.reasoningModel` | `gemini-2.5-pro` | Model setting for future reasoning tasks. |
-| `headroom.execution.maxRetries` | `2` | Configured maximum retry count for future execution behavior. |
-| `headroom.execution.parallelLimit` | `4` | Configured concurrency limit for future execution behavior. |
-| `headroom.debug.verbose` | `false` | Verbose-debug setting. |
-
-Provider credentials can be entered or removed with **HEADROOM: Configure AI Provider Credential** and **HEADROOM: Clear AI Provider Credential**. They are stored through VS Code SecretStorage and are not contributed as settings. The Gemini adapter supports structured JSON output, exact prompt token counting, explicit input/output token budgets, cancellation, bounded timeout/retries, and stable provider error codes. The bounded AI policy records actual usage per provider attempt through the existing usage repository. Agent workflow integration remains planned.
-
-## Roadmap and project status
-
-The roadmap records the evidence used to reconstruct the missing 100-phase plan, acceptance criteria, verification approach, and expected commit for each milestone. Phase 004 is limited to restoring accurate extension documentation. Do not treat future roadmap phases as completed features.
+- [Production readiness](PRODUCTION_READINESS.md) — release evidence, platform qualification, and outstanding decisions.
+- [Operational recovery](OPERATIONS_RECOVERY.md) — recovery guidance for extension data and development fixtures.

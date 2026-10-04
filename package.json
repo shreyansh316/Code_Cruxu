@@ -3,7 +3,7 @@
   "displayName": "%extension.displayName%",
   "description": "%extension.description%",
   "version": "0.1.0",
-  "publisher": "headroom",
+  "publisher": "Klyqor",
   "private": true,
   "repository": {
     "type": "git",

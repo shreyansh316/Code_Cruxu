@@ -1,6 +1,6 @@
 {
   "extension.displayName": "HEADROOM — AI CEO Office",
-  "extension.description": "AI-powered CEO operating system inside VS Code. Hierarchical AI organization for planning, executing, and verifying development work.",
+  "extension.description": "Plan, organize, and verify AI-assisted development work inside Visual Studio Code.",
   "views.container.title": "HEADROOM",
   "views.organization.name": "Organization",
   "views.objectives.name": "Objectives",
