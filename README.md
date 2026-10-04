@@ -32,7 +32,9 @@ The repository currently provides application workflows for objectives, Director
 
 The Activity Bar container and organization, objective, and active task views are contributed in the manifest and backed by repository data providers. On activation, the extension opens one SQLite database under VS Code global storage, enables foreign keys, and applies pending versioned schema migrations on that connection. The migration ledger records applied versions atomically with their schema changes. No production users, projects, or task records are included.
 
-Phases 001–052 establish the extension foundation, application and infrastructure contracts, SQLite persistence, task workflows and orchestration, bounded provider access, Director proposals, Office Head routing, and VS Code objective intake. Phases 053 onward remain planned until implemented and verified. The reconstructed 100-phase plan is in `headroom_100_phase_roadmap.md`.
+The reconstructed 100-phase plan, acceptance criteria, and verification evidence are in `headroom_100_phase_roadmap.md`. Consult each milestone's evidence before treating planned work as implemented.
+
+For database, migration, interrupted-task, provider-credential, and workspace recovery procedures, see the [operational recovery guide](OPERATIONS_RECOVERY.md). The guide calls out recovery actions that are internal APIs rather than user-facing extension commands.
 
 ## Requirements
 
