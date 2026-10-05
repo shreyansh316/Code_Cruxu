@@ -58,6 +58,7 @@ async function runWorkflow(api) {
 
         const intake = api.createObjectiveIntakeUseCase({ objectiveRepository, idFactory });
         const objectiveOutcome = await intake.run({ title: 'Deliver a verified file',
+            organizationId: 'e2e-org',
             description: 'Create a workspace file and prove its contents with an authorized verification command.' });
         assert.equal(objectiveOutcome.ok, true, errorText(objectiveOutcome));
         const objective = objectiveOutcome.value;

@@ -2,6 +2,8 @@ import { realpath } from 'fs/promises';
 import { isAbsolute, relative, sep } from 'path';
 import { DomainInvariantError } from '../domain/errors';
 import { normalizeAllowedExecutable, validateCommandArguments } from './commandPolicy';
+import { isSensitiveWorkspacePath } from './sensitiveWorkspacePath';
+import { hasWindowsPathAlias } from './workspacePathPolicy';
 
 /** Restrict existing workspace/process adapters to a task's explicit permission manifest. */
 export async function createTaskScopedTools({ workspaceRoot, filesystem, processRunner, permissions } = {}) {
@@ -27,12 +29,32 @@ export async function createTaskScopedTools({ workspaceRoot, filesystem, process
     return Object.freeze({
         filesystem: Object.freeze({
             readFile(path) {
-                if (!readFiles.has(relativePath(path))) return Promise.reject(denied());
-                return filesystem.readFile(path);
+                const normalized = relativePath(path);
+                if (isSensitiveWorkspacePath(normalized) || !readFiles.has(normalized)) return Promise.reject(denied());
+                return filesystem.readFile(normalized);
             },
             writeFile(path, contents) {
-                if (!writeFiles.has(relativePath(path))) return Promise.reject(denied());
-                return filesystem.writeFile(path, contents);
+                const normalized = relativePath(path);
+                if (isSensitiveWorkspacePath(normalized) || !writeFiles.has(normalized)) return Promise.reject(denied());
+                return filesystem.writeFile(normalized, contents);
+            },
+            createFile(path, contents) {
+                const normalized = relativePath(path);
+                if (isSensitiveWorkspacePath(normalized) || !writeFiles.has(normalized) || typeof filesystem.createFile !== 'function') return Promise.reject(denied());
+                return filesystem.createFile(normalized, contents);
+            },
+            deleteFile(path) {
+                const normalized = relativePath(path);
+                if (isSensitiveWorkspacePath(normalized) || !writeFiles.has(normalized) || typeof filesystem.deleteFile !== 'function') return Promise.reject(denied());
+                return filesystem.deleteFile(normalized);
+            },
+            renameFile(path, newPath) {
+                const normalized = relativePath(path);
+                const normalizedNewPath = relativePath(newPath);
+                if (isSensitiveWorkspacePath(normalized) || isSensitiveWorkspacePath(normalizedNewPath)
+                    || !writeFiles.has(normalized) || !writeFiles.has(normalizedNewPath)
+                    || typeof filesystem.renameFile !== 'function') return Promise.reject(denied());
+                return filesystem.renameFile(normalized, normalizedNewPath);
             },
         }),
         process: Object.freeze({
@@ -63,8 +85,8 @@ function pathSet(paths) {
     return result;
 }
 function relativePath(path) {
-    if (typeof path !== 'string' || !path.trim() || path.includes('\0') || isAbsolute(path)
-        || path.split(/[\\/]/).some((part) => part === '..' || part === '.')) invalid();
+    if (typeof path !== 'string' || !path.trim() || path.includes('\0') || path.includes(':') || isAbsolute(path)
+        || path.split(/[\\/]/).some((part) => part === '..' || part === '.' || hasWindowsPathAlias(part))) invalid();
     return path.replaceAll('\\', '/');
 }
 function sameArray(actual, expected) {

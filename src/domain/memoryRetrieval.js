@@ -14,10 +14,13 @@ const OWNER_PROPERTIES = ['organizationId', 'officeId', 'departmentId', 'taskId'
 
 /** Filter by exact scope/owner, then rank from explicit metadata and text matches. */
 export function retrieveScopedMemories(memories, {
-    scope, ownerId, query = '', categories, verifiedOnly = false, minImportance = 0, limit = 10,
+    scope, ownerId, ownerType, query = '', categories, verifiedOnly = false, minImportance = 0, limit = 10,
 } = {}) {
     if (!Array.isArray(memories) || !Object.values(MemoryScope).includes(scope)
         || typeof ownerId !== 'string' || ownerId.trim() === ''
+        || (['DECISION', 'KNOWLEDGE'].includes(scope)
+            ? !OWNER_PROPERTIES.includes(ownerType)
+            : ownerType !== undefined)
         || typeof query !== 'string' || query.length > 500
         || (categories !== undefined && (!Array.isArray(categories)
             || categories.some((category) => typeof category !== 'string' || category.trim() === '')))
@@ -28,7 +31,7 @@ export function retrieveScopedMemories(memories, {
 
     const terms = [...new Set(query.toLowerCase().match(/[\p{L}\p{N}_-]+/gu) ?? [])].slice(0, 20);
     const categorySet = categories ? new Set(categories) : null;
-    const candidates = memories.filter((memory) => belongsToOwner(memory, scope, ownerId));
+    const candidates = memories.filter((memory) => belongsToOwner(memory, scope, ownerId, ownerType));
     if (candidates.some((memory) => typeof memory.title !== 'string' || typeof memory.content !== 'string'
         || (memory.category !== null && memory.category !== undefined && typeof memory.category !== 'string')
         || !Number.isInteger(memory.importance) || memory.importance < 0 || memory.importance > 3
@@ -47,7 +50,7 @@ export function retrieveScopedMemories(memories, {
         .slice(0, limit);
 }
 
-function belongsToOwner(memory, scope, ownerId) {
+function belongsToOwner(memory, scope, ownerId, ownerType) {
     if (!memory || memory.scope !== scope || typeof memory.id !== 'string') return false;
     const expectedProperty = OWNER_PROPERTY[scope];
     if (expectedProperty) {
@@ -55,8 +58,9 @@ function belongsToOwner(memory, scope, ownerId) {
             && OWNER_PROPERTIES.every((property) => property === expectedProperty
                 || memory[property] === undefined || memory[property] === null);
     }
-    const linkedOwners = OWNER_PROPERTIES.filter((property) => memory[property] !== undefined && memory[property] !== null);
-    return linkedOwners.length === 1 && memory[linkedOwners[0]] === ownerId;
+    return memory[ownerType] === ownerId
+        && OWNER_PROPERTIES.every((property) => property === ownerType
+            || memory[property] === undefined || memory[property] === null);
 }
 
 function scoreMemory(memory, terms) {

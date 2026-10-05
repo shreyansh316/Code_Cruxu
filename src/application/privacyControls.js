@@ -35,22 +35,22 @@ export function createMemoryPrivacyControls({ memoryRepository, auditRepository,
         || typeof idFactory !== 'function') throw new TypeError('Memory privacy controls require scoped storage, audit, and transaction ports.');
     actorId = assertEntityId(actorId, 'Privacy actor id');
     return Object.freeze({
-        exportMemory({ scope, ownerId, memoryId } = {}) {
+        exportMemory({ scope, ownerId, ownerType, memoryId } = {}) {
             ownerId = assertEntityId(ownerId, 'Memory owner id');
             memoryId = assertEntityId(memoryId, 'Memory id');
             return unitOfWork.run(() => {
-                const memory = memoryRepository.getByOwner(scope, ownerId, memoryId);
+                const memory = memoryRepository.getByOwner(scope, ownerId, memoryId, { ownerType });
                 if (!memory) return undefined;
                 auditRepository.append({ id: idFactory(), action: 'MEMORY_EXPORTED_FOR_PRIVACY', entity: 'memory', entityId: memoryId,
                     actorId, details: { scope } });
                 return Object.freeze({ ...memory });
             });
         },
-        deleteMemory({ scope, ownerId, memoryId } = {}) {
+        deleteMemory({ scope, ownerId, ownerType, memoryId } = {}) {
             ownerId = assertEntityId(ownerId, 'Memory owner id');
             memoryId = assertEntityId(memoryId, 'Memory id');
             return unitOfWork.run(() => {
-                const deleted = memoryRepository.deleteByOwner(scope, ownerId, memoryId);
+                const deleted = memoryRepository.deleteByOwner(scope, ownerId, memoryId, { ownerType });
                 if (!deleted) return false;
                 auditRepository.append({ id: idFactory(), action: 'MEMORY_DELETED_FOR_PRIVACY', entity: 'memory', entityId: memoryId,
                     actorId, details: { scope } });

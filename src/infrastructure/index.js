@@ -1,5 +1,6 @@
 export {};
 export { createWorkspaceFileAdapter } from './WorkspaceFileAdapter';
+export { isSensitiveWorkspacePath } from './sensitiveWorkspacePath';
 export { createCommandRunner } from './CommandRunner';
 export { createTaskScopedTools } from './TaskScopedTools';
 export { createWorkspaceSnapshot, compareWorkspaceSnapshots } from './WorkspaceSnapshot';

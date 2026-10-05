@@ -1,6 +1,7 @@
 const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/';
 const DEFAULT_TIMEOUT_MS = 30_000;
 const MAX_TIMEOUT_MS = 120_000;
+const MAX_PROVIDER_RESPONSE_BYTES = 1024 * 1024;
 
 /** Create a Gemini REST adapter for the provider-neutral AI port. */
 export function createGeminiAIProviderAdapter({ credentialStore, fetchImpl = globalThis.fetch,
@@ -30,7 +31,7 @@ export function createGeminiAIProviderAdapter({ credentialStore, fetchImpl = glo
                 });
                 if (!result?.ok) throw codedError(mapHttpError(result?.status));
                 let payload;
-                try { payload = await result.json(); }
+                try { payload = await readBoundedJson(result, 256 * 1024); }
                 catch { throw codedError('provider-invalid-response'); }
                 if (!Number.isSafeInteger(payload?.totalTokens) || payload.totalTokens < 0) {
                     throw codedError('provider-invalid-response');
@@ -76,7 +77,7 @@ export function createGeminiAIProviderAdapter({ credentialStore, fetchImpl = glo
                 });
                 if (!result?.ok) return response(request, 'ERROR', { errorCode: mapHttpError(result?.status) });
                 let payload;
-                try { payload = await result.json(); }
+                try { payload = await readBoundedJson(result, MAX_PROVIDER_RESPONSE_BYTES); }
                 catch { return response(request, 'ERROR', { errorCode: 'provider-invalid-response' }); }
                 return mapGeminiResponse(request, payload);
             }
@@ -92,6 +93,37 @@ export function createGeminiAIProviderAdapter({ credentialStore, fetchImpl = glo
             }
         },
     });
+}
+
+async function readBoundedJson(responseValue, maxBytes) {
+    try {
+        const reader = responseValue?.body?.getReader?.();
+        if (!reader) {
+            const payload = await responseValue.json();
+            const serialized = JSON.stringify(payload);
+            if (typeof serialized !== 'string' || Buffer.byteLength(serialized, 'utf8') > maxBytes) {
+                throw new Error('Provider response size exceeded.');
+            }
+            return payload;
+        }
+        const chunks = [];
+        let totalBytes = 0;
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            if (!(value instanceof Uint8Array)) throw new Error('Provider response stream was invalid.');
+            totalBytes += value.byteLength;
+            if (totalBytes > maxBytes) {
+                await reader.cancel();
+                throw new Error('Provider response size exceeded.');
+            }
+            chunks.push(Buffer.from(value));
+        }
+        return JSON.parse(Buffer.concat(chunks, totalBytes).toString('utf8'));
+    }
+    catch {
+        throw codedError('provider-invalid-response');
+    }
 }
 
 function generationRequest(request, maxOutputTokens) {

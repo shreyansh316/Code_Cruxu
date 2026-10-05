@@ -21,6 +21,8 @@ describe('Phase 101 — command center panel foundation', () => {
             taskErrors: [],
             directorQuestions: [],
             activity: [],
+            executionActivity: [],
+            changedFiles: [],
             workforce: [],
             collapsedSections: [],
             workspace: { folders: [], activeFile: '', languageId: '' },

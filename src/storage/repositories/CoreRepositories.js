@@ -279,52 +279,41 @@ export class MemoryRepository extends BaseSqliteRepository {
         assertMemoryScope(scope);
         return this.query('scope = ?', [scope]);
     }
-    listByOwner(scope, ownerId, { limit = 100 } = {}) {
+    listByOwner(scope, ownerId, { limit = 100, ownerType } = {}) {
         assertMemoryScope(scope);
         if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
             throw new TypeError('Memory owner query limit must be between 1 and 100.');
         }
         const property = MEMORY_SCOPE_OWNERS[scope];
-        if (!property && !['DECISION', 'KNOWLEDGE'].includes(scope)) {
-            throw new Error(`Memory scope ${scope} requires a more specific query.`);
-        }
-        if (property) {
-            return this.query(`scope = ? AND ${MEMORY_OWNER_COLUMNS[property]} = ?`, [scope, assertEntityId(ownerId)], 'created_at, id', limit);
-        }
-        const ownerColumns = Object.values(MEMORY_OWNER_COLUMNS);
-        const where = ownerColumns.map((column) => `${column} = ?`).join(' OR ');
-        return this.query(`scope = ? AND (${where})`, [scope, ...ownerColumns.map(() => assertEntityId(ownerId))], 'created_at, id', limit);
+        const ownerProperty = property ?? assertTypedMemoryOwner(scope, ownerType);
+        return this.query(`scope = ? AND ${MEMORY_OWNER_COLUMNS[ownerProperty]} = ?`,
+            [scope, assertEntityId(ownerId)], 'created_at, id', limit);
     }
-    getByOwner(scope, ownerId, memoryId) {
+    getByOwner(scope, ownerId, memoryId, { ownerType } = {}) {
         assertMemoryScope(scope);
         ownerId = assertEntityId(ownerId);
         memoryId = assertEntityId(memoryId, 'Memory id');
-        const property = MEMORY_SCOPE_OWNERS[scope];
-        if (property) {
-            return this.database.prepare(`SELECT ${this.selectList()} FROM memories WHERE id = ? AND scope = ? AND ${MEMORY_OWNER_COLUMNS[property]} = ?`)
-                .get(memoryId, scope, ownerId);
-        }
-        const ownerColumns = Object.values(MEMORY_OWNER_COLUMNS);
-        const where = ownerColumns.map((column) => `${column} = ?`).join(' OR ');
-        return this.database.prepare(`SELECT ${this.selectList()} FROM memories WHERE id = ? AND scope = ? AND (${where})`)
-            .get(memoryId, scope, ...ownerColumns.map(() => ownerId));
+        const property = MEMORY_SCOPE_OWNERS[scope] ?? assertTypedMemoryOwner(scope, ownerType);
+        return this.database.prepare(`SELECT ${this.selectList()} FROM memories WHERE id = ? AND scope = ? AND ${MEMORY_OWNER_COLUMNS[property]} = ?`)
+            .get(memoryId, scope, ownerId);
     }
-    deleteByOwner(scope, ownerId, memoryId) {
+    deleteByOwner(scope, ownerId, memoryId, { ownerType } = {}) {
         assertMemoryScope(scope);
         ownerId = assertEntityId(ownerId);
         memoryId = assertEntityId(memoryId, 'Memory id');
-        const property = MEMORY_SCOPE_OWNERS[scope];
-        if (property) {
-            return this.database.prepare(`DELETE FROM memories WHERE id = ? AND scope = ? AND ${MEMORY_OWNER_COLUMNS[property]} = ?`)
-                .run(memoryId, scope, ownerId).changes > 0;
-        }
-        const ownerColumns = Object.values(MEMORY_OWNER_COLUMNS);
-        const where = ownerColumns.map((column) => `${column} = ?`).join(' OR ');
-        return this.database.prepare(`DELETE FROM memories WHERE id = ? AND scope = ? AND (${where})`)
-            .run(memoryId, scope, ...ownerColumns.map(() => ownerId)).changes > 0;
+        const property = MEMORY_SCOPE_OWNERS[scope] ?? assertTypedMemoryOwner(scope, ownerType);
+        return this.database.prepare(`DELETE FROM memories WHERE id = ? AND scope = ? AND ${MEMORY_OWNER_COLUMNS[property]} = ?`)
+            .run(memoryId, scope, ownerId).changes > 0;
     }
     update(id, changes) { return this.updateById(id, changes); }
     delete(id) { return this.deleteById(id); }
+}
+
+function assertTypedMemoryOwner(scope, ownerType) {
+    if (!['DECISION', 'KNOWLEDGE'].includes(scope) || !Object.hasOwn(MEMORY_OWNER_COLUMNS, ownerType)) {
+        throw new TypeError(`Memory scope ${scope} requires an explicit owner type.`);
+    }
+    return ownerType;
 }
 
 function assertMemoryScope(scope) {

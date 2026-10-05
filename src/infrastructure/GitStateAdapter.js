@@ -24,7 +24,28 @@ export async function createGitStateAdapter({ workspaceRoot, gitExecutable = 'gi
                 status: Object.freeze(parseStatus(statusResult.stdout)), stagedDiff: staged.stdout,
                 workingDiff: working.stdout });
         },
+        getChangedFiles: async () => {
+            const prefixResult = await run(['rev-parse', '--show-prefix']);
+            const prefix = prefixResult.stdout.trim().replaceAll('\\', '/');
+            const statusResult = await run(['status', '--porcelain=v1', '-z', '--untracked-files=all']);
+            return Object.freeze(parseStatus(statusResult.stdout).filter((record) => !prefix || record.path.startsWith(prefix))
+                .map((record) => Object.freeze({
+                    path: prefix ? record.path.slice(prefix.length) : record.path,
+                    originalPath: record.originalPath && (!prefix || record.originalPath.startsWith(prefix))
+                        ? prefix ? record.originalPath.slice(prefix.length) : record.originalPath : undefined,
+                    status: statusLabel(record),
+                })).sort((left, right) => left.path.localeCompare(right.path)));
+        },
     });
+}
+
+function statusLabel(record) {
+    if (record.untracked) return 'UNTRACKED';
+    if (record.index === 'R' || record.worktree === 'R') return 'RENAMED';
+    if (record.index === 'A' || record.worktree === 'A') return 'ADDED';
+    if (record.index === 'D' || record.worktree === 'D') return 'DELETED';
+    if (record.index === 'C' || record.worktree === 'C') return 'COPIED';
+    return 'MODIFIED';
 }
 
 function parseStatus(output) {

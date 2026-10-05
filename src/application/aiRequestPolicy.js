@@ -1,4 +1,4 @@
-import { createAIProviderRequest } from './aiProvider';
+import { createAIProviderRequest, validateAIProviderResponse } from './aiProvider';
 
 export const DEFAULT_AI_REQUEST_BUDGET = Object.freeze({
     maxInputTokens: 16_000,
@@ -11,6 +11,7 @@ export const DEFAULT_AI_REQUEST_BUDGET = Object.freeze({
 const TRANSIENT_ERRORS = new Set([
     'provider-network-error', 'provider-unavailable', 'provider-rate-limited', 'provider-timeout',
 ]);
+const ABORTED_GENERATION = Symbol('aborted-generation');
 
 /** Bound model work and persist the actual usage for every generation attempt. */
 export function createBoundedAIProvider({ provider, inputTokenCounter, usageRecorder,
@@ -50,7 +51,7 @@ export function createBoundedAIProvider({ provider, inputTokenCounter, usageReco
                 if (signal?.aborted) return cancelled(request);
                 let inputTokens;
                 try {
-                    inputTokens = await inputTokenCounter(request, { signal: controller.signal });
+                    inputTokens = await raceWithAbort(() => inputTokenCounter(request, { signal: controller.signal }), controller.signal);
                 }
                 catch (error) {
                     if (signal?.aborted) return cancelled(request);
@@ -59,6 +60,11 @@ export function createBoundedAIProvider({ provider, inputTokenCounter, usageReco
                             : 'provider-token-count-failed');
                     await record(zeroUsage(), false);
                     return result;
+                }
+                if (inputTokens === ABORTED_GENERATION) {
+                    if (signal?.aborted) return cancelled(request);
+                    await record(zeroUsage(), false);
+                    return errorResponse(request, timedOut ? 'provider-timeout' : 'provider-token-count-failed');
                 }
                 if (!Number.isSafeInteger(inputTokens) || inputTokens < 0) {
                     await record(zeroUsage(), false);
@@ -79,11 +85,16 @@ export function createBoundedAIProvider({ provider, inputTokenCounter, usageReco
                 for (let attempt = 0; attempt <= limits.maxRetries; attempt += 1) {
                     let response;
                     try {
-                        response = await provider.generate(request, {
+                        const providerResponse = await raceWithAbort(() => provider.generate(request, {
                             signal: controller.signal,
                             budget: { maxInputTokens: limits.maxInputTokens,
                                 maxOutputTokens: limits.maxOutputTokens, timeoutMs: limits.timeoutMs },
-                        });
+                        }), controller.signal);
+                        response = validateAIProviderResponse(request, providerResponse);
+                        if (response.usage.inputTokens > limits.maxInputTokens
+                            || response.usage.outputTokens > limits.maxOutputTokens) {
+                            throw new Error('Provider exceeded the declared token budget.');
+                        }
                     }
                     catch {
                         response = errorResponse(request, 'provider-request-failed');
@@ -160,4 +171,19 @@ function delay(milliseconds, signal) {
         };
         signal.addEventListener('abort', onAbort, { once: true });
     });
+}
+
+async function raceWithAbort(operation, signal) {
+    let onAbort;
+    const aborted = new Promise((resolve) => {
+        onAbort = () => resolve(ABORTED_GENERATION);
+        if (signal.aborted) onAbort();
+        else signal.addEventListener('abort', onAbort, { once: true });
+    });
+    try {
+        return await Promise.race([operation(), aborted]);
+    }
+    finally {
+        signal.removeEventListener('abort', onAbort);
+    }
 }

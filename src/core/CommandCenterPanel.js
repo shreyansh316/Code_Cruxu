@@ -2,22 +2,25 @@ import * as vscode from 'vscode';
 import { randomBytes } from 'node:crypto';
 import { COMMANDS } from '../constants';
 import { calculateTaskProgress } from '../domain/taskProgress';
+import { redactSecrets } from '../shared/redactSecrets';
 
 const TERMINAL_TASK_STATUSES = new Set(['COMPLETED', 'FAILED', 'CANCELLED']);
 const MAX_VISIBLE_RECORDS = 20;
 const LIVE_REFRESH_INTERVAL_MS = 5000;
-const COMMAND_CENTER_SECTIONS = new Set(['objectives', 'tasks', 'completed-tasks', 'task-errors', 'director-questions', 'activity']);
+const COMMAND_CENTER_SECTIONS = new Set(['objectives', 'tasks', 'completed-tasks', 'task-errors', 'director-questions', 'activity', 'execution-activity']);
 
 /** Build a bounded, read-only snapshot from persisted objective and task records. */
-export function createCommandCenterSnapshot({ objectives, tasks, directorQuestions = [], activity = [], agents = [], offices = [], departments = [], organizations = [], collapsedSections = [],
-    workspace = { folders: [] }, executionStatus }) {
-    if (!Array.isArray(objectives) || !Array.isArray(tasks) || !Array.isArray(directorQuestions) || !Array.isArray(activity)
-        || !Array.isArray(agents) || !Array.isArray(offices) || !Array.isArray(departments) || !Array.isArray(organizations)
+export function createCommandCenterSnapshot({ objectives, tasks, directorQuestions = [], activity = [], executionActivity = [], agents = [], offices = [], departments = [], organizations = [], collapsedSections = [],
+    changedFiles = [], workspace = { folders: [] }, executionStatus, capturedAt = Date.now() }) {
+    if (!Array.isArray(objectives) || !Array.isArray(tasks) || !Array.isArray(directorQuestions) || !Array.isArray(activity) || !Array.isArray(executionActivity)
+        || !Array.isArray(changedFiles) || !Array.isArray(agents) || !Array.isArray(offices) || !Array.isArray(departments) || !Array.isArray(organizations)
         || !Array.isArray(collapsedSections) || !Array.isArray(workspace?.folders)) {
         throw new TypeError('Command center requires objective, task, Director question, and activity records.');
     }
     const orderedObjectives = sortNamedRecords(objectives, 'title');
     const objectiveTitles = new Map(orderedObjectives.map((record) => [record?.id, boundedText(record?.title, 200, 'Untitled objective')]));
+    const taskTitles = new Map(tasks.map((record) => [record?.id, boundedText(record?.title, 200, 'Untitled task')]));
+    const agentNames = new Map(agents.map((record) => [record?.id, safeAgentName(record)]));
     return Object.freeze({
         executionStatus: ['PAUSED', 'CANCELLED'].includes(executionStatus) ? executionStatus : 'RUNNING',
         taskProgress: Object.freeze({ ...calculateTaskProgress(tasks) }),
@@ -29,18 +32,20 @@ export function createCommandCenterSnapshot({ objectives, tasks, directorQuestio
             .slice(0, MAX_VISIBLE_RECORDS).map((record) => Object.freeze({
                 title: boundedText(record?.title, 200, 'Untitled task'),
                 status: boundedText(record?.status, 32, 'UNKNOWN'),
+                ...(taskDuration(record, capturedAt, false) === undefined ? {} : { durationMs: taskDuration(record, capturedAt, false) }),
             }))),
         completedTasks: Object.freeze(sortNamedRecords(tasks.filter((record) => record?.status === 'COMPLETED'), 'title')
             .slice(0, MAX_VISIBLE_RECORDS).map((record) => Object.freeze({
                 title: boundedText(record?.title, 200, 'Untitled task'),
                 status: 'COMPLETED',
+                ...(taskDuration(record, capturedAt, true) === undefined ? {} : { durationMs: taskDuration(record, capturedAt, true) }),
             }))),
         taskErrors: Object.freeze(sortNamedRecords(tasks.filter((record) => ['FAILED', 'BLOCKED'].includes(record?.status)), 'title')
             .slice(0, MAX_VISIBLE_RECORDS).map((record) => Object.freeze({
                 title: boundedText(record?.title, 200, 'Untitled task'),
                 status: boundedText(record?.status, 32, 'UNKNOWN'),
-                message: boundedText(record?.blockerReason,
-                    240, record?.status === 'FAILED' ? 'Task failed. Review its recorded result.' : 'Task is blocked; no reason was recorded.'),
+                message: redactSecrets(boundedText(record?.blockerReason,
+                    240, record?.status === 'FAILED' ? 'Task failed. Review its recorded result.' : 'Task is blocked; no reason was recorded.'), 240),
             }))),
         directorQuestions: Object.freeze(directorQuestions.slice().sort((left, right) =>
             compareText(objectiveTitles.get(left?.objectiveId) ?? 'Objective unavailable',
@@ -58,6 +63,25 @@ export function createCommandCenterSnapshot({ objectives, tasks, directorQuestio
             action: boundedText(record?.action, 100, 'Activity'),
             entity: boundedText(record?.entity, 100, 'record'),
             createdAt: boundedText(record?.createdAt, 64, 'Time unavailable'),
+        }))),
+        executionActivity: Object.freeze(executionActivity.slice(0, MAX_VISIBLE_RECORDS).map((record) => Object.freeze({
+            source: boundedText(record?.source, 32, 'activity'),
+            action: boundedText(record?.action, 100, 'Activity'),
+            target: boundedText(record?.target, 180, ''),
+            taskTitle: taskTitles.get(record?.taskId) ?? '',
+            agentName: agentNames.get(record?.agentId) ?? '',
+            status: boundedText(record?.status, 32, 'UNKNOWN'),
+            durationMs: Number.isSafeInteger(record?.durationMs) ? Math.min(10_000_000, Math.max(0, record.durationMs)) : 0,
+            bytes: Number.isSafeInteger(record?.bytes) ? Math.min(10_000_000, Math.max(0, record.bytes)) : 0,
+            detail: redactSecrets(boundedText(record?.detail, 180, ''), 180),
+            detailTruncated: record?.detailTruncated === true,
+            occurredAt: boundedText(record?.occurredAt, 64, 'Time unavailable'),
+        }))),
+        changedFiles: Object.freeze(changedFiles.slice(0, MAX_VISIBLE_RECORDS).map((record) => Object.freeze({
+            path: redactWorkspacePath(record?.path),
+            originalPath: record?.originalPath ? redactWorkspacePath(record.originalPath) : '',
+            status: ['UNTRACKED', 'ADDED', 'DELETED', 'RENAMED', 'COPIED', 'MODIFIED'].includes(record?.status)
+                ? record.status : 'UNKNOWN',
         }))),
         workforce: Object.freeze(offices.slice().sort((a, b) => compareText(a?.name, b?.name) || compareText(a?.id, b?.id))
             .slice(0, 20).map((office) => Object.freeze({
@@ -86,7 +110,7 @@ export function createCommandCenterSnapshot({ objectives, tasks, directorQuestio
             }))),
         collapsedSections: Object.freeze([...new Set(collapsedSections.filter((section) => COMMAND_CENTER_SECTIONS.has(section)))]),
         workspace: Object.freeze({
-            folders: Object.freeze(workspace.folders.slice(0, 10).map((folder) => boundedText(folder, 120, 'Workspace'))),
+            folders: Object.freeze(workspace.folders.slice(0, 10).map((folder) => redactSecrets(boundedText(folder, 120, 'Workspace'), 120))),
             activeFile: safeFileName(workspace.activeFile),
             languageId: boundedText(workspace.languageId, 64, ''),
         }),
@@ -95,6 +119,13 @@ export function createCommandCenterSnapshot({ objectives, tasks, directorQuestio
 
 function boundedText(value, maxLength, fallback) {
     return typeof value === 'string' && value.trim() ? value.trim().slice(0, maxLength) : fallback;
+}
+
+function taskDuration(record, capturedAt, completed) {
+    const startedAt = Date.parse(record?.createdAt);
+    const endAt = completed ? Date.parse(record?.updatedAt) : Number(capturedAt);
+    if (!Number.isFinite(startedAt) || !Number.isFinite(endAt) || endAt < startedAt) return undefined;
+    return Math.min(315_360_000_000, Math.floor(endAt - startedAt));
 }
 
 function sortNamedRecords(records, property) {
@@ -111,7 +142,12 @@ function compareText(left, right) {
 function safeFileName(value) {
     if (typeof value !== 'string') return '';
     const normalized = value.replace(/\\/g, '/');
-    return boundedText(normalized.slice(normalized.lastIndexOf('/') + 1), 160, '');
+    return redactSecrets(boundedText(normalized.slice(normalized.lastIndexOf('/') + 1), 160, ''), 160);
+}
+
+function redactWorkspacePath(value) {
+    if (typeof value !== 'string') return '';
+    return redactSecrets(value.replace(/\\/g, '/'), 180);
 }
 
 function safeAgentName(agent) {
@@ -142,7 +178,9 @@ export class CommandCenterPanel {
         this.panel = undefined;
         this.messageSubscription = undefined;
         this.disposeSubscription = undefined;
+        this.workspaceSubscriptions = [];
         this.refreshTimer = undefined;
+        this.refreshRevision = 0;
     }
 
     show() {
@@ -218,6 +256,10 @@ export class CommandCenterPanel {
             }
         });
         this.disposeSubscription = panel.onDidDispose(() => this._clearPanel(panel));
+        this.workspaceSubscriptions = [
+            vscode.window.onDidChangeActiveTextEditor?.(() => this.refresh()),
+            vscode.workspace.onDidChangeWorkspaceFolders?.(() => this.refresh()),
+        ].filter(Boolean);
         this.refreshTimer = setInterval(() => {
             if (this.panel === panel && panel.visible !== false) this.refresh();
         }, LIVE_REFRESH_INTERVAL_MS);
@@ -227,8 +269,19 @@ export class CommandCenterPanel {
 
     refresh() {
         if (!this.panel) return;
+        const panel = this.panel;
+        const revision = ++this.refreshRevision;
         try {
-            this._postMessage({ type: 'snapshot', snapshot: this.readSnapshot() });
+            const snapshot = this.readSnapshot();
+            if (snapshot && typeof snapshot.then === 'function') {
+                return snapshot.then((value) => {
+                    if (this.panel === panel && revision === this.refreshRevision)
+                        this._postMessage({ type: 'snapshot', snapshot: value });
+                }).catch(() => {
+                    if (this.panel === panel && revision === this.refreshRevision) this._postMessage({ type: 'loadError' });
+                });
+            }
+            this._postMessage({ type: 'snapshot', snapshot });
         } catch {
             this._postMessage({ type: 'loadError' });
         }
@@ -247,6 +300,8 @@ export class CommandCenterPanel {
         if (this.panel !== panel) return;
         this.messageSubscription?.dispose();
         this.disposeSubscription?.dispose();
+        for (const subscription of this.workspaceSubscriptions) subscription.dispose();
+        this.workspaceSubscriptions = [];
         if (this.refreshTimer !== undefined) clearInterval(this.refreshTimer);
         this.refreshTimer = undefined;
         this.messageSubscription = undefined;
@@ -292,6 +347,7 @@ function renderCommandCenterHtml() {
   <header><h1>HEADROOM Command Center</h1><div><button id="new-objective" type="button">New objective</button><button id="ask-director" type="button">Ask Director</button><button id="propose-plan" type="button">Ask Director for plan</button><button id="pause-execution" type="button">Pause</button><button id="resume-execution" type="button" hidden>Resume</button><button id="cancel-execution" type="button">Cancel execution</button><button id="refresh" type="button">Refresh</button></div></header>
   <p id="summary" class="summary" role="status" aria-live="polite">Loading current workspace data…</p>
   <section aria-labelledby="workspace-heading"><h2 id="workspace-heading">Workspace</h2><ul id="workspace" aria-label="Current workspace and editor"></ul></section>
+  <section aria-labelledby="changed-files-heading"><h2 id="changed-files-heading">Changed files</h2><ul id="changed-files" aria-label="Files changed in the workspace"></ul></section>
   <section aria-labelledby="workforce-heading"><h2 id="workforce-heading">Organization</h2><ul id="workforce" aria-label="Office departments and employee identities"></ul></section>
   <section aria-labelledby="progress-heading"><h2 id="progress-heading">Task progress</h2><progress id="task-progress" max="100" value="0" aria-label="Completed task percentage"></progress><span id="progress-summary">No task progress yet.</span></section>
   <section aria-labelledby="objectives-heading"><h2 id="objectives-heading">Objectives</h2><button class="section-toggle" type="button" data-section-toggle="objectives" aria-controls="objectives" aria-expanded="true">Hide</button><ul id="objectives"></ul></section>
@@ -300,6 +356,7 @@ function renderCommandCenterHtml() {
   <section aria-labelledby="errors-heading"><h2 id="errors-heading">Task errors and blockers</h2><button class="section-toggle" type="button" data-section-toggle="task-errors" aria-controls="task-errors" aria-expanded="true">Hide</button><ul id="task-errors" aria-label="Failed and blocked tasks"></ul></section>
   <section aria-labelledby="director-heading"><h2 id="director-heading">AI Director</h2><button id="answer-director-question" type="button">Respond to pending question</button><button class="section-toggle" type="button" data-section-toggle="director-questions" aria-controls="director-questions" aria-expanded="true">Hide</button><ul id="director-questions" aria-label="Director clarification questions"></ul></section>
   <section aria-labelledby="activity-heading"><h2 id="activity-heading">Live activity</h2><button class="section-toggle" type="button" data-section-toggle="activity" aria-controls="activity" aria-expanded="true">Hide</button><ul id="activity" aria-label="Recent recorded activity"></ul></section>
+  <section aria-labelledby="execution-activity-heading"><h2 id="execution-activity-heading">Workspace and execution activity</h2><button class="section-toggle" type="button" data-section-toggle="execution-activity" aria-controls="execution-activity" aria-expanded="true">Hide</button><ul id="execution-activity" aria-label="Recent file, terminal, and verification activity"></ul></section>
   <script nonce="${nonce}">
     const api = acquireVsCodeApi();
     const summary = document.getElementById('summary');
@@ -309,11 +366,13 @@ function renderCommandCenterHtml() {
     const taskErrors = document.getElementById('task-errors');
     const directorQuestions = document.getElementById('director-questions');
     const activity = document.getElementById('activity');
+    const executionActivity = document.getElementById('execution-activity');
     const taskProgress = document.getElementById('task-progress');
     const progressSummary = document.getElementById('progress-summary');
     const workspace = document.getElementById('workspace');
+    const changedFiles = document.getElementById('changed-files');
     const workforce = document.getElementById('workforce');
-    const sectionIds = ['objectives', 'tasks', 'completed-tasks', 'task-errors', 'director-questions', 'activity'];
+    const sectionIds = ['objectives', 'tasks', 'completed-tasks', 'task-errors', 'director-questions', 'activity', 'execution-activity'];
     function setSectionCollapsed(section, collapsed, persist) {
       const list = document.getElementById(section);
       const button = document.querySelector('[data-section-toggle="' + section + '"]');
@@ -346,10 +405,19 @@ function renderCommandCenterHtml() {
         title.textContent = record.title;
         const status = document.createElement('span');
         status.className = 'status';
-        status.textContent = record.status;
+        status.textContent = record.status + (Number.isSafeInteger(record.durationMs) ? ' · ' + formatDuration(record.durationMs) : '');
         row.append(title, status);
         list.append(row);
       }
+    }
+    function formatDuration(milliseconds) {
+      const seconds = Math.floor(milliseconds / 1000);
+      if (seconds < 60) return seconds + 's elapsed';
+      const minutes = Math.floor(seconds / 60);
+      if (minutes < 60) return minutes + 'm elapsed';
+      const hours = Math.floor(minutes / 60);
+      if (hours < 24) return hours + 'h elapsed';
+      return Math.floor(hours / 24) + 'd elapsed';
     }
     function showDirectorQuestions(records) {
       directorQuestions.replaceChildren();
@@ -403,6 +471,36 @@ function renderCommandCenterHtml() {
         activity.append(row);
       }
     }
+    function showExecutionActivity(records) {
+      executionActivity.replaceChildren();
+      if (records.length === 0) {
+        const empty = document.createElement('li');
+        empty.className = 'empty';
+        empty.textContent = 'No workspace or execution activity yet.';
+        executionActivity.append(empty);
+        return;
+      }
+      for (const record of records) {
+        const row = document.createElement('li');
+        row.className = 'record';
+        const detail = document.createElement('span');
+        detail.textContent = record.action + (record.agentName ? ' · ' + record.agentName : '')
+          + (record.taskTitle ? ' · ' + record.taskTitle : '')
+          + (record.target ? ' · ' + record.target : '')
+          + (record.detail ? ' · ' + record.detail : '')
+          + (record.detailTruncated ? ' · [output truncated]' : '')
+          + (record.bytes ? ' · ' + record.bytes + ' bytes' : '')
+          + (record.durationMs ? ' · ' + record.durationMs + ' ms' : '');
+        const status = document.createElement('span');
+        status.className = 'status';
+        status.textContent = record.status;
+        const time = document.createElement('time');
+        time.dateTime = record.occurredAt;
+        time.textContent = record.occurredAt;
+        row.append(detail, status, time);
+        executionActivity.append(row);
+      }
+    }
     function showWorkspace(value) {
       workspace.replaceChildren();
       const folders = Array.isArray(value?.folders) ? value.folders : [];
@@ -414,6 +512,22 @@ function renderCommandCenterHtml() {
         row.className = 'record';
         row.textContent = entry;
         workspace.append(row);
+      }
+    }
+    function showChangedFiles(records) {
+      changedFiles.replaceChildren();
+      if (records.length === 0) {
+        const empty = document.createElement('li');
+        empty.className = 'empty';
+        empty.textContent = 'No changed files detected.';
+        changedFiles.append(empty);
+        return;
+      }
+      for (const record of records) {
+        const row = document.createElement('li');
+        row.className = 'record';
+        row.textContent = record.status + ' · ' + (record.originalPath ? record.originalPath + ' → ' : '') + record.path;
+        changedFiles.append(row);
       }
     }
     function showWorkforce(offices) {
@@ -498,8 +612,11 @@ function renderCommandCenterHtml() {
       const taskErrorRecords = Array.isArray(snapshot.taskErrors) ? snapshot.taskErrors : [];
       const questionRecords = Array.isArray(snapshot.directorQuestions) ? snapshot.directorQuestions : [];
       const activityRecords = Array.isArray(snapshot.activity) ? snapshot.activity : [];
+      const executionActivityRecords = Array.isArray(snapshot.executionActivity) ? snapshot.executionActivity : [];
+      const changedFileRecords = Array.isArray(snapshot.changedFiles) ? snapshot.changedFiles : [];
       const progress = snapshot.taskProgress && typeof snapshot.taskProgress === 'object' ? snapshot.taskProgress : {};
       showWorkspace(snapshot.workspace);
+      showChangedFiles(changedFileRecords);
       showWorkforce(snapshot.workforce);
       showRecords(objectives, objectiveRecords, 'No objectives yet.');
       showRecords(tasks, taskRecords, 'No active tasks.');
@@ -507,6 +624,7 @@ function renderCommandCenterHtml() {
       showTaskErrors(taskErrorRecords);
       showDirectorQuestions(questionRecords);
       showActivity(activityRecords);
+      showExecutionActivity(executionActivityRecords);
       const completion = Number.isFinite(progress.completionPercentage)
         ? Math.min(100, Math.max(0, progress.completionPercentage)) : 0;
       taskProgress.value = completion;
@@ -518,7 +636,7 @@ function renderCommandCenterHtml() {
       summary.className = 'summary';
       const executionLabel = snapshot.executionStatus === 'PAUSED' ? 'paused'
         : snapshot.executionStatus === 'CANCELLED' ? 'cancelled' : 'running';
-      summary.textContent = 'Execution ' + executionLabel + ' · ' + objectiveRecords.length + ' objective(s) · ' + taskRecords.length + ' active task(s) · ' + completedRecords.length + ' completed task(s) · ' + taskErrorRecords.length + ' task error(s) · ' + questionRecords.length + ' Director question(s) · ' + activityRecords.length + ' recent event(s)';
+      summary.textContent = 'Execution ' + executionLabel + ' · ' + objectiveRecords.length + ' objective(s) · ' + taskRecords.length + ' active task(s) · ' + completedRecords.length + ' completed task(s) · ' + taskErrorRecords.length + ' task error(s) · ' + questionRecords.length + ' Director question(s) · ' + activityRecords.length + ' recent event(s) · ' + executionActivityRecords.length + ' workspace/execution event(s)';
     });
   </script>
 </body>

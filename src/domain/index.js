@@ -35,3 +35,5 @@ export { assertObjectiveTransition, canTransitionObjective, OBJECTIVE_TRANSITION
 export { assertTaskTransition, canTransitionTask, TASK_TRANSITIONS, transitionTask, } from './taskLifecycle';
 export { assertAgentInvariant, assertCanReportTo, assertDepartmentInvariant, assertObjectiveInvariant, assertOfficeInvariant, assertOrganizationHierarchyInvariant, assertOrganizationInvariant, assertTaskInvariant, } from './invariants';
 export { createEntityId, createSlug } from './values';
+export { CODE_EXPLANATION_ACTIONS, CODE_EXPLANATION_SECTIONS, CODE_EXPLANATION_SOURCES, createCodeExplanation } from './codeExplanation';
+export { ENGINEERING_REVIEW_AREAS, ENGINEERING_REVIEW_SEVERITIES, createEngineeringReview } from './engineeringReview';

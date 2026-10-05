@@ -42,8 +42,12 @@ describe('Phase 027 — scoped memory retrieval', () => {
             { id: 'decision-b', scope: MemoryScope.DECISION, projectId: 'owner-b', title: 'Decision', content: 'B', importance: 1 },
             { id: 'invalid-dual', scope: MemoryScope.KNOWLEDGE, taskId: 'owner-a', projectId: 'owner-a', title: 'Bad', content: 'Bad', importance: 1 },
         ];
-        expect(retrieveScopedMemories(records, { scope: MemoryScope.DECISION, ownerId: 'owner-a' })
+        expect(retrieveScopedMemories(records, { scope: MemoryScope.DECISION, ownerId: 'owner-a', ownerType: 'objectiveId' })
             .map(({ memory }) => memory.id)).toEqual(['decision-a']);
+        expect(retrieveScopedMemories(records, { scope: MemoryScope.DECISION, ownerId: 'owner-a', ownerType: 'projectId' })
+            .map(({ memory }) => memory.id)).toEqual([]);
+        expect(() => retrieveScopedMemories(records, { scope: MemoryScope.DECISION, ownerId: 'owner-a' }))
+            .toThrow(/constraints are invalid/);
     });
 
     it('rejects malformed constraints and clamps the requested result bound', () => {

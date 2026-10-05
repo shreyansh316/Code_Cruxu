@@ -14,6 +14,9 @@ export { createDirectorOfficeOrchestration } from './directorOfficeOrchestration
 export { createCEOExecutionReport } from './ceoExecutionReport';
 export { createCEOExecutionControl } from './ceoExecutionControl';
 export { createReviewEvidenceBundle } from './reviewEvidenceBundle';
+export { createCodeExplanationUseCase, createReviewEvidenceExplanation, parseCodeExplanationResponse } from './codeExplanation';
+export { createCodeExplanationPrompt } from './codeExplanationPrompt';
+export { createEngineeringReviewPrompt, createEngineeringReviewUseCase, parseEngineeringReviewResponse } from './engineeringReview';
 export { createHumanCodeReviewDecision } from './humanCodeReview';
 export { createPersistedPlanDecision } from './persistedPlanDecision';
 export { createTaskReviewUseCase } from './taskReview';

@@ -38,4 +38,18 @@ describe('Phase 072 — bounded agent context assembly', () => {
             { actor, scope: 'TASK', ownerId: 'task-a', limit: 26 })).toThrow(/limits or actor identity/);
         expect(listByOwner).not.toHaveBeenCalled();
     });
+
+    it('authorizes decision memory by its typed owner and passes that same boundary to retrieval', () => {
+        const listByOwner = vi.fn(() => [{ id: 'decision-project', scope: 'DECISION', projectId: 'shared-id',
+            title: 'Project decision', content: 'Project-only decision', importance: 1, verified: true }]);
+        const authorize = vi.fn(() => true);
+        const context = assembleBoundedAgentContext({ memoryRepository: { listByOwner }, authorize }, {
+            actor, scope: 'DECISION', ownerId: 'shared-id', ownerType: 'projectId', query: 'decision',
+        });
+        expect(authorize).toHaveBeenCalledWith(expect.objectContaining({ scope: 'DECISION', ownerId: 'shared-id', ownerType: 'projectId' }));
+        expect(listByOwner).toHaveBeenCalledWith('DECISION', 'shared-id', expect.objectContaining({ ownerType: 'projectId' }));
+        expect(context.items.map(({ id }) => id)).toEqual(['decision-project']);
+        expect(() => assembleBoundedAgentContext({ memoryRepository: { listByOwner }, authorize: () => true },
+            { actor, scope: 'DECISION', ownerId: 'shared-id' })).toThrow(/limits or actor identity/);
+    });
 });

@@ -1,12 +1,13 @@
 import { DomainInvariantError } from '../domain/errors';
+import { redactSecrets } from '../shared/redactSecrets';
 import { validateCommandArguments } from './commandPolicy';
 
 const MAX_VERIFICATION_CHECKS = 20;
 
 /** Run a bounded ordered list of verification commands through a command port. */
-export function createVerificationPipeline({ commandRunner, checks }) {
+export function createVerificationPipeline({ commandRunner, checks, onActivity = () => undefined }) {
     if (typeof commandRunner?.execute !== 'function' || !Array.isArray(checks)
-        || checks.length > MAX_VERIFICATION_CHECKS) {
+        || checks.length > MAX_VERIFICATION_CHECKS || typeof onActivity !== 'function') {
         throw new DomainInvariantError('invalid-verification-pipeline',
             `A command runner and at most ${MAX_VERIFICATION_CHECKS} checks are required.`);
     }
@@ -28,6 +29,8 @@ export function createVerificationPipeline({ commandRunner, checks }) {
         run: async ({ signal } = {}) => {
             const results = [];
             for (const check of normalizedChecks) {
+                const startedAt = Date.now();
+                reportActivity(onActivity, { event: 'started', check: safeCheckName(check.id) });
                 try {
                     const result = await commandRunner.execute({ ...check, signal });
                     const status = result.timedOut ? 'TIMED_OUT'
@@ -35,9 +38,15 @@ export function createVerificationPipeline({ commandRunner, checks }) {
                             : result.exitCode === 0 ? 'PASSED' : 'FAILED';
                     results.push({ id: check.id, status, exitCode: result.exitCode, signal: result.signal,
                         stdout: result.stdout, stderr: result.stderr, outputTruncated: result.outputTruncated });
+                    reportActivity(onActivity, { event: 'finished', check: safeCheckName(check.id), status,
+                        durationMs: Math.max(0, Date.now() - startedAt),
+                        outputPreview: redactSecrets([result.stdout, result.stderr].filter(Boolean).join('\n'), 1000),
+                        outputTruncated: result.outputTruncated === true });
                     if (result.aborted) break;
                 }
                 catch (error) {
+                    reportActivity(onActivity, { event: 'finished', check: safeCheckName(check.id), status: 'ERROR',
+                        durationMs: Math.max(0, Date.now() - startedAt) });
                     results.push({ id: check.id, status: 'ERROR', exitCode: null, signal: null,
                         stdout: '', stderr: error instanceof Error ? error.message : String(error), outputTruncated: false });
                 }
@@ -45,4 +54,17 @@ export function createVerificationPipeline({ commandRunner, checks }) {
             return { passed: results.length === normalizedChecks.length && results.every((result) => result.status === 'PASSED'), results };
         },
     });
+}
+
+function safeCheckName(value) {
+    return value.trim().replace(/[^a-zA-Z0-9._ -]/g, '?').slice(0, 80);
+}
+
+function reportActivity(observer, event) {
+    try {
+        observer(Object.freeze({ ...event }));
+    }
+    catch {
+        // Verification activity reporting must not change check results.
+    }
 }

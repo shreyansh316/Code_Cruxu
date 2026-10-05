@@ -61,6 +61,17 @@ describe('Phase 026 — scoped memory repository', () => {
         expect(memories.listByOwner('TASK', owners.taskId)).toEqual([]);
     });
 
+    it('requires an explicit owner column for decision and knowledge memory operations', () => {
+        new ProjectRepository(database).create({ id: owners.objectiveId, name: 'Colliding owner ID', objectiveId: owners.objectiveId });
+        const decision = memories.create(memory('mem-decision-owned', 'DECISION', { objectiveId: owners.objectiveId }));
+        const otherType = memories.create(memory('mem-decision-other-type', 'DECISION', { projectId: owners.objectiveId }));
+        expect(memories.listByOwner('DECISION', owners.objectiveId, { ownerType: 'objectiveId' })).toEqual([decision]);
+        expect(memories.listByOwner('DECISION', owners.objectiveId, { ownerType: 'projectId' })).toEqual([otherType]);
+        expect(memories.getByOwner('DECISION', owners.objectiveId, decision.id, { ownerType: 'objectiveId' })).toEqual(decision);
+        expect(memories.deleteByOwner('DECISION', owners.objectiveId, decision.id, { ownerType: 'objectiveId' })).toBe(true);
+        expect(() => memories.listByOwner('DECISION', owners.objectiveId)).toThrow(/explicit owner type/);
+    });
+
     it('rejects missing, mismatched, multiple, unsupported, and invalid owner links', () => {
         for (const candidate of [
             memory('mem-no-owner', 'TASK', {}),

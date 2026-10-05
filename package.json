@@ -144,6 +144,16 @@
         "command": "headroom.manageAgentLifecycle",
         "title": "%command.manageAgentLifecycle.title%",
         "category": "HEADROOM"
+      },
+      {
+        "command": "headroom.explainSelection",
+        "title": "%command.explainSelection.title%",
+        "category": "HEADROOM"
+      },
+      {
+        "command": "headroom.reviewSelection",
+        "title": "%command.reviewSelection.title%",
+        "category": "HEADROOM"
       }
     ],
     "configuration": {

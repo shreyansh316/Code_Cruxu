@@ -31,6 +31,8 @@ async function run() {
         ['headroom.resumeExecution'],
         ['headroom.reviewTaskChanges', 'missing-task'],
         ['headroom.reviewPlan'],
+        ['headroom.explainSelection'],
+        ['headroom.reviewSelection'],
     ]) {
         assert.ok(commandIds.includes(command), `Expected primary workflow command ${command}.`);
         await vscode.commands.executeCommand(command, argument);

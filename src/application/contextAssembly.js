@@ -12,10 +12,13 @@ export function assembleBoundedAgentContext({ memoryRepository, authorize } = {}
     if (typeof memoryRepository?.listByOwner !== 'function' || typeof authorize !== 'function') {
         throw new TypeError('Context assembly requires an owner-scoped memory repository and authorization port.');
     }
-    const { actor, scope, ownerId, query = '', categories, verifiedOnly = false, minImportance = 0,
+    const { actor, scope, ownerId, ownerType, query = '', categories, verifiedOnly = false, minImportance = 0,
         limit = 10, maxBytes = MAX_BYTES } = request;
     if (!actor || !Object.values(AgentRole).includes(actor.role)
         || !Object.values(MemoryScope).includes(scope)
+        || (['DECISION', 'KNOWLEDGE'].includes(scope)
+            ? !['organizationId', 'officeId', 'departmentId', 'taskId', 'projectId', 'objectiveId'].includes(ownerType)
+            : ownerType !== undefined)
         || !Number.isInteger(limit) || limit < 1 || limit > MAX_ITEMS
         || !Number.isInteger(maxBytes) || maxBytes < 256 || maxBytes > MAX_BYTES) {
         throw new DomainInvariantError('invalid-agent-context-request', 'Agent context limits or actor identity are invalid.');
@@ -23,14 +26,17 @@ export function assembleBoundedAgentContext({ memoryRepository, authorize } = {}
     const actorId = assertEntityId(actor.id, 'Context actor id');
     const normalizedOwnerId = assertEntityId(ownerId, 'Context memory owner id');
     let allowed = false;
-    try { allowed = authorize(Object.freeze({ actor: Object.freeze({ id: actorId, role: actor.role }), scope, ownerId: normalizedOwnerId })) === true; }
+    const authorizationRequest = { actor: Object.freeze({ id: actorId, role: actor.role }), scope, ownerId: normalizedOwnerId };
+    if (ownerType !== undefined) authorizationRequest.ownerType = ownerType;
+    try { allowed = authorize(Object.freeze(authorizationRequest)) === true; }
     catch { allowed = false; }
     if (!allowed) throw new DomainInvariantError('agent-context-forbidden', 'The actor is not authorized to retrieve this memory scope.');
 
-    const candidates = memoryRepository.listByOwner(scope, normalizedOwnerId, { limit: Math.min(100, limit * CANDIDATE_MULTIPLIER) })
+    const candidates = memoryRepository.listByOwner(scope, normalizedOwnerId,
+        { limit: Math.min(100, limit * CANDIDATE_MULTIPLIER), ownerType })
         .map((memory) => ({ ...memory, title: boundedText(memory.title, 500), category: memory.category?.slice(0, 100) ?? null,
             content: boundedText(memory.content, 3000) }));
-    const ranked = retrieveScopedMemories(candidates, { scope, ownerId: normalizedOwnerId, query, categories, verifiedOnly, minImportance,
+    const ranked = retrieveScopedMemories(candidates, { scope, ownerId: normalizedOwnerId, ownerType, query, categories, verifiedOnly, minImportance,
         limit: Math.min(100, limit * CANDIDATE_MULTIPLIER) });
     const items = [];
     for (const { memory } of ranked) {
@@ -39,7 +45,9 @@ export function assembleBoundedAgentContext({ memoryRepository, authorize } = {}
             content: memory.content, verified: memory.verified === true || memory.verified === 1 });
         if (byteLength({ scope, ownerId: normalizedOwnerId, items: [...items, item] }) <= maxBytes) items.push(item);
     }
-    return Object.freeze({ scope, ownerId: normalizedOwnerId, items: Object.freeze(items) });
+    const result = { scope, ownerId: normalizedOwnerId, items: Object.freeze(items) };
+    if (ownerType !== undefined) result.ownerType = ownerType;
+    return Object.freeze(result);
 }
 
 function boundedText(value, limit) {

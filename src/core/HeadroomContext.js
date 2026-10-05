@@ -22,6 +22,7 @@ import { AgentRepository, AIUsageRepository, applyMigrations, assertUpgradeCompa
 import { CONFIGURATION_DEFAULTS, validateHeadroomConfiguration, } from './Configuration';
 import { registerStatusTreeViews } from './StatusTreeProviders';
 import { CommandCenterPanel, createCommandCenterSnapshot } from './CommandCenterPanel';
+import { ExecutionActivityFeed } from './ExecutionActivityFeed';
 import { createSecretStorageAdapter } from '../infrastructure/SecretStorageAdapter';
 import { createObjectiveIntakeUseCase } from '../application/objectiveIntake';
 import { createObjectiveQuestionWorkflow } from '../application/objectiveQuestions';
@@ -30,10 +31,13 @@ import { createDirectorPlanProposal } from '../application/directorPlanProposal'
 import { createTaskCreationUseCase } from '../application/taskCreation';
 import { createBoundedAIProvider, DEFAULT_AI_REQUEST_BUDGET } from '../application/aiRequestPolicy';
 import { createHumanCodeReviewDecision } from '../application/humanCodeReview';
+import { createCodeExplanationUseCase, createReviewEvidenceExplanation } from '../application/codeExplanation';
+import { createEngineeringReviewUseCase } from '../application/engineeringReview';
 import { createPersistedPlanDecision } from '../application/persistedPlanDecision';
 import { createAgentLifecycleManagement } from '../application/agentLifecycleManagement';
-import { createAIUsageRecorder, createGeminiAIProviderAdapter, SqliteEventBus, createSqliteUnitOfWork } from '../infrastructure';
+import { createAIUsageRecorder, createGeminiAIProviderAdapter, createGitStateAdapter, SqliteEventBus, createSqliteUnitOfWork } from '../infrastructure';
 import { getMessage } from './messages';
+import { redactSecrets } from '../shared/redactSecrets';
 const HEALTH_CHECKS = Object.freeze([
     { id: 'database', label: 'Database' }, { id: 'queue', label: 'Queue' },
     { id: 'provider', label: 'AI provider' }, { id: 'verification', label: 'Verification' },
@@ -76,6 +80,8 @@ export class HeadroomContext {
     _executionControl = new ExecutionControl();
     _refreshStatusViews = () => {};
     _commandCenter;
+    _executionActivity = new ExecutionActivityFeed();
+    _gitStateAdapters = new Map();
     _directorRequestController;
     constructor(context) {
         this._context = context;
@@ -124,11 +130,13 @@ export class HeadroomContext {
             }));
             this._refreshStatusViews = statusViews.refresh;
             for (const disposable of statusViews.disposables) this._addDisposable(disposable);
-            this._commandCenter = new CommandCenterPanel(() => createCommandCenterSnapshot({
+            this._commandCenter = new CommandCenterPanel(async () => createCommandCenterSnapshot({
                 objectives: objectiveRepository.list(),
                 tasks: taskRepository.list(),
                 directorQuestions: directorQuestionRepository.list(),
                 activity: auditLogRepository.listRecent({ limit: 20 }),
+                executionActivity: this._executionActivity.listRecent({ limit: 20 }),
+                changedFiles: await this._readWorkspaceChangedFiles(createGitStateAdapter),
                 agents: agentRepository.list(),
                 offices: officeRepository.list(),
                 departments: departmentRepository.list(),
@@ -178,6 +186,38 @@ export class HeadroomContext {
             }
             throw error;
         }
+    }
+    async _readWorkspaceChangedFiles(createGitAdapter) {
+        const folders = (vscode.workspace.workspaceFolders ?? []).slice(0, 10);
+        const snapshots = await Promise.all(folders.map(async (folder) => {
+            const root = folder?.uri?.fsPath;
+            if (typeof root !== 'string' || !root) return [];
+            try {
+                let adapterPromise = this._gitStateAdapters.get(root);
+                if (!adapterPromise) {
+                    adapterPromise = createGitAdapter({ workspaceRoot: root });
+                    this._gitStateAdapters.set(root, adapterPromise);
+                }
+                let adapter;
+                try { adapter = await adapterPromise; }
+                catch (error) {
+                    this._gitStateAdapters.delete(root);
+                    throw error;
+                }
+                return (await adapter.getChangedFiles()).map((record) => ({
+                    ...record, path: folders.length > 1 ? `${folder.name}/${record.path}` : record.path,
+                    originalPath: record.originalPath && folders.length > 1 ? `${folder.name}/${record.originalPath}` : record.originalPath,
+                }));
+            }
+            catch {
+                return [];
+            }
+        }));
+        const activeRoots = new Set(folders.map((folder) => folder?.uri?.fsPath).filter((root) => typeof root === 'string'));
+        for (const root of this._gitStateAdapters.keys()) {
+            if (!activeRoots.has(root)) this._gitStateAdapters.delete(root);
+        }
+        return snapshots.flat().slice(0, 20);
     }
     _registerCommands() {
         this._addDisposable(vscode.commands.registerCommand(COMMANDS.OPEN_DASHBOARD, () => {
@@ -241,6 +281,12 @@ export class HeadroomContext {
         }));
         this._addDisposable(vscode.commands.registerCommand(COMMANDS.MANAGE_AGENT_LIFECYCLE, async () => {
             await this._manageAgentLifecycle();
+        }));
+        this._addDisposable(vscode.commands.registerCommand(COMMANDS.EXPLAIN_SELECTION, async () => {
+            await this._explainSelection();
+        }));
+        this._addDisposable(vscode.commands.registerCommand(COMMANDS.REVIEW_SELECTION, async (area) => {
+            await this._reviewSelection(area);
         }));
     }
     _addDisposable(disposable) {
@@ -438,6 +484,101 @@ export class HeadroomContext {
             inputTokenCounter: (request, options) => gemini.countInputTokens(request, options),
             usageRecorder: createAIUsageRecorder({ usageRepository: new AIUsageRepository(database), purpose }),
             defaultBudget: DEFAULT_AI_REQUEST_BUDGET });
+    }
+    async _explainSelection() {
+        const editor = vscode.window.activeTextEditor;
+        const selection = editor?.selection;
+        const selectedCode = selection ? editor.document.getText(selection) : '';
+        if (!selectedCode.trim()) {
+            vscode.window.showInformationMessage('Select code first, then run HEADROOM: Explain Selected Code.');
+            return;
+        }
+        if (this._configuration.aiProvider !== 'gemini') {
+            vscode.window.showInformationMessage(getMessage('director.analysis.providerRequired'));
+            return;
+        }
+        const fileName = redactSecrets(basename(editor.document.fileName ?? 'selected code'), 160);
+        const sentCharacters = Math.min(selectedCode.length, 8000);
+        const confirmation = await vscode.window.showWarningMessage(
+            `Send up to ${sentCharacters} selected characters from ${fileName} to the configured AI provider for an evidence-backed explanation? Common credential patterns are redacted first.`,
+            { modal: true }, 'Send selection');
+        if (confirmation !== 'Send selection') return;
+
+        const controller = this._beginDirectorRequest();
+        if (!controller) return;
+        const useCase = createCodeExplanationUseCase({
+            provider: this._createDirectorProvider(this._databaseConnection.database, 'code-explanation'),
+            idFactory: () => randomUUID(),
+        });
+        let result;
+        try {
+            result = await useCase.run({ action: 'EXPLAIN_FILE', selected: fileName,
+                context: { selectedCode: selectedCode.slice(0, 8000) },
+                evidence: [{ id: 'active-selection', type: 'source', label: `${fileName} selected code` }],
+                model: this._configuration.reasoningModel, signal: controller.signal });
+        }
+        finally {
+            if (this._directorRequestController === controller) this._directorRequestController = undefined;
+        }
+        if (controller.signal.aborted) {
+            vscode.window.showInformationMessage(getMessage('director.request.cancelled'));
+            return;
+        }
+        if (!result.ok) {
+            vscode.window.showErrorMessage(`Code explanation failed: ${result.error.message}`);
+            return;
+        }
+        const document = await vscode.workspace.openTextDocument({ language: 'json',
+            content: JSON.stringify(result.value.explanation, null, 2) });
+        await vscode.window.showTextDocument(document, { preview: false });
+    }
+    async _reviewSelection(area = 'FULL') {
+        const editor = vscode.window.activeTextEditor;
+        const selection = editor?.selection;
+        const selectedCode = selection ? editor.document.getText(selection) : '';
+        if (!selectedCode.trim()) {
+            vscode.window.showInformationMessage('Select code first, then run HEADROOM: Review Selected Code.');
+            return;
+        }
+        if (this._configuration.aiProvider !== 'gemini') {
+            vscode.window.showInformationMessage(getMessage('director.analysis.providerRequired'));
+            return;
+        }
+        const fileName = redactSecrets(basename(editor.document.fileName ?? 'selected code'), 160);
+        const sentCharacters = Math.min(selectedCode.length, 8000);
+        const startLine = (Number.isInteger(selection.start?.line) ? selection.start.line : 0) + 1;
+        const endLine = (Number.isInteger(selection.end?.line) ? selection.end.line : startLine - 1) + 1;
+        const confirmation = await vscode.window.showWarningMessage(
+            `Send up to ${sentCharacters} selected characters from ${fileName} to the configured AI provider for an evidence-backed engineering review? Common credential patterns are redacted first.`,
+            { modal: true }, 'Send selection');
+        if (confirmation !== 'Send selection') return;
+
+        const controller = this._beginDirectorRequest();
+        if (!controller) return;
+        const useCase = createEngineeringReviewUseCase({
+            provider: this._createDirectorProvider(this._databaseConnection.database, 'engineering-review'),
+            idFactory: () => randomUUID(),
+        });
+        let result;
+        try {
+            result = await useCase.run({ area, selected: fileName, context: { selectedCode: selectedCode.slice(0, 8000) },
+                evidence: [{ id: 'active-selection', type: 'source', label: `${fileName}:${startLine}-${endLine}`,
+                    excerpt: selectedCode.slice(0, 8000) }],
+                model: this._configuration.reasoningModel, signal: controller.signal });
+        }
+        finally {
+            if (this._directorRequestController === controller) this._directorRequestController = undefined;
+        }
+        if (controller.signal.aborted) {
+            vscode.window.showInformationMessage(getMessage('director.request.cancelled'));
+            return;
+        }
+        if (!result.ok) {
+            vscode.window.showErrorMessage(`Engineering review failed: ${result.error.message}`);
+            return;
+        }
+        const document = await vscode.workspace.openTextDocument({ language: 'json', content: JSON.stringify(result.value.review, null, 2) });
+        await vscode.window.showTextDocument(document, { preview: false });
     }
     _beginDirectorRequest() {
         if (this._executionControl.status === 'PAUSED') {
@@ -654,7 +795,15 @@ export class HeadroomContext {
             vscode.window.showWarningMessage(getMessage('review.bundle.missing'));
             return;
         }
-        const serialized = JSON.stringify(bundle, null, 2);
+        let explanation;
+        try {
+            explanation = createReviewEvidenceExplanation(bundle, { selected: 'Evidence for this task change' });
+        }
+        catch {
+            // Preserve the existing evidence review when an older/test bundle
+            // does not include the complete comparison and provenance contract.
+        }
+        const serialized = JSON.stringify(explanation ? { explanation, reviewEvidence: bundle } : bundle, null, 2);
         if (Buffer.byteLength(serialized, 'utf8') > 2 * 1024 * 1024) {
             vscode.window.showErrorMessage(getMessage('review.bundle.tooLarge'));
             return;
@@ -806,6 +955,7 @@ export class HeadroomContext {
                 if (index >= 0) this._context.subscriptions.splice(index, 1);
             }
         }
+        this._gitStateAdapters.clear();
         try {
             this._databaseConnection.close();
         }
@@ -820,11 +970,11 @@ export class HeadroomContext {
     _getCollapsedCommandCenterSections() {
         const saved = this._context.globalState.get('headroom.commandCenter.collapsedSections', []);
         if (!Array.isArray(saved)) return [];
-        return saved.filter((section) => ['objectives', 'tasks', 'completed-tasks', 'task-errors', 'director-questions', 'activity'].includes(section));
+        return saved.filter((section) => ['objectives', 'tasks', 'completed-tasks', 'task-errors', 'director-questions', 'activity', 'execution-activity'].includes(section));
     }
 
     _setCollapsedCommandCenterSection(section, collapsed) {
-        const allowed = ['objectives', 'tasks', 'completed-tasks', 'task-errors', 'director-questions', 'activity'];
+        const allowed = ['objectives', 'tasks', 'completed-tasks', 'task-errors', 'director-questions', 'activity', 'execution-activity'];
         if (!allowed.includes(section) || typeof collapsed !== 'boolean') return Promise.resolve(false);
         const sections = new Set(this._getCollapsedCommandCenterSections());
         if (collapsed) sections.add(section);

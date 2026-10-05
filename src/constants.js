@@ -24,6 +24,8 @@ export const COMMANDS = {
     REVIEW_TASK_CHANGES: 'headroom.reviewTaskChanges',
     REVIEW_PLAN: 'headroom.reviewPlan',
     MANAGE_AGENT_LIFECYCLE: 'headroom.manageAgentLifecycle',
+    EXPLAIN_SELECTION: 'headroom.explainSelection',
+    REVIEW_SELECTION: 'headroom.reviewSelection',
 };
 // ============================================================
 // VIEW IDs — must match package.json contributes.views
