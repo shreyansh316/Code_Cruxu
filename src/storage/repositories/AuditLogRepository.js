@@ -41,6 +41,13 @@ export class AuditLogRepository {
         return mapAudit(this.database.prepare('SELECT * FROM audit_logs WHERE id = ?').get(id));
     }
 
+    listRecent({ limit = 100 } = {}) {
+        validateLimit(limit);
+        return this.database.prepare(`
+          SELECT * FROM audit_logs ORDER BY created_at DESC, rowid DESC LIMIT ?
+        `).all(limit).map(mapAudit);
+    }
+
     listByEntity(entity, entityId, { limit = 100 } = {}) {
         if (typeof entity !== 'string' || entity.trim() === '') throw new TypeError('Audit entity must be non-empty.');
         entityId = assertEntityId(entityId, 'Audit entity id');

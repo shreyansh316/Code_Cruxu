@@ -27,8 +27,17 @@ export function createTaskCreationUseCase({
             if (!objective) throw new ApplicationError('objective-not-found', 'The approved plan objective no longer exists.');
             const assignments = validateAssignments(plan, input.assignments);
             const hierarchy = dependencies.hierarchyProvider.getSnapshot();
+            if (typeof objective.organizationId !== 'string' || objective.organizationId.length === 0) {
+                throw new ApplicationError('objective-organization-missing',
+                    'The objective must belong to an organization before task creation.');
+            }
+            if (hierarchy?.organization?.id !== objective.organizationId) {
+                throw new ApplicationError('task-organization-scope-mismatch',
+                    'The active organization hierarchy does not match the approved plan objective.');
+            }
             for (const [taskId, assignment] of assignments) {
-                assertTaskAssignment(assignment, hierarchy);
+                const plannedTask = plan.tasks.find((task) => task.id === taskId);
+                assertTaskAssignment({ ...assignment, requiredCapabilities: plannedTask.requiredCapabilities ?? [] }, hierarchy);
             }
 
             const maxRetries = input.maxRetries ?? 2;
@@ -70,6 +79,7 @@ export function createTaskCreationUseCase({
                         projectId: plannedTask.projectId, creatorId: assignment.creatorId,
                         assigneeId: assignment.assigneeId,
                         acceptanceCriteria: plannedTask.acceptanceCriteria,
+                        requiredCapabilities: plannedTask.requiredCapabilities ?? [],
                         retryCount: 0, maxRetries,
                     });
                     const timestamp = (value) => (value instanceof Date ? value : new Date(value)).toISOString();
@@ -78,7 +88,8 @@ export function createTaskCreationUseCase({
                         id: createEntityId(dependencies.idFactory()), action: 'TASK_CREATED', entity: 'task',
                         entityId: task.id, actorId: assignment.creatorId, taskId: task.id,
                         details: { projectId: task.projectId, assigneeId: task.assigneeId,
-                            acceptanceCriteriaCount: plannedTask.acceptanceCriteria.length },
+                            acceptanceCriteriaCount: plannedTask.acceptanceCriteria.length,
+                            requiredCapabilities: plannedTask.requiredCapabilities ?? [] },
                     });
                     dependencies.eventPublisher.append(createDomainEvent({
                         eventId: createEntityId(dependencies.idFactory()), type: EventType.TASK_CREATED,

@@ -56,14 +56,20 @@ function buildPlan(objectiveId, output, idFactory) {
         return { id: createEntityId(idFactory()), projectId: projects[item.projectIndex]?.id, title: boundedText(item.title) };
     });
     const tasks = output.tasks.map((item, index) => {
-        if (!exactKeys(item, ['projectIndex', 'milestoneIndex', 'title', 'acceptanceCriteria'])) invalid();
+        const taskKeys = ['projectIndex', 'milestoneIndex', 'title', 'acceptanceCriteria'];
+        if (!exactKeys(item, taskKeys) && !exactKeys(item, [...taskKeys, 'requiredCapabilities'])) invalid();
         const title = boundedText(item?.title);
         if (!Array.isArray(item?.acceptanceCriteria) || item.acceptanceCriteria.length < 1 || item.acceptanceCriteria.length > 12) invalid();
+        const requiredCapabilities = item.requiredCapabilities === undefined ? [] : item.requiredCapabilities;
+        if (!Array.isArray(requiredCapabilities) || requiredCapabilities.length > 32
+            || requiredCapabilities.some((capability) => typeof capability !== 'string' || !capability.trim() || capability.trim().length > 100)
+            || new Set(requiredCapabilities.map((capability) => capability.trim().toLocaleLowerCase('en-US'))).size !== requiredCapabilities.length) invalid();
         const acceptanceCriteria = item.acceptanceCriteria.map((description) => ({
             id: createEntityId(idFactory()), description: boundedText(description), required: true, met: false,
         }));
         return { id: createEntityId(idFactory()), taskCode: `DIR-${String(index + 1).padStart(3, '0')}`, title,
-            projectId: projects[item.projectIndex]?.id, milestoneId: milestones[item.milestoneIndex]?.id, acceptanceCriteria };
+            projectId: projects[item.projectIndex]?.id, milestoneId: milestones[item.milestoneIndex]?.id,
+            acceptanceCriteria, requiredCapabilities: requiredCapabilities.map((capability) => capability.trim()) };
     });
     const dependencies = output.dependencies.map((item) => {
         if (!exactKeys(item, ['dependentTaskIndex', 'dependencyTaskIndex'])) invalid();
@@ -76,7 +82,8 @@ function buildPlan(objectiveId, output, idFactory) {
     catch { invalid(); }
     return Object.freeze({ ...plan, projects: Object.freeze(projects), milestones: Object.freeze(milestones),
         tasks: Object.freeze(tasks.map((task) => Object.freeze({ ...task,
-            acceptanceCriteria: Object.freeze(task.acceptanceCriteria.map(Object.freeze)) }))),
+            acceptanceCriteria: Object.freeze(task.acceptanceCriteria.map(Object.freeze)),
+            requiredCapabilities: Object.freeze(task.requiredCapabilities) }))),
         dependencies: Object.freeze(dependencies.map(Object.freeze)) });
 }
 

@@ -1,5 +1,5 @@
 import { AgentRole, OFFICE_CATALOG } from '../constants';
-import { assertOrganizationHierarchyInvariant, createEntityId, DomainInvariantError, validateDepartmentWorkforce } from '../domain';
+import { assertOrganizationHierarchyInvariant, createEntityId, DomainInvariantError, isAgentAvailable, validateDepartmentWorkforce } from '../domain';
 import { ApplicationError, createUseCase } from './useCase';
 
 /** Configure department managers and the fixed four-person workforce in every enabled office. */
@@ -25,11 +25,14 @@ export function createOfficeWorkforceConfigurationUseCase({ organizationReposito
                 const officeIds = new Set(offices.map(({ id }) => id));
                 const departmentIds = new Set(departments.map(({ id }) => id));
                 // AgentRepository is global; construct this organization's hierarchy slice only.
-                const agents = dependencies.agentRepository.list().filter((agent) =>
+                const organizationAgents = typeof dependencies.agentRepository.listByOrganization === 'function'
+                    ? dependencies.agentRepository.listByOrganization(organizationId)
+                    : dependencies.agentRepository.list();
+                const agents = organizationAgents.filter((agent) =>
                     (agent.role === AgentRole.HEAD_MANAGER && officeIds.has(agent.managedOfficeId))
                     || (agent.role === AgentRole.DEPT_MANAGER && departmentIds.has(agent.managedDepartmentId))
                     || (agent.role === AgentRole.EMPLOYEE && departmentIds.has(agent.departmentId))
-                    || [AgentRole.CEO, AgentRole.DIRECTOR].includes(agent.role));
+                    || ([AgentRole.CEO, AgentRole.DIRECTOR].includes(agent.role) && agent.organizationId === organizationId));
                 const hierarchy = { organization, offices, departments, agents };
                 assertOrganizationHierarchyInvariant(hierarchy);
                 const bySlug = new Map(input.offices.map((configuration) => [configuration.officeSlug, configuration]));
@@ -37,7 +40,7 @@ export function createOfficeWorkforceConfigurationUseCase({ organizationReposito
                 for (const office of offices) {
                     const config = bySlug.get(office.slug);
                     const head = agents.filter((agent) => agent.role === AgentRole.HEAD_MANAGER && agent.managedOfficeId === office.id);
-                    if (head.length !== 1 || ['OFFLINE', 'ERROR'].includes(head[0].status)) {
+                    if (head.length !== 1 || !isAgentAvailable(head[0])) {
                         throw new ApplicationError('office-head-manager-unavailable',
                             `Enabled office ${office.slug} must have exactly one available Office Head Manager.`);
                     }
@@ -50,11 +53,12 @@ export function createOfficeWorkforceConfigurationUseCase({ organizationReposito
                         const department = dependencies.departmentRepository.create({ id: departmentId, officeId: office.id,
                             name: departmentConfig.name.trim(), slug: departmentConfig.slug.trim(), status: 'ACTIVE' });
                         const manager = dependencies.agentRepository.create({ id: newEntityId(dependencies.idFactory),
-                            name: departmentConfig.managerName.trim(), role: AgentRole.DEPT_MANAGER,
+                            organizationId, name: departmentConfig.managerName.trim(), role: AgentRole.DEPT_MANAGER,
                             managedDepartmentId: departmentId, status: 'IDLE' });
                         const employeeInputs = departmentConfig.employees.map((employee) => ({
-                            id: newEntityId(dependencies.idFactory), name: employee.name.trim(), role: AgentRole.EMPLOYEE,
-                            departmentId, specialization: employee.specialization.trim(), status: 'IDLE',
+                            id: newEntityId(dependencies.idFactory), organizationId,
+                            name: employee.name.trim(), role: AgentRole.EMPLOYEE,
+                            departmentId, specialization: employee.specialization.trim(), capabilities: employee.capabilities ?? [], status: 'IDLE',
                         }));
                         const workforce = validateDepartmentWorkforce(departmentId, employeeInputs);
                         for (const employee of workforce) dependencies.agentRepository.create(employee);
@@ -97,7 +101,10 @@ function validateConfiguration(configurations, enabledOffices) {
                 || !Array.isArray(department.employees) || department.employees.length !== 4
                 || department.employees.some((employee) => !employee || typeof employee.name !== 'string'
                     || !employee.name.trim() || employee.name.length > 100 || typeof employee.specialization !== 'string'
-                    || !employee.specialization.trim() || employee.specialization.length > 100)
+                    || !employee.specialization.trim() || employee.specialization.length > 100
+                    || (employee.capabilities !== undefined && (!Array.isArray(employee.capabilities) || employee.capabilities.length > 32
+                        || employee.capabilities.some((capability) => typeof capability !== 'string' || !capability.trim() || capability.trim().length > 100)
+                        || new Set(employee.capabilities.map((capability) => capability.trim().toLowerCase())).size !== employee.capabilities.length)))
                 || new Set(department.employees.map(({ specialization }) => specialization.trim().toLowerCase())).size !== 4) invalidConfiguration();
             departmentSlugs.add(department.slug);
         }

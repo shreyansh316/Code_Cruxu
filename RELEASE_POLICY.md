@@ -16,7 +16,7 @@ SQLite schema migration versions are independent of the extension SemVer. Migrat
 
 On startup, HEADROOM inspects the migration ledger before applying pending migrations. Fresh databases initialize from version 0. Supported older ledgers migrate forward transactionally to the latest schema bundled with the extension. A newer database version or mismatched ledger blocks startup without attempting a downgrade or repair. Users must open that database with a compatible newer release or restore a verified backup.
 
-The latest migration is the authoritative schema version (`SCHEMA_MIGRATIONS.at(-1).version`); the current schema is version 8. Compatibility tests cover fresh/current/older ledgers, forward migration, malformed history, and future-version rejection.
+The latest migration is the authoritative schema version (`SCHEMA_MIGRATIONS.at(-1).version`); the current schema is version 12. Compatibility tests cover fresh/current/older ledgers, forward migration, malformed history, and future-version rejection.
 
 ## Release checks
 

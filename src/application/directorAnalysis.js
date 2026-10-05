@@ -1,6 +1,7 @@
 import { createEntityId } from '../domain';
 import { ApplicationError, createUseCase } from './useCase';
 import { getPromptContract } from './promptRegistry';
+import { normalizeQuestionText } from '../shared/normalizeQuestionText';
 
 const MAX_PROPOSED_QUESTIONS = 8;
 const MAX_QUESTION_LENGTH = 2000;
@@ -25,8 +26,8 @@ export function createDirectorObjectiveAnalysis({ objectiveRepository, questionR
             const objective = dependencies.objectiveRepository.getById(objectiveId);
             if (!objective) throw new ApplicationError('objective-not-found', 'The requested objective does not exist.');
             const priorQuestions = dependencies.questionRepository.listByObjective(objectiveId)
-                .filter(({ status }) => status === 'ANSWERED' || status === 'SKIPPED')
-                .map(({ question, answer, status }) => ({ question, answer: status === 'ANSWERED' ? answer : null, status }));
+                .map(({ question, answer, status }) => ({ question,
+                    answer: status === 'ANSWERED' ? answer : null, status }));
             const result = await dependencies.provider.generate({
                 requestId: createEntityId(dependencies.idFactory()),
                 model: input.model,
@@ -41,18 +42,18 @@ export function createDirectorObjectiveAnalysis({ objectiveRepository, questionR
                 throw new ApplicationError(`director-analysis-${result.finishReason.toLowerCase()}`,
                     'Director objective analysis did not produce a complete result.');
             }
-            return Object.freeze({ objectiveId, questions: validateProposals(result.output) });
+            return Object.freeze({ objectiveId, questions: validateProposals(result.output, priorQuestions) });
         },
     });
 }
 
-function validateProposals(output) {
+function validateProposals(output, priorQuestions) {
     if (!output || typeof output !== 'object' || Array.isArray(output)
         || Object.keys(output).length !== 1 || !Array.isArray(output.questions)
         || output.questions.length > MAX_PROPOSED_QUESTIONS) {
         throw new ApplicationError('invalid-director-analysis', 'Director analysis returned an invalid question proposal set.');
     }
-    const questions = output.questions.map((item) => {
+    const proposed = output.questions.map((item) => {
         if (!item || typeof item !== 'object' || Array.isArray(item)
             || Object.keys(item).sort().join(',') !== 'category,question,rationale'
             || typeof item.question !== 'string' || !item.question.trim() || item.question.trim().length > MAX_QUESTION_LENGTH
@@ -62,5 +63,12 @@ function validateProposals(output) {
         }
         return Object.freeze({ question: item.question.trim(), category: item.category.trim(), rationale: item.rationale.trim() });
     });
-    return Object.freeze(questions);
+    const seen = new Set(priorQuestions.map(({ question }) => normalizeQuestionText(question)));
+    const unique = proposed.filter(({ question }) => {
+        const normalized = normalizeQuestionText(question);
+        if (seen.has(normalized)) return false;
+        seen.add(normalized);
+        return true;
+    });
+    return Object.freeze(unique);
 }

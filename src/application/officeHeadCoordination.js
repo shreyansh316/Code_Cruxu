@@ -1,5 +1,5 @@
 import { AgentRole } from '../constants';
-import { assertOrganizationHierarchyInvariant, createEntityId, DomainInvariantError } from '../domain';
+import { assertOrganizationHierarchyInvariant, createEntityId, DomainInvariantError, isAgentAvailable } from '../domain';
 import { ApplicationError, createUseCase } from './useCase';
 
 /** Coordinate a cross-department dependency solely through its owning Office Head. */
@@ -20,7 +20,7 @@ export function createOfficeHeadCoordinationUseCase({ hierarchyProvider, message
             const hierarchy = dependencies.hierarchyProvider.getSnapshot();
             assertOrganizationHierarchyInvariant(hierarchy);
             const head = hierarchy.agents.find(({ id, role }) => id === input.officeHeadId && role === AgentRole.HEAD_MANAGER);
-            if (!head || ['OFFLINE', 'ERROR'].includes(head.status)) throw new ApplicationError('office-head-not-found', 'The Office Head is unavailable.');
+            if (!head || !isAgentAvailable(head)) throw new ApplicationError('office-head-not-found', 'The Office Head is unavailable.');
             const dependent = hierarchy.departments.find(({ id }) => id === input.dependentDepartmentId);
             const prerequisite = hierarchy.departments.find(({ id }) => id === input.prerequisiteDepartmentId);
             if (!dependent || !prerequisite) throw new ApplicationError('department-not-found', 'A dependency department does not exist.');
@@ -28,8 +28,8 @@ export function createOfficeHeadCoordinationUseCase({ hierarchyProvider, message
                 || prerequisite.officeId !== head.managedOfficeId) {
                 throw new DomainInvariantError('cross-department-route-forbidden', 'Both dependency departments must be distinct and belong to this Office Head.');
             }
-            const managers = [dependent, prerequisite].map((department) => hierarchy.agents.find(({ role, managedDepartmentId, status }) =>
-                role === AgentRole.DEPT_MANAGER && managedDepartmentId === department.id && !['OFFLINE', 'ERROR'].includes(status)));
+            const managers = [dependent, prerequisite].map((department) => hierarchy.agents.find((agent) =>
+                agent.role === AgentRole.DEPT_MANAGER && agent.managedDepartmentId === department.id && isAgentAvailable(agent)));
             if (managers.some((manager) => !manager)) throw new ApplicationError('department-manager-not-found', 'A dependency department has no available manager.');
             const [dependentRoute, prerequisiteRoute] = await Promise.all(managers.map((manager, index) => dependencies.messageRouter.run({
                 senderId: head.id, recipientId: manager.id,

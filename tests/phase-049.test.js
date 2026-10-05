@@ -54,6 +54,21 @@ describe('Phase 049 — Director plan proposal', () => {
         expect((await missing.run({ objectiveId: 'missing', model: 'model' })).error.code).toBe('objective-not-found');
     });
 
+    it('preserves bounded required capability labels in an unapproved proposal', async () => {
+        const output = validOutput();
+        output.tasks[0].requiredCapabilities = ['npm', 'vite'];
+        const { proposal } = makeProposal(output);
+        const result = await proposal.run({ objectiveId: objective.id, model: 'model' });
+        expect(result.ok).toBe(true);
+        expect(result.value.tasks[0].requiredCapabilities).toEqual(['npm', 'vite']);
+        expect(Object.isFrozen(result.value.tasks[0].requiredCapabilities)).toBe(true);
+
+        output.tasks[0].requiredCapabilities = ['npm', ' NPM '];
+        const invalid = makeProposal(output);
+        expect((await invalid.proposal.run({ objectiveId: objective.id, model: 'model' })).error.code)
+            .toBe('invalid-director-plan');
+    });
+
     it('rejects invalid indexes, forward/cyclic dependencies, missing criteria, and oversized plans', async () => {
         const cases = [];
         const unknownReference = validOutput(); unknownReference.tasks[0].milestoneIndex = 9; cases.push(unknownReference);

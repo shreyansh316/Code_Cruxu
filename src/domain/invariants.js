@@ -1,4 +1,4 @@
-import { AgentRole, ObjectiveStatus, TaskStatus } from '../constants';
+import { AgentLifecycleStatus, AgentRole, ObjectiveStatus, TaskStatus } from '../constants';
 import { DomainInvariantError } from './errors';
 const REPORTS_TO = {
     [AgentRole.CEO]: [],
@@ -30,6 +30,7 @@ export function assertAgentInvariant(value) {
     requireText(value.name, 'Agent name');
     requireMember(value.role, Object.values(AgentRole), 'Agent role');
     requireMember(value.status, ['IDLE', 'BUSY', 'OFFLINE', 'ERROR'], 'Agent status');
+    if (value.lifecycleStatus !== undefined) requireMember(value.lifecycleStatus, Object.values(AgentLifecycleStatus), 'Agent lifecycle status');
     const managesOffice = hasReference(value.managedOfficeId);
     const managesDepartment = hasReference(value.managedDepartmentId);
     const assignedDepartment = hasReference(value.departmentId);
@@ -100,6 +101,9 @@ export function assertOrganizationHierarchyInvariant(value) {
     }
     for (const agent of value.agents) {
         assertAgentInvariant(agent);
+        if (agent.organizationId != null && agent.organizationId !== value.organization.id) {
+            invalidHierarchy(`Agent ${agent.id} references a different organization.`);
+        }
         if (hasReference(agent.managedOfficeId) && !officeIds.has(agent.managedOfficeId)) {
             invalidHierarchy(`Agent ${agent.id} manages an unknown office.`);
         }

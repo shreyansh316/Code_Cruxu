@@ -59,9 +59,9 @@ describe('Phase 036 — task creation use case', () => {
         agents.create({ id: 'agent-036-ceo', name: 'CEO', role: AgentRole.CEO });
         agents.create({ id: 'agent-036-manager-a', name: 'Manager A', role: AgentRole.DEPT_MANAGER, managedDepartmentId: 'department-036-a' });
         agents.create({ id: 'agent-036-manager-b', name: 'Manager B', role: AgentRole.DEPT_MANAGER, managedDepartmentId: 'department-036-b' });
-        agents.create({ id: 'agent-036-employee-a', name: 'Employee A', role: AgentRole.EMPLOYEE, departmentId: 'department-036-a' });
+        agents.create({ id: 'agent-036-employee-a', name: 'Employee A', role: AgentRole.EMPLOYEE, departmentId: 'department-036-a', capabilities: ['npm', 'vite'] });
         agents.create({ id: 'agent-036-employee-b', name: 'Employee B', role: AgentRole.EMPLOYEE, departmentId: 'department-036-b' });
-        objectives.create({ id: 'objective-036', title: 'Deliver release', description: 'Release objective' });
+        objectives.create({ id: 'objective-036', title: 'Deliver release', description: 'Release objective', organizationId: 'organization-036' });
 
         plan = createPlan();
         const approval = createPlanApprovalUseCase({ agentRepository: agents,
@@ -108,6 +108,20 @@ describe('Phase 036 — task creation use case', () => {
         ]);
     });
 
+    it('routes only to employees with every required capability and persists the requirement', async () => {
+        const capabilityPlan = { ...approvedPlan, tasks: approvedPlan.tasks.map((task, index) => index === 0
+            ? { ...task, requiredCapabilities: ['npm', 'Vite'] } : task) };
+        const outcome = await workflow.run({ plan: capabilityPlan, assignments: assignments() });
+        expect(outcome.ok).toBe(true);
+        expect(tasks.getById('task-036-1').requiredCapabilities).toEqual(['npm', 'Vite']);
+
+        const unsupportedPlan = { ...approvedPlan, tasks: approvedPlan.tasks.map((task, index) => index === 0
+            ? { ...task, requiredCapabilities: ['terraform'] } : task) };
+        const rejected = await workflow.run({ plan: unsupportedPlan, assignments: assignments() });
+        expect(rejected.error.code).toBe('invalid-assignment');
+        expect(tasks.list()).toHaveLength(2);
+    });
+
     it('rejects unapproved plans, incomplete assignment maps, and cross-department assignments', async () => {
         const unapproved = await workflow.run({ plan, assignments: assignments() });
         expect(unapproved.error.code).toBe('plan-not-approved');
@@ -133,6 +147,44 @@ describe('Phase 036 — task creation use case', () => {
         expect(projects.list()).toEqual([]);
         expect(database.prepare('SELECT COUNT(*) AS count FROM audit_logs').get().count).toBe(0);
         expect(database.prepare('SELECT COUNT(*) AS count FROM events').get().count).toBe(0);
+    });
+
+    it('rejects an unowned objective or hierarchy from another organization before writing', async () => {
+        const unowned = createTaskCreationUseCase({
+            objectiveRepository: { getById: (id) => ({ ...objectives.getById(id), organizationId: null }) },
+            projectRepository: projects, taskRepository: tasks, dependencyRepository: taskDependencies,
+            hierarchyProvider: { getSnapshot: workflowHierarchy() }, auditRepository: audit,
+            eventPublisher: events, unitOfWork: createSqliteUnitOfWork(database),
+            clock: { now: () => '2026-10-03T12:00:00.000Z' }, idFactory: nextGeneratedId,
+        });
+        expect((await unowned.run({ plan: approvedPlan, assignments: assignments() })).error.code)
+            .toBe('objective-organization-missing');
+
+        const foreignHierarchy = createTaskCreationUseCase({
+            objectiveRepository: objectives, projectRepository: projects, taskRepository: tasks,
+            dependencyRepository: taskDependencies,
+            hierarchyProvider: { getSnapshot: () => ({ ...workflowHierarchy()(), organization: { id: 'other-org' } }) },
+            auditRepository: audit, eventPublisher: events, unitOfWork: createSqliteUnitOfWork(database),
+            clock: { now: () => '2026-10-03T12:00:00.000Z' }, idFactory: nextGeneratedId,
+        });
+        expect((await foreignHierarchy.run({ plan: approvedPlan, assignments: assignments() })).error.code)
+            .toBe('task-organization-scope-mismatch');
+
+        const foreignAgent = createTaskCreationUseCase({
+            objectiveRepository: objectives, projectRepository: projects, taskRepository: tasks,
+            dependencyRepository: taskDependencies,
+            hierarchyProvider: { getSnapshot: () => {
+                const hierarchy = workflowHierarchy()();
+                return { ...hierarchy, agents: hierarchy.agents.map((agent) => agent.id === 'agent-036-employee-a'
+                    ? { ...agent, organizationId: 'other-organization' } : agent) };
+            } },
+            auditRepository: audit, eventPublisher: events, unitOfWork: createSqliteUnitOfWork(database),
+            clock: { now: () => '2026-10-03T12:00:00.000Z' }, idFactory: nextGeneratedId,
+        });
+        expect((await foreignAgent.run({ plan: approvedPlan, assignments: assignments() })).error.code)
+            .toBe('invalid-hierarchy');
+        expect(tasks.list()).toEqual([]);
+        expect(projects.list()).toEqual([]);
     });
 
     function workflowHierarchy() {

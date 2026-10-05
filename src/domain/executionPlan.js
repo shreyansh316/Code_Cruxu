@@ -28,6 +28,7 @@ export function assertExecutionPlan(plan) {
         if (!project || !milestone || milestone.projectId !== task.projectId) {
             invalidPlan(`Task ${task.id} must reference a milestone in its declared project.`);
         }
+        validateRequiredCapabilities(task);
         validateAcceptanceDefinitions(task);
     }
     for (const milestone of plan.milestones) {
@@ -44,6 +45,17 @@ export function assertExecutionPlan(plan) {
         invalidPlan(error instanceof Error ? error.message : 'Task dependency graph is invalid.');
     }
     return plan;
+}
+
+function validateRequiredCapabilities(task) {
+    if (task.requiredCapabilities === undefined) return;
+    if (!Array.isArray(task.requiredCapabilities) || task.requiredCapabilities.length > 32
+        || task.requiredCapabilities.some((capability) => typeof capability !== 'string'
+            || !capability.trim() || capability.trim().length > 100)
+        || new Set(task.requiredCapabilities.map((capability) => capability.trim().toLocaleLowerCase('en-US'))).size
+            !== task.requiredCapabilities.length) {
+        invalidPlan(`Task ${task.id} has malformed or duplicate required capabilities.`);
+    }
 }
 
 function indexUnique(items, label, validate) {

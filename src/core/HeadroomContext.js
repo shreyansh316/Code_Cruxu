@@ -12,20 +12,27 @@
  * This file must remain the single source of initialization order.
  */
 import * as vscode from 'vscode';
-import { join } from 'path';
+import { basename, join } from 'path';
 import { randomUUID } from 'node:crypto';
-import { COMMANDS } from '../constants';
-import { ExecutionControl } from '../domain';
-import { AgentRepository, applyMigrations, assertUpgradeCompatible, AuditLogRepository, diagnoseDatabaseIntegrity,
-    ExecutionQueueRepository, ObjectiveRepository, SqliteConnection, TaskRepository } from '../storage';
+import { AgentLifecycleStatus, AgentRole, COMMANDS } from '../constants';
+import { ExecutionControl, isAgentAvailable } from '../domain';
+import { AgentRepository, AIUsageRepository, applyMigrations, assertUpgradeCompatible, AuditLogRepository, diagnoseDatabaseIntegrity,
+    DepartmentRepository, DirectorQuestionRepository, ExecutionQueueRepository, ObjectiveRepository, OfficeRepository, OrganizationRepository,
+    ProjectRepository, SqliteConnection, TaskDependencyRepository, TaskRepository } from '../storage';
 import { CONFIGURATION_DEFAULTS, validateHeadroomConfiguration, } from './Configuration';
 import { registerStatusTreeViews } from './StatusTreeProviders';
 import { CommandCenterPanel, createCommandCenterSnapshot } from './CommandCenterPanel';
 import { createSecretStorageAdapter } from '../infrastructure/SecretStorageAdapter';
 import { createObjectiveIntakeUseCase } from '../application/objectiveIntake';
+import { createObjectiveQuestionWorkflow } from '../application/objectiveQuestions';
+import { createDirectorObjectiveAnalysis } from '../application/directorAnalysis';
+import { createDirectorPlanProposal } from '../application/directorPlanProposal';
+import { createTaskCreationUseCase } from '../application/taskCreation';
+import { createBoundedAIProvider, DEFAULT_AI_REQUEST_BUDGET } from '../application/aiRequestPolicy';
 import { createHumanCodeReviewDecision } from '../application/humanCodeReview';
 import { createPersistedPlanDecision } from '../application/persistedPlanDecision';
-import { createSqliteUnitOfWork } from '../infrastructure/SqliteUnitOfWork';
+import { createAgentLifecycleManagement } from '../application/agentLifecycleManagement';
+import { createAIUsageRecorder, createGeminiAIProviderAdapter, SqliteEventBus, createSqliteUnitOfWork } from '../infrastructure';
 import { getMessage } from './messages';
 const HEALTH_CHECKS = Object.freeze([
     { id: 'database', label: 'Database' }, { id: 'queue', label: 'Queue' },
@@ -69,6 +76,7 @@ export class HeadroomContext {
     _executionControl = new ExecutionControl();
     _refreshStatusViews = () => {};
     _commandCenter;
+    _directorRequestController;
     constructor(context) {
         this._context = context;
     }
@@ -89,11 +97,24 @@ export class HeadroomContext {
             assertUpgradeCompatible(this._databaseConnection.database);
             applyMigrations(this._databaseConnection.database);
             const queueRepository = new ExecutionQueueRepository(this._databaseConnection.database);
+            const agentRepository = new AgentRepository(this._databaseConnection.database);
             const objectiveRepository = new ObjectiveRepository(this._databaseConnection.database);
+            const directorQuestionRepository = new DirectorQuestionRepository(this._databaseConnection.database);
+            const auditLogRepository = new AuditLogRepository(this._databaseConnection.database);
             const taskRepository = new TaskRepository(this._databaseConnection.database);
+            const organizationRepository = new OrganizationRepository(this._databaseConnection.database);
+            const officeRepository = new OfficeRepository(this._databaseConnection.database);
+            const departmentRepository = new DepartmentRepository(this._databaseConnection.database);
+            const projectRepository = new ProjectRepository(this._databaseConnection.database);
             const statusViews = registerStatusTreeViews(this._context, {
+                organizations: organizationRepository,
+                offices: officeRepository,
+                departments: departmentRepository,
+                agents: agentRepository,
+                directorQuestions: directorQuestionRepository,
                 objectives: objectiveRepository,
                 tasks: taskRepository,
+                projects: projectRepository,
             }, async () => readOperationalHealth({
                 database: () => diagnoseDatabaseIntegrity(this._databaseConnection.database),
                 queue: () => ({ queued: queueRepository.listByState('QUEUED').length,
@@ -106,8 +127,22 @@ export class HeadroomContext {
             this._commandCenter = new CommandCenterPanel(() => createCommandCenterSnapshot({
                 objectives: objectiveRepository.list(),
                 tasks: taskRepository.list(),
+                directorQuestions: directorQuestionRepository.list(),
+                activity: auditLogRepository.listRecent({ limit: 20 }),
+                agents: agentRepository.list(),
+                offices: officeRepository.list(),
+                departments: departmentRepository.list(),
+                organizations: organizationRepository.list(),
+                collapsedSections: this._getCollapsedCommandCenterSections(),
+                workspace: {
+                    folders: (vscode.workspace.workspaceFolders ?? []).map((folder) => folder.name),
+                    activeFile: vscode.window.activeTextEditor?.document?.fileName
+                        ? basename(vscode.window.activeTextEditor.document.fileName) : '',
+                    languageId: vscode.window.activeTextEditor?.document?.languageId ?? '',
+                },
                 executionStatus: this._executionControl.status,
-            }));
+            }), (section, collapsed) => this._setCollapsedCommandCenterSection(section, collapsed),
+            () => this._answerDirectorQuestion());
             this._addDisposable(this._commandCenter);
             // 1. Register commands
             this._registerCommands();
@@ -151,6 +186,12 @@ export class HeadroomContext {
         this._addDisposable(vscode.commands.registerCommand(COMMANDS.NEW_OBJECTIVE, async () => {
             await this._createObjective();
         }));
+        this._addDisposable(vscode.commands.registerCommand(COMMANDS.ANALYZE_OBJECTIVE, async () => {
+            await this._analyzeObjective();
+        }));
+        this._addDisposable(vscode.commands.registerCommand(COMMANDS.PROPOSE_PLAN, async () => {
+            await this._proposePlan();
+        }));
         this._addDisposable(vscode.commands.registerCommand(COMMANDS.SHOW_STATUS, () => {
             this._showStatus();
         }));
@@ -159,12 +200,32 @@ export class HeadroomContext {
             vscode.window.showInformationMessage(result.changed
                 ? getMessage('execution.paused')
                 : getMessage('execution.alreadyPaused'));
+            this._commandCenter?.refresh();
+            this._refreshStatusViews();
         }));
         this._addDisposable(vscode.commands.registerCommand(COMMANDS.RESUME_EXECUTION, () => {
             const result = this._executionControl.resume();
             vscode.window.showInformationMessage(result.changed
                 ? getMessage('execution.resumed')
                 : getMessage('execution.alreadyRunning'));
+            this._commandCenter?.refresh();
+            this._refreshStatusViews();
+        }));
+        this._addDisposable(vscode.commands.registerCommand(COMMANDS.CANCEL_EXECUTION, async () => {
+            if (this._executionControl.status === 'CANCELLED') {
+                vscode.window.showInformationMessage(getMessage('execution.alreadyCancelled'));
+                return;
+            }
+            const confirmation = await vscode.window.showWarningMessage(
+                getMessage('execution.cancelConfirmation'), { modal: true }, getMessage('execution.cancelConfirm'));
+            if (confirmation !== getMessage('execution.cancelConfirm')) return;
+            const result = this._executionControl.cancel();
+            this._directorRequestController?.abort();
+            vscode.window.showInformationMessage(result.changed
+                ? getMessage('execution.cancelled')
+                : getMessage('execution.alreadyCancelled'));
+            this._commandCenter?.refresh();
+            this._refreshStatusViews();
         }));
         this._addDisposable(vscode.commands.registerCommand(COMMANDS.CONFIGURE_PROVIDER_CREDENTIAL, async () => {
             await this._configureProviderCredential();
@@ -177,6 +238,9 @@ export class HeadroomContext {
         }));
         this._addDisposable(vscode.commands.registerCommand(COMMANDS.REVIEW_PLAN, async (plan) => {
             return await this._reviewPlan(plan);
+        }));
+        this._addDisposable(vscode.commands.registerCommand(COMMANDS.MANAGE_AGENT_LIFECYCLE, async () => {
+            await this._manageAgentLifecycle();
         }));
     }
     _addDisposable(disposable) {
@@ -216,6 +280,21 @@ export class HeadroomContext {
         }
     }
     async _createObjective() {
+        const database = this._databaseConnection.database;
+        const organizations = new OrganizationRepository(database).list()
+            .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+        if (!organizations.length) {
+            vscode.window.showInformationMessage(getMessage('objective.organization.missing'));
+            return;
+        }
+        let organization = organizations[0];
+        if (organizations.length > 1) {
+            const selectedOrganization = await vscode.window.showQuickPick(organizations.map((entry) => ({
+                label: entry.name, description: entry.id, organization: entry,
+            })), { title: getMessage('objective.organization.pick'), ignoreFocusOut: true });
+            organization = selectedOrganization?.organization;
+        }
+        if (!organization) return;
         const title = await vscode.window.showInputBox({
             title: getMessage('objective.title'), prompt: getMessage('objective.title.prompt'),
             placeHolder: getMessage('objective.title.placeholder'), ignoreFocusOut: true,
@@ -231,10 +310,10 @@ export class HeadroomContext {
         });
         if (description === undefined) return;
         const intake = createObjectiveIntakeUseCase({
-            objectiveRepository: new ObjectiveRepository(this._databaseConnection.database),
+            objectiveRepository: new ObjectiveRepository(database),
             idFactory: () => randomUUID(),
         });
-        const result = await intake.run({ title, description });
+        const result = await intake.run({ organizationId: organization.id, title, description });
         if (!result.ok) {
             vscode.window.showErrorMessage(getMessage('objective.create.failed', { error: result.error.message }));
             return;
@@ -242,6 +321,301 @@ export class HeadroomContext {
         this._refreshStatusViews();
         this._commandCenter?.refresh();
         vscode.window.showInformationMessage(getMessage('objective.created'));
+    }
+    async _pickObjectiveForOrganization(database, objectiveRepository) {
+        const organizations = new OrganizationRepository(database).list()
+            .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+        if (!organizations.length) {
+            vscode.window.showInformationMessage(getMessage('objective.organization.missing'));
+            return undefined;
+        }
+        let organization = organizations[0];
+        if (organizations.length > 1) {
+            const selectedOrganization = await vscode.window.showQuickPick(organizations.map((entry) => ({
+                label: entry.name, description: entry.id, organization: entry,
+            })), { title: getMessage('objective.organization.pick'), ignoreFocusOut: true });
+            organization = selectedOrganization?.organization;
+        }
+        if (!organization) return undefined;
+        const objectives = [...objectiveRepository.listByOrganization(organization.id), ...objectiveRepository.listUnassigned()]
+            .sort((a, b) => a.title.localeCompare(b.title) || a.id.localeCompare(b.id)).slice(0, 1000);
+        if (!objectives.length) {
+            vscode.window.showInformationMessage(getMessage('director.analysis.noObjectives'));
+            return undefined;
+        }
+        const selected = await vscode.window.showQuickPick(objectives.map((objective) => ({
+            label: objective.title.slice(0, 200),
+            description: objective.organizationId ? objective.status : `Unassigned · ${objective.status}`,
+            objectiveId: objective.id, requiresOrganizationAssignment: !objective.organizationId,
+        })), { title: getMessage('director.analysis.pickObjective'), ignoreFocusOut: true });
+        if (!selected) return undefined;
+        return { selected, organization };
+    }
+    async _analyzeObjective() {
+        if (this._executionControl.status === 'PAUSED') {
+            vscode.window.showInformationMessage(getMessage('director.request.paused'));
+            return;
+        }
+        if (this._executionControl.status === 'CANCELLED') {
+            vscode.window.showInformationMessage(getMessage('director.request.cancelled'));
+            return;
+        }
+        if (this._configuration.aiProvider !== 'gemini') {
+            vscode.window.showInformationMessage(getMessage('director.analysis.providerRequired'));
+            return;
+        }
+        const database = this._databaseConnection.database;
+        const objectiveRepository = new ObjectiveRepository(database);
+        const picked = await this._pickObjectiveForOrganization(database, objectiveRepository);
+        if (!picked) return;
+        const { selected: selectedObjective, organization } = picked;
+        const confirmation = await vscode.window.showWarningMessage(
+            getMessage('director.analysis.confirmSend'), { modal: true }, getMessage('director.analysis.confirm'));
+        if (confirmation !== getMessage('director.analysis.confirm')) return;
+        if (selectedObjective.requiresOrganizationAssignment) {
+            objectiveRepository.update(selectedObjective.objectiveId, { organizationId: organization.id });
+        }
+
+        const analysis = createDirectorObjectiveAnalysis({
+            objectiveRepository,
+            questionRepository: new DirectorQuestionRepository(database),
+            provider: this._createDirectorProvider(database, 'director-objective-analysis'),
+            idFactory: () => randomUUID(),
+        });
+        const controller = this._beginDirectorRequest();
+        if (!controller) return;
+        let result;
+        try {
+            result = await analysis.run({ objectiveId: selectedObjective.objectiveId,
+                model: this._configuration.reasoningModel, signal: controller.signal });
+        } finally {
+            if (this._directorRequestController === controller) this._directorRequestController = undefined;
+        }
+        if (controller.signal.aborted) {
+            vscode.window.showInformationMessage(getMessage('director.request.cancelled'));
+            return;
+        }
+        if (!result.ok) {
+            vscode.window.showErrorMessage(getMessage('director.analysis.failed', { error: result.error.message }));
+            return;
+        }
+        if (!result.value.questions.length) {
+            vscode.window.showInformationMessage(getMessage('director.analysis.noQuestions'));
+            return;
+        }
+        const selected = await vscode.window.showQuickPick(result.value.questions.map((proposal) => ({
+            label: proposal.question,
+            description: `${proposal.category} · ${proposal.rationale}`,
+            proposal,
+        })), { title: getMessage('director.analysis.pickProposals'), canPickMany: true, ignoreFocusOut: true });
+        if (!selected?.length) return;
+
+        const questionRepository = new DirectorQuestionRepository(database);
+        const eventBus = new SqliteEventBus(database);
+        const auditRepository = new AuditLogRepository(database);
+        const workflow = createObjectiveQuestionWorkflow({ questionRepository, objectiveRepository,
+            idFactory: () => randomUUID(),
+            eventPublisher: { append: (event) => {
+                eventBus.append(event);
+                return auditRepository.append({ id: event.eventId, action: event.type,
+                    entity: 'objective', entityId: event.aggregateId, details: { occurredAt: event.occurredAt, ...event.payload } });
+            } }, unitOfWork: createSqliteUnitOfWork(database), clock: { now: () => new Date() } });
+        let saved = 0;
+        for (const item of selected) {
+            const created = await workflow.create.run({ objectiveId: selectedObjective.objectiveId,
+                question: item.proposal.question, category: item.proposal.category });
+            if (created.ok) saved += 1;
+        }
+        this._refreshStatusViews();
+        this._commandCenter?.refresh();
+        vscode.window.showInformationMessage(saved === selected.length
+            ? getMessage('director.analysis.saved', { count: saved })
+            : getMessage('director.analysis.savePartial', { saved, failed: selected.length - saved }));
+    }
+    _createDirectorProvider(database, purpose) {
+        const gemini = createGeminiAIProviderAdapter({ credentialStore: createSecretStorageAdapter(this._context.secrets) });
+        return createBoundedAIProvider({ provider: gemini,
+            inputTokenCounter: (request, options) => gemini.countInputTokens(request, options),
+            usageRecorder: createAIUsageRecorder({ usageRepository: new AIUsageRepository(database), purpose }),
+            defaultBudget: DEFAULT_AI_REQUEST_BUDGET });
+    }
+    _beginDirectorRequest() {
+        if (this._executionControl.status === 'PAUSED') {
+            vscode.window.showInformationMessage(getMessage('director.request.paused'));
+            return undefined;
+        }
+        if (this._executionControl.status === 'CANCELLED') {
+            vscode.window.showInformationMessage(getMessage('director.request.cancelled'));
+            return undefined;
+        }
+        if (this._directorRequestController) {
+            vscode.window.showInformationMessage(getMessage('director.request.alreadyRunning'));
+            return undefined;
+        }
+        const controller = new AbortController();
+        this._directorRequestController = controller;
+        return controller;
+    }
+    async _proposePlan() {
+        if (this._executionControl.status === 'PAUSED') {
+            vscode.window.showInformationMessage(getMessage('director.request.paused'));
+            return;
+        }
+        if (this._executionControl.status === 'CANCELLED') {
+            vscode.window.showInformationMessage(getMessage('director.request.cancelled'));
+            return;
+        }
+        if (this._configuration.aiProvider !== 'gemini') {
+            vscode.window.showInformationMessage(getMessage('director.analysis.providerRequired'));
+            return;
+        }
+        const database = this._databaseConnection.database;
+        const objectiveRepository = new ObjectiveRepository(database);
+        const picked = await this._pickObjectiveForOrganization(database, objectiveRepository);
+        if (!picked) return;
+        const { selected: selectedObjective, organization } = picked;
+        const questionRepository = new DirectorQuestionRepository(database);
+        if (questionRepository.listByObjective(selectedObjective.objectiveId).some(({ status }) => status === 'PENDING')) {
+            vscode.window.showInformationMessage(getMessage('director.plan.questionsPending'));
+            return;
+        }
+        const confirmation = await vscode.window.showWarningMessage(
+            getMessage('director.plan.confirmSend'), { modal: true }, getMessage('director.plan.confirm'));
+        if (confirmation !== getMessage('director.plan.confirm')) return;
+        if (selectedObjective.requiresOrganizationAssignment) {
+            objectiveRepository.update(selectedObjective.objectiveId, { organizationId: organization.id });
+        }
+        const proposal = createDirectorPlanProposal({ objectiveRepository, questionRepository,
+            provider: this._createDirectorProvider(database, 'director-plan-proposal'), idFactory: () => randomUUID() });
+        const controller = this._beginDirectorRequest();
+        if (!controller) return;
+        let result;
+        try {
+            result = await proposal.run({ objectiveId: selectedObjective.objectiveId,
+                model: this._configuration.reasoningModel, signal: controller.signal });
+        } finally {
+            if (this._directorRequestController === controller) this._directorRequestController = undefined;
+        }
+        if (controller.signal.aborted) {
+            vscode.window.showInformationMessage(getMessage('director.request.cancelled'));
+            return;
+        }
+        if (!result.ok) {
+            vscode.window.showErrorMessage(getMessage('director.plan.failed', { error: result.error.message }));
+            return;
+        }
+        // A proposal is shown as JSON and explicitly approved or rejected by the CEO.
+        const decidedPlan = await this._reviewPlan(result.value);
+        if (decidedPlan?.approval?.decision === 'APPROVED') await this._createApprovedPlanTasks(decidedPlan);
+    }
+    async _createApprovedPlanTasks(plan) {
+        const database = this._databaseConnection.database;
+        const objectiveRepository = new ObjectiveRepository(database);
+        const objective = objectiveRepository.getById(plan.objectiveId);
+        if (!objective) {
+            vscode.window.showErrorMessage(getMessage('plan.tasks.objectiveMissing'));
+            return;
+        }
+        const organizationRepository = new OrganizationRepository(database);
+        const organizations = organizationRepository.list().sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+        let organization = objective.organizationId ? organizationRepository.getById(objective.organizationId) : undefined;
+        if (!organization && !objective.organizationId && organizations.length === 1) organization = organizations[0];
+        if (!organization && !objective.organizationId && organizations.length > 1) {
+            const selected = await vscode.window.showQuickPick(organizations.map((entry) => ({ label: entry.name, organization: entry })),
+                { title: getMessage('plan.tasks.pickOrganization'), ignoreFocusOut: true });
+            organization = selected?.organization;
+        }
+        if (!organization) {
+            vscode.window.showErrorMessage(getMessage('plan.tasks.organizationMissing'));
+            return;
+        }
+
+        const officeRepository = new OfficeRepository(database);
+        const departmentRepository = new DepartmentRepository(database);
+        const officeIds = new Set(officeRepository.listByOrganization(organization.id)
+            .filter((office) => office.status === 'ACTIVE').map((office) => office.id));
+        const offices = officeRepository.listByOrganization(organization.id).filter((office) => officeIds.has(office.id));
+        const departments = offices.flatMap((office) => departmentRepository.listByOffice(office.id)
+            .filter((department) => department.status === 'ACTIVE'));
+        const departmentIds = new Set(departments.map((department) => department.id));
+        const allAgents = new AgentRepository(database).listByOrganization(organization.id);
+        const hierarchyAgents = allAgents.filter((agent) =>
+            ((agent.role === AgentRole.CEO || agent.role === AgentRole.DIRECTOR) && agent.organizationId === organization.id)
+            || (agent.role === AgentRole.HEAD_MANAGER && officeIds.has(agent.managedOfficeId))
+            || (agent.role === AgentRole.DEPT_MANAGER && departmentIds.has(agent.managedDepartmentId))
+            || (agent.role === AgentRole.EMPLOYEE && departmentIds.has(agent.departmentId)));
+        const directors = hierarchyAgents.filter((agent) => agent.role === AgentRole.DIRECTOR && isAgentAvailable(agent));
+        if (directors.length !== 1) {
+            vscode.window.showErrorMessage(getMessage('plan.tasks.directorUnavailable'));
+            return;
+        }
+        const managerByOffice = new Map(hierarchyAgents.filter((agent) =>
+            agent.role === AgentRole.HEAD_MANAGER && isAgentAvailable(agent)).map((agent) => [agent.managedOfficeId, agent]));
+        const routes = offices.flatMap((office) => {
+            const head = managerByOffice.get(office.id);
+            return head ? plan.tasks.map((task) => ({
+                label: `${task.taskCode} · ${task.title.slice(0, 120)}`,
+                description: `${office.name} · ${head.name}`,
+                taskId: task.id, creatorId: directors[0].id, assigneeId: head.id,
+            })) : [];
+        }).slice(0, 8_000);
+        if (!routes.length) {
+            vscode.window.showErrorMessage(getMessage('plan.tasks.noOfficeHeads'));
+            return;
+        }
+        const selectedRoutes = await vscode.window.showQuickPick(routes,
+            { title: getMessage('plan.tasks.assign'), canPickMany: true, ignoreFocusOut: true });
+        if (!selectedRoutes) return;
+        const routesByTask = new Map();
+        for (const route of selectedRoutes) {
+            if (routesByTask.has(route.taskId)) {
+                vscode.window.showErrorMessage(getMessage('plan.tasks.assignmentInvalid'));
+                return;
+            }
+            routesByTask.set(route.taskId, route);
+        }
+        if (routesByTask.size !== plan.tasks.length || plan.tasks.some((task) => !routesByTask.has(task.id))) {
+            vscode.window.showErrorMessage(getMessage('plan.tasks.assignmentRequired', { count: plan.tasks.length }));
+            return;
+        }
+        const confirmation = await vscode.window.showWarningMessage(getMessage('plan.tasks.confirm', { count: plan.tasks.length }),
+            { modal: true }, getMessage('plan.tasks.create'));
+        if (confirmation !== getMessage('plan.tasks.create')) return;
+
+        // Legacy objectives may not have an organization owner. Persist the explicit
+        // routing choice so future Director actions stay within the same tenant.
+        const currentObjective = objectiveRepository.getById(objective.id);
+        if (!currentObjective || (currentObjective.organizationId && currentObjective.organizationId !== organization.id)) {
+            vscode.window.showErrorMessage(getMessage('plan.tasks.organizationMissing'));
+            return;
+        }
+        if (!currentObjective.organizationId) {
+            const scopedObjective = objectiveRepository.update(objective.id, { organizationId: organization.id });
+            if (!scopedObjective || scopedObjective.organizationId !== organization.id) {
+                vscode.window.showErrorMessage(getMessage('plan.tasks.organizationMissing'));
+                return;
+            }
+        }
+
+        const hierarchy = { organization, offices, departments, agents: hierarchyAgents };
+        const eventBus = new SqliteEventBus(database);
+        const useCase = createTaskCreationUseCase({ objectiveRepository,
+            projectRepository: new ProjectRepository(database), taskRepository: new TaskRepository(database),
+            dependencyRepository: new TaskDependencyRepository(database), hierarchyProvider: { getSnapshot: () => hierarchy },
+            auditRepository: new AuditLogRepository(database), eventPublisher: eventBus,
+            unitOfWork: createSqliteUnitOfWork(database), clock: { now: () => new Date() }, idFactory: () => randomUUID() });
+        const created = await useCase.run({ plan, maxRetries: this._configuration.maxRetries,
+            assignments: plan.tasks.map((task) => {
+                const route = routesByTask.get(task.id);
+                return { taskId: task.id, creatorId: route.creatorId, assigneeId: route.assigneeId };
+            }) });
+        if (!created.ok) {
+            vscode.window.showErrorMessage(getMessage('plan.tasks.failed', { error: created.error.message }));
+            return;
+        }
+        this._refreshStatusViews();
+        this._commandCenter?.refresh();
+        vscode.window.showInformationMessage(getMessage('plan.tasks.created', { count: created.value.tasks.length }));
     }
     async _configureProviderCredential() {
         const provider = await this._pickCredentialProvider();
@@ -287,14 +661,43 @@ export class HeadroomContext {
         }
         const document = await vscode.workspace.openTextDocument({ language: 'json', content: serialized });
         await vscode.window.showTextDocument(document, { preview: false });
-        const agents = new AgentRepository(this._databaseConnection.database).listByRole('CEO');
-        if (agents.length !== 1) {
+        const database = this._databaseConnection.database;
+        const taskRepository = new TaskRepository(database);
+        const task = taskRepository.getById(taskId);
+        if (!task) {
+            vscode.window.showErrorMessage(getMessage('review.task.missing'));
+            return;
+        }
+        const projectRepository = new ProjectRepository(database);
+        const project = projectRepository.getById(task.projectId);
+        const objectiveRepository = new ObjectiveRepository(database);
+        const objective = project?.objectiveId ? objectiveRepository.getById(project.objectiveId) : undefined;
+        const organizationRepository = new OrganizationRepository(database);
+        const organizations = organizationRepository.list().sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+        let organization = objective?.organizationId ? organizationRepository.getById(objective.organizationId) : undefined;
+        if (objective && !objective.organizationId && organizations.length === 1) organization = organizations[0];
+        if (objective && !objective.organizationId && organizations.length > 1) {
+            const selectedOrganization = await vscode.window.showQuickPick(organizations.map((entry) => ({
+                label: entry.name, description: entry.id, organization: entry,
+            })), { title: getMessage('plan.tasks.pickOrganization'), ignoreFocusOut: true });
+            organization = selectedOrganization?.organization;
+        }
+        if (!objective || !organization) {
             vscode.window.showErrorMessage(getMessage('review.ceo.missing'));
             return;
         }
-        const task = new TaskRepository(this._databaseConnection.database).getById(taskId);
-        if (!task) {
-            vscode.window.showErrorMessage(getMessage('review.task.missing'));
+        const agentRepository = new AgentRepository(database);
+        let reviewers = agentRepository.listByOrganization(organization.id)
+            .filter((agent) => agent.role === AgentRole.CEO && isAgentAvailable(agent));
+        if (reviewers.length > 1) {
+            const selectedCEO = await vscode.window.showQuickPick(reviewers.map((agent) => ({
+                label: agent.name, description: agent.id, agent,
+            })), { title: getMessage('review.task.title', { title: task.title }), ignoreFocusOut: true });
+            if (!selectedCEO) return;
+            reviewers = [selectedCEO.agent];
+        }
+        if (reviewers.length !== 1) {
+            vscode.window.showErrorMessage(getMessage('review.ceo.missing'));
             return;
         }
         const decision = await vscode.window.showQuickPick([
@@ -302,14 +705,14 @@ export class HeadroomContext {
             { label: getMessage('review.requestChanges'), description: getMessage('review.requestChanges.description'), value: 'REQUEST_CHANGES' },
         ], { title: getMessage('review.task.title', { title: task.title }), placeHolder: getMessage('review.decision.placeholder') });
         if (!decision) return;
+        if (!objective.organizationId) objectiveRepository.update(objective.id, { organizationId: organization.id });
         const useCase = createHumanCodeReviewDecision({
-            agentRepository: new AgentRepository(this._databaseConnection.database),
-            taskRepository: new TaskRepository(this._databaseConnection.database),
-            auditRepository: new AuditLogRepository(this._databaseConnection.database),
-            unitOfWork: createSqliteUnitOfWork(this._databaseConnection.database),
+            agentRepository, taskRepository, projectRepository, objectiveRepository,
+            auditRepository: new AuditLogRepository(database),
+            unitOfWork: createSqliteUnitOfWork(database),
             clock: { now: () => new Date() }, idFactory: () => randomUUID(),
         });
-        const result = await useCase.run({ reviewerId: agents[0].id, taskId, bundle, decision: decision.value });
+        const result = await useCase.run({ reviewerId: reviewers[0].id, taskId, bundle, decision: decision.value });
         if (!result.ok) {
             vscode.window.showErrorMessage(getMessage('review.recordFailed', { error: result.error.message }));
             return;
@@ -330,8 +733,34 @@ export class HeadroomContext {
         }
         const document = await vscode.workspace.openTextDocument({ language: 'json', content: serialized });
         await vscode.window.showTextDocument(document, { preview: false });
-        const agents = new AgentRepository(this._databaseConnection.database).listByRole('CEO');
-        if (agents.length !== 1) {
+        const database = this._databaseConnection.database;
+        const objectiveRepository = new ObjectiveRepository(database);
+        const objective = objectiveRepository.getById(plan.objectiveId);
+        const organizationRepository = new OrganizationRepository(database);
+        const organizations = organizationRepository.list().sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+        let organization = objective?.organizationId ? organizationRepository.getById(objective.organizationId) : undefined;
+        if (objective && !objective.organizationId && organizations.length === 1) organization = organizations[0];
+        if (objective && !objective.organizationId && organizations.length > 1) {
+            const selectedOrganization = await vscode.window.showQuickPick(organizations.map((entry) => ({
+                label: entry.name, description: entry.id, organization: entry,
+            })), { title: getMessage('plan.tasks.pickOrganization'), ignoreFocusOut: true });
+            organization = selectedOrganization?.organization;
+        }
+        if (!objective || !organization) {
+            vscode.window.showErrorMessage(getMessage('plan.ceo.missing'));
+            return;
+        }
+        const agentRepository = new AgentRepository(database);
+        let approver = agentRepository.listByOrganization(organization.id)
+            .filter((agent) => agent.role === 'CEO' && isAgentAvailable(agent));
+        if (approver.length > 1) {
+            const selectedCEO = await vscode.window.showQuickPick(approver.map((agent) => ({
+                label: agent.name, description: agent.id, agent,
+            })), { title: getMessage('plan.title'), ignoreFocusOut: true });
+            if (!selectedCEO) return;
+            approver = [selectedCEO.agent];
+        }
+        if (approver.length !== 1) {
             vscode.window.showErrorMessage(getMessage('plan.ceo.missing'));
             return;
         }
@@ -340,11 +769,12 @@ export class HeadroomContext {
             { label: getMessage('plan.reject'), description: getMessage('plan.reject.description'), value: 'REJECTED' },
         ], { title: getMessage('plan.title'), placeHolder: getMessage('plan.decision.placeholder') });
         if (!decision) return;
-        const useCase = createPersistedPlanDecision({ agentRepository: new AgentRepository(this._databaseConnection.database),
-            auditRepository: new AuditLogRepository(this._databaseConnection.database),
-            unitOfWork: createSqliteUnitOfWork(this._databaseConnection.database),
+        if (!objective.organizationId) objectiveRepository.update(objective.id, { organizationId: organization.id });
+        const useCase = createPersistedPlanDecision({ agentRepository, objectiveRepository,
+            auditRepository: new AuditLogRepository(database),
+            unitOfWork: createSqliteUnitOfWork(database),
             clock: { now: () => new Date() }, idFactory: () => randomUUID() });
-        const result = await useCase.run({ approverId: agents[0].id, plan, decision: decision.value });
+        const result = await useCase.run({ approverId: approver[0].id, plan, decision: decision.value });
         if (!result.ok) {
             vscode.window.showErrorMessage(getMessage('plan.recordFailed', { error: result.error.message }));
             return;
@@ -385,6 +815,204 @@ export class HeadroomContext {
         if (disposalError !== undefined) {
             throw disposalError;
         }
+    }
+
+    _getCollapsedCommandCenterSections() {
+        const saved = this._context.globalState.get('headroom.commandCenter.collapsedSections', []);
+        if (!Array.isArray(saved)) return [];
+        return saved.filter((section) => ['objectives', 'tasks', 'completed-tasks', 'task-errors', 'director-questions', 'activity'].includes(section));
+    }
+
+    _setCollapsedCommandCenterSection(section, collapsed) {
+        const allowed = ['objectives', 'tasks', 'completed-tasks', 'task-errors', 'director-questions', 'activity'];
+        if (!allowed.includes(section) || typeof collapsed !== 'boolean') return Promise.resolve(false);
+        const sections = new Set(this._getCollapsedCommandCenterSections());
+        if (collapsed) sections.add(section);
+        else sections.delete(section);
+        return this._context.globalState.update('headroom.commandCenter.collapsedSections', [...sections]);
+    }
+
+    async _answerDirectorQuestion() {
+        const database = this._databaseConnection.database;
+        const questionRepository = new DirectorQuestionRepository(database);
+        const objectiveRepository = new ObjectiveRepository(database);
+        const organizationRepository = new OrganizationRepository(database);
+        const organizations = organizationRepository.list().sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+        if (!organizations.length) {
+            vscode.window.showInformationMessage(getMessage('objective.organization.missing'));
+            return;
+        }
+        let organization = organizations[0];
+        if (organizations.length > 1) {
+            const selectedOrganization = await vscode.window.showQuickPick(organizations.map((entry) => ({
+                label: entry.name, description: entry.id, organization: entry,
+            })), { title: getMessage('objective.organization.pick'), ignoreFocusOut: true });
+            organization = selectedOrganization?.organization;
+        }
+        if (!organization) return;
+        const objectiveRecords = [...objectiveRepository.listByOrganization(organization.id), ...objectiveRepository.listUnassigned()];
+        const objectives = new Map(objectiveRecords.map((objective) => [objective.id, objective]));
+        const objectiveIds = new Set(objectives.keys());
+        const pending = questionRepository.listByStatus('PENDING')
+            .filter((question) => objectiveIds.has(question.objectiveId)).slice(0, 100);
+        if (pending.length === 0) {
+            vscode.window.showInformationMessage(getMessage('director.questions.none'));
+            return;
+        }
+        const selected = await vscode.window.showQuickPick(pending.map((question) => ({
+            label: question.question.slice(0, 160),
+            description: (() => {
+                const objective = objectives.get(question.objectiveId);
+                return objective
+                    ? `${organization.name} · ${objective.title}${objective.organizationId ? '' : ' · Unassigned'}`
+                    : getMessage('director.questions.objectiveUnavailable');
+            })(),
+            questionId: question.id,
+            objectiveId: question.objectiveId,
+        })), { title: getMessage('director.questions.pick'), ignoreFocusOut: true });
+        if (!selected) return;
+        const objective = objectives.get(selected.objectiveId);
+        const agentRepository = new AgentRepository(database);
+        let ceos = agentRepository.listByOrganization(organization.id)
+            .filter((agent) => agent.role === AgentRole.CEO && isAgentAvailable(agent));
+        if (!objective || !ceos.length) {
+            vscode.window.showErrorMessage(getMessage('director.questions.ceoMissing'));
+            return;
+        }
+        if (ceos.length > 1) {
+            const selectedCEO = await vscode.window.showQuickPick(ceos.map((agent) => ({
+                label: agent.name, description: agent.id, agent,
+            })), { title: getMessage('lifecycle.pickCEO'), ignoreFocusOut: true });
+            if (!selectedCEO) return;
+            ceos = [selectedCEO.agent];
+        }
+        const action = await vscode.window.showQuickPick([
+            { label: getMessage('director.questions.answerAction'), value: 'ANSWER' },
+            { label: getMessage('director.questions.skipAction'), value: 'SKIP' },
+        ], { title: getMessage('director.questions.pick'), ignoreFocusOut: true });
+        if (!action) return;
+        let answer;
+        if (action.value === 'ANSWER') {
+            answer = await vscode.window.showInputBox({
+                title: getMessage('director.questions.answer'), ignoreFocusOut: true,
+                validateInput: (value) => typeof value === 'string' && value.trim().length >= 1 && value.trim().length <= 10_000
+                    ? undefined : getMessage('director.questions.answer.invalid'),
+            });
+            if (answer === undefined) return;
+        } else if (action.value !== 'SKIP') {
+            return;
+        }
+        if (!objective.organizationId) objectiveRepository.update(objective.id, { organizationId: organization.id });
+        const eventBus = new SqliteEventBus(database);
+        const auditRepository = new AuditLogRepository(database);
+        const workflow = createObjectiveQuestionWorkflow({
+            questionRepository,
+            objectiveRepository,
+            idFactory: () => randomUUID(),
+            eventPublisher: { append: (event) => {
+                eventBus.append(event);
+                return auditRepository.append({
+                    id: event.eventId, action: event.type, entity: 'objective', entityId: event.aggregateId,
+                    actorId: ceos[0]?.id ?? null, details: { occurredAt: event.occurredAt, ...event.payload },
+                });
+            } },
+            unitOfWork: createSqliteUnitOfWork(database),
+            clock: { now: () => new Date() },
+        });
+        const result = action.value === 'SKIP'
+            ? await workflow.skip.run({ questionId: selected.questionId })
+            : await workflow.answer.run({ questionId: selected.questionId, answer });
+        if (!result.ok) {
+            vscode.window.showErrorMessage(getMessage('director.questions.failed', { error: result.error.message }));
+            return;
+        }
+        this._commandCenter?.refresh();
+        this._refreshStatusViews();
+        vscode.window.showInformationMessage(getMessage(action.value === 'SKIP'
+            ? 'director.questions.skipped' : 'director.questions.answered'));
+    }
+    async _manageAgentLifecycle() {
+        const database = this._databaseConnection.database;
+        const organizationRepository = new OrganizationRepository(database);
+        const agentRepository = new AgentRepository(database);
+        const organizations = organizationRepository.list().sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+        if (!organizations.length) {
+            vscode.window.showInformationMessage(getMessage('lifecycle.noOrganizations'));
+            return;
+        }
+        const selectedOrganization = await vscode.window.showQuickPick(organizations.map((organization) => ({
+            label: organization.name, description: organization.id, organization,
+        })), { title: getMessage('lifecycle.pickOrganization'), ignoreFocusOut: true });
+        if (!selectedOrganization) return;
+        const organization = selectedOrganization.organization;
+        const officeRepository = new OfficeRepository(database);
+        const departmentRepository = new DepartmentRepository(database);
+        const offices = officeRepository.listByOrganization(organization.id);
+        const officeIds = new Set(offices.map(({ id }) => id));
+        const departments = offices.flatMap((office) => departmentRepository.listByOffice(office.id));
+        const departmentIds = new Set(departments.map(({ id }) => id));
+        const allAgents = agentRepository.listByOrganization(organization.id);
+        const organizationAgents = allAgents.filter((agent) =>
+            (agent.role === AgentRole.HEAD_MANAGER && officeIds.has(agent.managedOfficeId))
+            || (agent.role === AgentRole.DEPT_MANAGER && departmentIds.has(agent.managedDepartmentId))
+            || (agent.role === AgentRole.EMPLOYEE && departmentIds.has(agent.departmentId))
+            || ([AgentRole.CEO, AgentRole.DIRECTOR].includes(agent.role) && agent.organizationId === organization.id));
+        const ceos = organizationAgents.filter((agent) => agent.role === AgentRole.CEO && isAgentAvailable(agent));
+        if (!ceos.length) {
+            vscode.window.showErrorMessage(getMessage('lifecycle.noActiveCEO'));
+            return;
+        }
+        let actor = ceos[0];
+        if (ceos.length > 1) {
+            const selectedCEO = await vscode.window.showQuickPick(ceos.map((agent) => ({
+                label: agent.name, description: getMessage('lifecycle.ceoDescription'), agent,
+            })), { title: getMessage('lifecycle.pickCEO'), ignoreFocusOut: true });
+            if (!selectedCEO) return;
+            actor = selectedCEO.agent;
+        }
+        const candidates = organizationAgents.filter((agent) => agent.role !== AgentRole.CEO
+            && (agent.lifecycleStatus ?? AgentLifecycleStatus.ACTIVE) !== AgentLifecycleStatus.RETIRED)
+            .sort((a, b) => a.role.localeCompare(b.role) || a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+        if (!candidates.length) {
+            vscode.window.showInformationMessage(getMessage('lifecycle.noTargets'));
+            return;
+        }
+        const selectedTarget = await vscode.window.showQuickPick(candidates.map((agent) => ({
+            label: agent.name, description: `${agent.role} · ${agent.status} · ${agent.lifecycleStatus ?? AgentLifecycleStatus.ACTIVE}`,
+            agent,
+        })), { title: getMessage('lifecycle.pickTarget'), ignoreFocusOut: true });
+        if (!selectedTarget) return;
+        const target = selectedTarget.agent;
+        const current = target.lifecycleStatus ?? AgentLifecycleStatus.ACTIVE;
+        const transitions = current === AgentLifecycleStatus.ACTIVE
+            ? [AgentLifecycleStatus.SUSPENDED, AgentLifecycleStatus.RETIRED]
+            : [AgentLifecycleStatus.ACTIVE, AgentLifecycleStatus.RETIRED];
+        const action = await vscode.window.showQuickPick(transitions.map((lifecycleStatus) => ({
+            label: getMessage(`lifecycle.action.${lifecycleStatus}`), lifecycleStatus,
+        })), { title: getMessage('lifecycle.pickAction'), ignoreFocusOut: true });
+        if (!action) return;
+        const reason = await vscode.window.showInputBox({
+            title: getMessage('lifecycle.reason.title'), prompt: getMessage('lifecycle.reason.prompt'), ignoreFocusOut: true,
+            validateInput: (value) => typeof value === 'string' && value.trim().length >= 1 && value.trim().length <= 1000
+                ? undefined : getMessage('lifecycle.reason.invalid'),
+        });
+        if (reason === undefined) return;
+        const workflow = createAgentLifecycleManagement({
+            agentRepository, hierarchyProvider: { getSnapshot: () => ({ organization, offices, departments, agents: organizationAgents }) },
+            auditRepository: new AuditLogRepository(database), unitOfWork: createSqliteUnitOfWork(database),
+            clock: { now: () => new Date() }, idFactory: () => randomUUID(),
+        });
+        const result = await workflow.run({ actorId: actor.id, agentId: target.id,
+            lifecycleStatus: action.lifecycleStatus, reason });
+        if (!result.ok) {
+            vscode.window.showErrorMessage(getMessage('lifecycle.failed', { error: result.error.message }));
+            return;
+        }
+        this._commandCenter?.refresh();
+        this._refreshStatusViews();
+        vscode.window.showInformationMessage(getMessage('lifecycle.updated', {
+            name: target.name, status: result.value.lifecycleStatus,
+        }));
     }
     get extensionContext() {
         return this._context;

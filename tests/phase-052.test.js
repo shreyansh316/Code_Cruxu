@@ -6,7 +6,7 @@ import { tmpdir } from 'os';
 import * as vscode from 'vscode';
 import { COMMANDS } from '../src/constants';
 import { HeadroomContext } from '../src/core/HeadroomContext';
-import { AgentRepository, AuditLogRepository, ObjectiveRepository } from '../src/storage';
+import { AgentRepository, AuditLogRepository, ObjectiveRepository, OrganizationRepository } from '../src/storage';
 
 const temporaryDirectories = [];
 afterEach(() => {
@@ -32,6 +32,9 @@ function setup() {
         globalStorageUri: { fsPath: directory }, secrets: { get: vi.fn(), store: vi.fn(), delete: vi.fn() } });
     return { context, handlers };
 }
+function seedOrganization(context, id = 'org-052-default') {
+    new OrganizationRepository(context.databaseConnection.database).create({ id, name: 'Organization' });
+}
 
 describe('Phase 052 — CEO objective interaction', () => {
     it('collects title and scope, persists through objective intake, and refreshes the view', async () => {
@@ -41,10 +44,11 @@ describe('Phase 052 — CEO objective interaction', () => {
             .mockResolvedValueOnce('  Deliver a secure, reliable service to customers.  ');
         try {
             await context.initialize();
+            seedOrganization(context);
             await handlers.get(COMMANDS.NEW_OBJECTIVE)();
             const objectives = new ObjectiveRepository(context.databaseConnection.database).list();
             expect(objectives).toHaveLength(1);
-            expect(objectives[0]).toMatchObject({ title: 'Ship the service',
+            expect(objectives[0]).toMatchObject({ organizationId: 'org-052-default', title: 'Ship the service',
                 description: 'Deliver a secure, reliable service to customers.', status: 'NEW' });
             expect(vscode.window.showInputBox.mock.calls[0][0].validateInput('')).toMatch(/Title must/);
             expect(vscode.window.showInputBox.mock.calls[1][0].validateInput('x'.repeat(10_001))).toMatch(/Description must/);
@@ -58,6 +62,7 @@ describe('Phase 052 — CEO objective interaction', () => {
         vi.mocked(vscode.window.showInputBox).mockResolvedValueOnce(undefined);
         try {
             await context.initialize();
+            seedOrganization(context);
             await handlers.get(COMMANDS.NEW_OBJECTIVE)();
             expect(new ObjectiveRepository(context.databaseConnection.database).list()).toEqual([]);
             vi.mocked(vscode.window.showInputBox).mockReset()
@@ -70,12 +75,30 @@ describe('Phase 052 — CEO objective interaction', () => {
         finally { context.dispose(); }
     });
 
+    it('requires an explicit organization choice when creating objectives in a multi-organization workspace', async () => {
+        const { context, handlers } = setup();
+        vi.mocked(vscode.window.showQuickPick).mockImplementationOnce((items) =>
+            items.find((item) => item.organization?.id === 'org-052-b'));
+        vi.mocked(vscode.window.showInputBox).mockResolvedValueOnce('Scoped objective').mockResolvedValueOnce('Owned by organization B.');
+        try {
+            await context.initialize();
+            seedOrganization(context, 'org-052-a');
+            seedOrganization(context, 'org-052-b');
+            await handlers.get(COMMANDS.NEW_OBJECTIVE)();
+
+            expect(new ObjectiveRepository(context.databaseConnection.database).list())
+                .toMatchObject([{ organizationId: 'org-052-b', title: 'Scoped objective' }]);
+        }
+        finally { context.dispose(); }
+    });
+
     it('refreshes Objective tree providers using the VS Code tree-change event', async () => {
         const { context, handlers } = setup();
         vi.mocked(vscode.window.showInputBox).mockResolvedValueOnce('Refresh view').mockResolvedValueOnce('Persist then refresh.');
         const registered = vi.mocked(vscode.window.registerTreeDataProvider).mock.calls;
         try {
             await context.initialize();
+            seedOrganization(context);
             const providers = registered.map(([, provider]) => provider);
             const objectiveChange = vi.spyOn(providers[0]._changeEmitter, 'fire');
             const taskChange = vi.spyOn(providers[1]._changeEmitter, 'fire');
@@ -91,7 +114,10 @@ describe('Phase 052 — CEO objective interaction', () => {
         try {
             await context.initialize();
             const database = context.databaseConnection.database;
-            new AgentRepository(database).create({ id: 'ceo-052', name: 'CEO', role: 'CEO' });
+            seedOrganization(context, 'org-052');
+            new ObjectiveRepository(database).create({ id: 'objective-052', organizationId: 'org-052', title: 'Build release',
+                description: 'Deliver the release.' });
+            new AgentRepository(database).create({ id: 'ceo-052', organizationId: 'org-052', name: 'CEO', role: 'CEO' });
             const plan = { id: 'plan-052', objectiveId: 'objective-052', projects: [{ id: 'project-052', name: 'Project' }],
                 milestones: [{ id: 'milestone-052', projectId: 'project-052', title: 'Release' }],
                 tasks: [{ id: 'task-052', taskCode: 'PH052-001', title: 'Deliver', projectId: 'project-052', milestoneId: 'milestone-052',

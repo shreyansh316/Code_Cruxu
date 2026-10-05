@@ -53,7 +53,7 @@ describe('Phase 042 — execution orchestration', () => {
         agents.create({ id: 'manager-042', name: 'Manager', role: AgentRole.DEPT_MANAGER, managedDepartmentId: 'department-042' });
         agents.create({ id: 'employee-042', name: 'Employee', role: AgentRole.EMPLOYEE, departmentId: 'department-042' });
         objectives = new ObjectiveRepository(database);
-        objectives.create({ id: 'objective-042', title: 'Deliver objective', description: 'End-to-end work', status: ObjectiveStatus.PLANNING });
+        objectives.create({ id: 'objective-042', title: 'Deliver objective', description: 'End-to-end work', status: ObjectiveStatus.PLANNING, organizationId: 'organization-042' });
         projects = new ProjectRepository(database);
         tasks = new TaskRepository(database);
         dependencies = new TaskDependencyRepository(database);

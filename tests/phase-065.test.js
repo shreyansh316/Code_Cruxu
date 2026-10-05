@@ -5,7 +5,7 @@ import { tmpdir } from 'os';
 import * as vscode from 'vscode';
 import { COMMANDS } from '../src/constants';
 import { HeadroomContext } from '../src/core/HeadroomContext';
-import { AgentRepository, AuditLogRepository, TaskRepository } from '../src/storage';
+import { AgentRepository, AuditLogRepository, ObjectiveRepository, OrganizationRepository, ProjectRepository, TaskRepository } from '../src/storage';
 
 const directories = [];
 afterEach(() => { vi.restoreAllMocks(); vi.clearAllMocks(); for (const path of directories.splice(0)) rmSync(path, { recursive: true, force: true }); });
@@ -25,6 +25,14 @@ const bundle = { schemaVersion: 1, taskId: 'task-065', provenance: { head: 'a'.r
     beforeSnapshotId: 'before-065', afterSnapshotId: 'after-065' }, changes: {}, git: {}, checks: [], acceptance: {
         summary: 'Done', criteria: [{ criterionId: 'criterion-065', met: true, evidence: 'Passed' }],
     } };
+function seedReviewScope(database) {
+    new OrganizationRepository(database).create({ id: 'org-065', name: 'Task Organization' });
+    new OrganizationRepository(database).create({ id: 'org-065-other', name: 'Other Organization' });
+    new ObjectiveRepository(database).create({ id: 'objective-065', organizationId: 'org-065', title: 'Review objective', description: 'Scoped' });
+    new ProjectRepository(database).create({ id: 'project-065', objectiveId: 'objective-065', name: 'Review project' });
+    new AgentRepository(database).create({ id: 'ceo-065', organizationId: 'org-065', name: 'CEO', role: 'CEO' });
+    new AgentRepository(database).create({ id: 'ceo-065-other', organizationId: 'org-065-other', name: 'Other CEO', role: 'CEO' });
+}
 
 describe('Phase 065 — human code review gate', () => {
     it('shows evidence before an explicit approval action and audits the exact evidence decision', async () => {
@@ -32,8 +40,8 @@ describe('Phase 065 — human code review gate', () => {
         try {
             await context.initialize();
             const db = context.databaseConnection.database;
-            new AgentRepository(db).create({ id: 'ceo-065', name: 'CEO', role: 'CEO' });
-            new TaskRepository(db).create({ id: 'task-065', taskCode: 'TASK-065', title: 'Review code', status: 'REVIEW',
+            seedReviewScope(db);
+            new TaskRepository(db).create({ id: 'task-065', taskCode: 'TASK-065', title: 'Review code', status: 'REVIEW', projectId: 'project-065',
                 acceptanceCriteria: [{ id: 'criterion-065', description: 'Change is correct', required: true, met: true }],
                 result: { summary: 'Done', acceptanceCriteria: [{ criterionId: 'criterion-065', met: true, evidence: 'Passed' }] } });
             vi.mocked(vscode.window.showQuickPick).mockResolvedValueOnce({ label: 'Approve Changes', value: 'APPROVE' });
@@ -53,8 +61,8 @@ describe('Phase 065 — human code review gate', () => {
         try {
             await context.initialize();
             const db = context.databaseConnection.database;
-            new AgentRepository(db).create({ id: 'ceo-065', name: 'CEO', role: 'CEO' });
-            new TaskRepository(db).create({ id: 'task-065', taskCode: 'TASK-065', title: 'Review code', status: 'REVIEW' });
+            seedReviewScope(db);
+            new TaskRepository(db).create({ id: 'task-065', taskCode: 'TASK-065', title: 'Review code', status: 'REVIEW', projectId: 'project-065' });
             vi.mocked(vscode.window.showQuickPick).mockResolvedValueOnce(undefined);
             await handlers.get(COMMANDS.REVIEW_TASK_CHANGES)('task-065', bundle);
             expect(new AuditLogRepository(db).listByTask('task-065')).toEqual([]);

@@ -15,8 +15,9 @@ export function createObjectiveIntakeUseCase({ objectiveRepository, idFactory } 
         name: 'objective-intake',
         dependencies: { objectiveRepository, idFactory },
         execute: ({ input, dependencies }) => {
-            if (!input || typeof input.title !== 'string' || typeof input.description !== 'string') {
-                throw new DomainInvariantError('invalid-objective-request', 'Objective title and description are required.');
+            if (!input || typeof input.title !== 'string' || typeof input.description !== 'string'
+                || typeof input.organizationId !== 'string' || !input.organizationId.trim()) {
+                throw new DomainInvariantError('invalid-objective-request', 'Objective title, description, and organization are required.');
             }
             const title = input.title.trim();
             const description = input.description.trim();
@@ -29,6 +30,7 @@ export function createObjectiveIntakeUseCase({ objectiveRepository, idFactory } 
             }
             const objective = {
                 id: createEntityId(dependencies.idFactory()),
+                organizationId: input.organizationId.trim(),
                 title,
                 description,
                 status: ObjectiveStatus.NEW,

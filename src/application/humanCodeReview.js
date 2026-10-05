@@ -5,7 +5,7 @@ import { ApplicationError, createUseCase } from './useCase';
 
 /** Persist an explicit human decision over one immutable evidence bundle. */
 export function createHumanCodeReviewDecision({ agentRepository, taskRepository, auditRepository,
-    unitOfWork, clock, idFactory } = {}) {
+    projectRepository, objectiveRepository, unitOfWork, clock, idFactory } = {}) {
     if (typeof agentRepository?.getById !== 'function' || typeof taskRepository?.getById !== 'function'
         || typeof auditRepository?.append !== 'function' || typeof auditRepository?.hasTaskReviewDecision !== 'function'
         || typeof unitOfWork?.run !== 'function' || typeof clock?.now !== 'function' || typeof idFactory !== 'function') {
@@ -18,6 +18,14 @@ export function createHumanCodeReviewDecision({ agentRepository, taskRepository,
             const taskId = createEntityId(input.taskId);
             const task = dependencies.taskRepository.getById(taskId);
             if (!task) throw new ApplicationError('task-not-found', 'The reviewed task does not exist.');
+            if (dependencies.projectRepository && dependencies.objectiveRepository) {
+                const project = dependencies.projectRepository.getById(task.projectId);
+                const objective = project?.objectiveId
+                    ? dependencies.objectiveRepository.getById(project.objectiveId) : undefined;
+                if (!objective?.organizationId || objective.organizationId !== reviewer.organizationId) {
+                    throw new ApplicationError('code-review-scope-denied', 'The CEO and reviewed task must belong to the same persisted organization.');
+                }
+            }
             if (task.status !== TaskStatus.REVIEW) throw new DomainInvariantError('invalid-code-review-state', 'Code changes can be decided only while the task is in review.');
             const bundle = input.bundle;
             if (!bundle || bundle.schemaVersion !== 1 || bundle.taskId !== taskId

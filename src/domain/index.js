@@ -17,6 +17,7 @@
  */
 export { DomainInvariantError } from './errors';
 export { ExecutionControl } from './executionControl';
+export { isAgentAvailable, transitionAgentLifecycle } from './agentLifecycle';
 export { assertTaskDependencyGraph, getTaskReadiness } from './taskDependencies';
 export { calculateTaskProgress } from './taskProgress';
 export { validateTaskAcceptanceCriteria } from './taskAcceptanceCriteria';

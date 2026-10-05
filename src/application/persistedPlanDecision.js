@@ -3,13 +3,13 @@ import { createPlanApprovalUseCase } from './planApproval';
 import { ApplicationError, createUseCase } from './useCase';
 
 /** Persist the CEO's validated plan decision in the append-only audit trail. */
-export function createPersistedPlanDecision({ agentRepository, auditRepository, unitOfWork, clock, idFactory } = {}) {
+export function createPersistedPlanDecision({ agentRepository, objectiveRepository, auditRepository, unitOfWork, clock, idFactory } = {}) {
     if (typeof agentRepository?.getById !== 'function' || typeof auditRepository?.append !== 'function'
         || typeof auditRepository?.hasEntityAction !== 'function' || typeof unitOfWork?.run !== 'function'
         || typeof clock?.now !== 'function' || typeof idFactory !== 'function') {
         throw new TypeError('Persisted plan decisions require identity, audit, transaction, clock, and ID ports.');
     }
-    const approval = createPlanApprovalUseCase({ agentRepository, clock });
+    const approval = createPlanApprovalUseCase({ agentRepository, objectiveRepository, clock });
     return createUseCase({ name: 'persisted-plan-decision', dependencies: { agentRepository, auditRepository, unitOfWork, clock, idFactory, approval },
         execute: async ({ input, dependencies }) => {
             const planId = createEntityId(input?.plan?.id);

@@ -30,7 +30,8 @@ describe('Phase 048 — Director objective analysis', () => {
         const request = provider.generate.mock.calls[0][0];
         expect(request).toMatchObject({ model: 'gemini-reasoning-test',
             input: { objective: { title: objective.title, description: objective.description },
-                priorQuestions: [{ question: 'Who is the audience?', answer: 'Small businesses', status: 'ANSWERED' }] },
+                priorQuestions: [{ question: 'Who is the audience?', answer: 'Small businesses', status: 'ANSWERED' },
+                    { question: 'Which platform?', answer: null, status: 'PENDING' }] },
             outputSchema: { type: 'object', required: ['questions'] } });
         expect(request.systemPrompt).toMatch(/Do not answer for the CEO, approve the objective/);
         expect(questionRepository.listByObjective).toHaveBeenCalledWith(objective.id);
@@ -60,5 +61,24 @@ describe('Phase 048 — Director objective analysis', () => {
         expect((await analysis.run({ objectiveId: objective.id, model: 'model' })).value.questions).toEqual([]);
         expect(provider.generate).toHaveBeenCalledOnce();
         expect(objective).toEqual({ id: 'objective-048', title: 'Launch a mobile app', description: 'Build and launch an app.' });
+    });
+
+    it('removes duplicate proposals already asked and duplicates within one provider response', async () => {
+        const { analysis, provider } = makeAnalysis({
+            questions: [{ question: 'Which platforms are in scope?', status: 'PENDING' }],
+            output: { questions: [
+                ...proposal.questions,
+                { question: ' Which platforms are in scope?! ', category: 'scope', rationale: 'Another phrasing.' },
+                { question: 'Who is the audience?', category: 'scope', rationale: 'The objective does not identify an audience.' },
+                { question: '  who is THE audience?! ', category: 'users', rationale: 'Audience details are still missing.' },
+            ] },
+        });
+        const result = await analysis.run({ objectiveId: objective.id, model: 'model' });
+        expect(result.value.questions).toEqual([
+            { question: 'Who is the audience?', category: 'scope', rationale: 'The objective does not identify an audience.' },
+        ]);
+        expect(provider.generate.mock.calls[0][0].input.priorQuestions).toEqual([
+            { question: 'Which platforms are in scope?', answer: null, status: 'PENDING' },
+        ]);
     });
 });

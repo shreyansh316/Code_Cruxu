@@ -47,9 +47,9 @@ describe('Phase 084 — extension lifecycle hardening', () => {
         const context = new HeadroomContext(extension);
         await Promise.all([context.initialize(), context.initialize()]);
         expect(context.isInitialized).toBe(true);
-        expect(vscode.commands.registerCommand).toHaveBeenCalledTimes(9);
-        expect(vscode.window.registerTreeDataProvider).toHaveBeenCalledTimes(3);
-        expect(extension.subscriptions).toHaveLength(registrations.length + 5);
+        expect(vscode.commands.registerCommand).toHaveBeenCalledTimes(13);
+        expect(vscode.window.registerTreeDataProvider).toHaveBeenCalledTimes(4);
+        expect(extension.subscriptions).toHaveLength(registrations.length + 6);
         context.dispose();
         context.dispose();
         expect(disposals).toEqual([...created].reverse());
@@ -74,8 +74,30 @@ describe('Phase 084 — extension lifecycle hardening', () => {
         expect(context.databaseConnection.isOpen).toBe(false);
         expect(context.isInitialized).toBe(false);
         expect(extension.subscriptions).toEqual([]);
-        expect(disposed).toHaveLength(5);
+        expect(disposed).toHaveLength(6);
         expect(disposed[0]).toMatch(/^command:/);
-        expect(disposed.at(-1)).toBe(`tree:headroom.objectiveView`);
+        expect(disposed.at(-1)).toBe(`tree:headroom.organizationView`);
+    });
+
+    it('requires explicit confirmation before cancelling execution and treats repeat cancellation as idempotent', async () => {
+        const { extension } = setup();
+        vi.mocked(vscode.window.registerTreeDataProvider).mockReturnValue({ dispose: vi.fn() });
+        vi.mocked(vscode.commands.registerCommand).mockReturnValue({ dispose: vi.fn() });
+        vi.mocked(vscode.window.showWarningMessage).mockResolvedValue('Cancel Execution');
+        const context = new HeadroomContext(extension);
+        await context.initialize();
+
+        const cancel = vi.mocked(vscode.commands.registerCommand).mock.calls
+            .find(([command]) => command === 'headroom.cancelExecution')[1];
+        await cancel();
+        expect(context.executionState).toBe('CANCELLED');
+        expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(
+            'Cancel the current HEADROOM execution? This action cannot be undone.',
+            { modal: true }, 'Cancel Execution');
+
+        vi.mocked(vscode.window.showWarningMessage).mockClear();
+        await cancel();
+        expect(vscode.window.showWarningMessage).not.toHaveBeenCalled();
+        context.dispose();
     });
 });

@@ -99,9 +99,8 @@ describe('Phase 039 — execution queue', () => {
         const oldDatabase = oldConnection.open(':memory:');
         applyMigrations(oldDatabase, SCHEMA_MIGRATIONS.slice(0, 4));
         new OrganizationRepository(oldDatabase).create({ id: 'legacy-org-039', name: 'Legacy' });
-        const legacyTasks = new TaskRepository(oldDatabase);
-        legacyTasks.create({ id: 'legacy-task-039', taskCode: 'LEGACY-039', title: 'Preserve me',
-            status: TaskStatus.ASSIGNED, acceptanceCriteria: [] });
+        oldDatabase.prepare("INSERT INTO tasks (id, task_code, title, status, acceptance_criteria) VALUES (?, ?, ?, ?, ?)")
+            .run('legacy-task-039', 'LEGACY-039', 'Preserve me', TaskStatus.ASSIGNED, '[]');
         expect(applyMigrations(oldDatabase)).toBe(SCHEMA_MIGRATIONS.at(-1).version);
         expect(new TaskRepository(oldDatabase).getById('legacy-task-039').title).toBe('Preserve me');
         expect(new ExecutionQueueRepository(oldDatabase).listByState()).toEqual([]);

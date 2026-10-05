@@ -13,13 +13,17 @@ export const EXTENSION_ID = 'headroom';
 export const COMMANDS = {
     OPEN_DASHBOARD: 'headroom.openDashboard',
     NEW_OBJECTIVE: 'headroom.newObjective',
+    ANALYZE_OBJECTIVE: 'headroom.analyzeObjective',
+    PROPOSE_PLAN: 'headroom.proposePlan',
     SHOW_STATUS: 'headroom.showStatus',
     PAUSE_EXECUTION: 'headroom.pauseExecution',
     RESUME_EXECUTION: 'headroom.resumeExecution',
+    CANCEL_EXECUTION: 'headroom.cancelExecution',
     CONFIGURE_PROVIDER_CREDENTIAL: 'headroom.configureProviderCredential',
     CLEAR_PROVIDER_CREDENTIAL: 'headroom.clearProviderCredential',
     REVIEW_TASK_CHANGES: 'headroom.reviewTaskChanges',
     REVIEW_PLAN: 'headroom.reviewPlan',
+    MANAGE_AGENT_LIFECYCLE: 'headroom.manageAgentLifecycle',
 };
 // ============================================================
 // VIEW IDs — must match package.json contributes.views
@@ -52,6 +56,7 @@ export var AgentRole;
     AgentRole["DEPT_MANAGER"] = "DEPT_MANAGER";
     AgentRole["EMPLOYEE"] = "EMPLOYEE";
 })(AgentRole || (AgentRole = {}));
+export const AgentLifecycleStatus = Object.freeze({ ACTIVE: 'ACTIVE', SUSPENDED: 'SUSPENDED', RETIRED: 'RETIRED' });
 // ============================================================
 // TASK STATUSES — valid states in the task state machine
 // ============================================================
@@ -92,6 +97,7 @@ export var EventType;
     EventType["OBJECTIVE_CREATED"] = "OBJECTIVE_CREATED";
     EventType["QUESTION_ASKED"] = "QUESTION_ASKED";
     EventType["QUESTION_ANSWERED"] = "QUESTION_ANSWERED";
+    EventType["QUESTION_SKIPPED"] = "QUESTION_SKIPPED";
     EventType["PLAN_CREATED"] = "PLAN_CREATED";
     EventType["EXECUTION_PAUSED"] = "EXECUTION_PAUSED";
     EventType["EXECUTION_RESUMED"] = "EXECUTION_RESUMED";

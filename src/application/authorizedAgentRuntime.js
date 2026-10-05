@@ -1,6 +1,6 @@
 import { TaskStatus } from '../constants';
 import { createAgentRequest, createAgentResponse } from '../agents';
-import { assertTaskAssignment, createEntityId, DomainInvariantError } from '../domain';
+import { assertTaskAssignment, createEntityId, DomainInvariantError, isAgentAvailable } from '../domain';
 import { ApplicationError, createUseCase } from './useCase';
 
 /** Execute an agent adapter only after persisted identity, task ownership, and hierarchy checks. */
@@ -23,7 +23,7 @@ export function createAuthorizedAgentRuntime({
             }
             const agent = dependencies.agentRepository.getById(input.agentId);
             if (!agent) throw new ApplicationError('agent-not-found', 'The requested agent does not exist.');
-            if (['OFFLINE', 'ERROR'].includes(agent.status)) {
+            if (!isAgentAvailable(agent)) {
                 throw new DomainInvariantError('agent-unavailable', 'The requested agent is not available for execution.');
             }
             const task = dependencies.taskRepository.getById(input.taskId);

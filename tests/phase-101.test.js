@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
 import { CommandCenterPanel, createCommandCenterSnapshot } from '../src/core/CommandCenterPanel';
+import { calculateTaskProgress } from '../src/domain/taskProgress';
 
 describe('Phase 101 — command center panel foundation', () => {
     beforeEach(() => vi.clearAllMocks());
@@ -13,8 +14,16 @@ describe('Phase 101 — command center panel foundation', () => {
         });
         expect(snapshot).toEqual({
             executionStatus: 'PAUSED',
+            taskProgress: calculateTaskProgress([{ title: 'Verify package', status: 'REVIEW' }, { title: 'Done', status: 'COMPLETED' }]),
             objectives: [{ title: 'Ship release', status: 'ACTIVE' }],
             activeTasks: [{ title: 'Verify package', status: 'REVIEW' }],
+            completedTasks: [{ title: 'Done', status: 'COMPLETED' }],
+            taskErrors: [],
+            directorQuestions: [],
+            activity: [],
+            workforce: [],
+            collapsedSections: [],
+            workspace: { folders: [], activeFile: '', languageId: '' },
         });
         expect(JSON.stringify(snapshot)).not.toContain('secret-id');
         expect(JSON.stringify(snapshot)).not.toContain('secret context');
@@ -42,6 +51,12 @@ describe('Phase 101 — command center panel foundation', () => {
         expect(vscode.window.createWebviewPanel).toHaveBeenCalledTimes(1);
         expect(panel.reveal).toHaveBeenCalledTimes(1);
         expect(webview.html).toContain("default-src 'none'");
+        expect(webview.html).toContain('id="cancel-execution"');
+        expect(webview.html).toContain('id="pause-execution"');
+        expect(webview.html).toContain('id="resume-execution"');
+        expect(webview.html).toContain("pauseButton.hidden = snapshot.executionStatus !== 'RUNNING'");
+        expect(webview.html).toContain('id="ask-director"');
+        expect(webview.html).toContain('id="propose-plan"');
         expect(webview.html).toContain('textContent = record.title');
         expect(webview.html).not.toContain('innerHTML');
         expect(webview.postMessage).toHaveBeenCalledTimes(2);
@@ -49,6 +64,16 @@ describe('Phase 101 — command center panel foundation', () => {
         expect(readSnapshot).toHaveBeenCalledTimes(2);
         receiveMessage({ type: 'refresh' });
         expect(readSnapshot).toHaveBeenCalledTimes(3);
+        receiveMessage({ type: 'cancelExecution' });
+        expect(vscode.commands.executeCommand).toHaveBeenCalledWith('headroom.cancelExecution');
+        receiveMessage({ type: 'pauseExecution' });
+        expect(vscode.commands.executeCommand).toHaveBeenCalledWith('headroom.pauseExecution');
+        receiveMessage({ type: 'resumeExecution' });
+        expect(vscode.commands.executeCommand).toHaveBeenCalledWith('headroom.resumeExecution');
+        receiveMessage({ type: 'analyzeObjective' });
+        expect(vscode.commands.executeCommand).toHaveBeenCalledWith('headroom.analyzeObjective');
+        receiveMessage({ type: 'proposePlan' });
+        expect(vscode.commands.executeCommand).toHaveBeenCalledWith('headroom.proposePlan');
 
         disposed();
         commandCenter.show();

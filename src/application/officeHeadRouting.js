@@ -1,5 +1,5 @@
 import { AgentRole } from '../constants';
-import { assertOrganizationHierarchyInvariant, assertPlanApproved } from '../domain';
+import { assertOrganizationHierarchyInvariant, assertPlanApproved, isAgentAvailable } from '../domain';
 import { ApplicationError, createUseCase } from './useCase';
 
 /** Route an approved office plan into adjacent department-manager contracts. */
@@ -12,7 +12,7 @@ export function createOfficeHeadRouting({ agentRepository, hierarchyProvider } =
             const plan = assertPlanApproved(input?.plan);
             const managerId = requiredId(input.headManagerId, 'An Office Head Manager identifier is required.');
             const manager = dependencies.agentRepository.getById(managerId);
-            if (!manager || manager.role !== AgentRole.HEAD_MANAGER) {
+            if (!manager || manager.role !== AgentRole.HEAD_MANAGER || !isAgentAvailable(manager)) {
                 throw new ApplicationError('office-head-manager-forbidden', 'Only an Office Head Manager may route office work.');
             }
             const hierarchy = dependencies.hierarchyProvider.getSnapshot();
@@ -20,7 +20,7 @@ export function createOfficeHeadRouting({ agentRepository, hierarchyProvider } =
             const persistedManager = hierarchy.agents.find(({ id }) => id === manager.id);
             if (!persistedManager || persistedManager.role !== AgentRole.HEAD_MANAGER
                 || persistedManager.managedOfficeId !== manager.managedOfficeId
-                || ['OFFLINE', 'ERROR'].includes(persistedManager.status)) {
+                || !isAgentAvailable(persistedManager)) {
                 throw new ApplicationError('office-head-manager-forbidden', 'The Office Head Manager is not present in the current hierarchy.');
             }
             const office = hierarchy.offices.find(({ id }) => id === manager.managedOfficeId && id === input.officeId);
@@ -46,11 +46,11 @@ export function createOfficeHeadRouting({ agentRepository, hierarchyProvider } =
                 if (!department || department.officeId !== office.id || department.status !== 'ACTIVE') {
                     throw new ApplicationError('department-access-denied', 'Work may be routed only to active departments in the managed office.');
                 }
-                const departmentManager = hierarchy.agents.find(({ role, managedDepartmentId, status }) =>
-                    role === AgentRole.DEPT_MANAGER && managedDepartmentId === department.id
-                    && !['OFFLINE', 'ERROR'].includes(status));
+                const departmentManager = hierarchy.agents.find((agent) => agent.role === AgentRole.DEPT_MANAGER
+                    && agent.managedDepartmentId === department.id && isAgentAvailable(agent));
                 const persistedDepartmentManager = dependencies.agentRepository.getById(departmentManager?.id);
-                if (!departmentManager || !persistedDepartmentManager || persistedDepartmentManager.role !== AgentRole.DEPT_MANAGER
+                if (!departmentManager || !persistedDepartmentManager || !isAgentAvailable(persistedDepartmentManager)
+                    || persistedDepartmentManager.role !== AgentRole.DEPT_MANAGER
                     || persistedDepartmentManager.managedDepartmentId !== department.id) {
                     throw new ApplicationError('department-manager-unavailable', 'The target department has no available Department Manager.');
                 }
@@ -95,8 +95,8 @@ function validateDirectorDependencies(edges, officeId, headManagerId, plan, agen
             || edge.dependentOfficeId === edge.prerequisiteOfficeId) {
             throw new ApplicationError('invalid-office-routes', 'A cross-office dependency must be a Director-routed edge between distinct offices.');
         }
-        const director = agents.find(({ id, role, status }) => id === edge.directorId && role === AgentRole.DIRECTOR
-            && !['OFFLINE', 'ERROR'].includes(status));
+        const director = agents.find((agent) => agent.id === edge.directorId && agent.role === AgentRole.DIRECTOR
+            && isAgentAvailable(agent));
         const dependentSide = edge.dependentOfficeId === officeId && edge.dependentHeadManagerId === headManagerId
             && taskIds.has(edge.dependentTaskId);
         const prerequisiteSide = edge.prerequisiteOfficeId === officeId && edge.prerequisiteHeadManagerId === headManagerId

@@ -41,6 +41,19 @@ describe('Phase 033 — objective question workflow', () => {
         ]);
     });
 
+    it('rejects normalized duplicate clarifications even after the original is answered', async () => {
+        const first = await workflow.create.run({ objectiveId: 'question-objective', question: 'Which platform should we support?' });
+        expect(first.ok).toBe(true);
+        await workflow.answer.run({ questionId: first.value.id, answer: 'Windows and Linux.' });
+
+        const duplicate = await workflow.create.run({ objectiveId: 'question-objective',
+            question: '  WHICH platform should we support?!  ' });
+        expect(duplicate.ok).toBe(false);
+        expect(duplicate.error.code).toBe('duplicate-objective-question');
+        expect(questions.listByObjective('question-objective')).toHaveLength(1);
+        expect(database.prepare('SELECT COUNT(*) AS count FROM events').get().count).toBe(2);
+    });
+
     it('answers and skips only pending questions and persists terminal states', async () => {
         const created = await workflow.create.run({ objectiveId: 'question-objective', question: 'Clarify scope?' });
         const answered = await workflow.answer.run({ questionId: created.value.id, answer: '  Include mobile.  ' });

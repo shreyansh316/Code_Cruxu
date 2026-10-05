@@ -1,5 +1,5 @@
 import { AgentRole, TaskStatus } from '../constants';
-import { assertOrganizationHierarchyInvariant, assertTaskDependencyGraph, createEntityId } from '../domain';
+import { assertOrganizationHierarchyInvariant, assertTaskDependencyGraph, createEntityId, isAgentAvailable } from '../domain';
 import { ApplicationError, createUseCase } from './useCase';
 import { getPromptContract } from './promptRegistry';
 
@@ -18,7 +18,7 @@ export function createDepartmentTaskDecomposition({ agentRepository, hierarchyPr
         execute: async ({ input, dependencies }) => {
             const managerId = requiredId(input?.departmentManagerId, 'A Department Manager identifier is required.');
             const manager = dependencies.agentRepository.getById(managerId);
-            if (!manager || manager.role !== AgentRole.DEPT_MANAGER || ['OFFLINE', 'ERROR'].includes(manager.status)) {
+            if (!manager || manager.role !== AgentRole.DEPT_MANAGER || !isAgentAvailable(manager)) {
                 throw new ApplicationError('department-manager-forbidden', 'Only an available Department Manager may decompose department work.');
             }
             const hierarchy = dependencies.hierarchyProvider.getSnapshot();
@@ -35,17 +35,17 @@ export function createDepartmentTaskDecomposition({ agentRepository, hierarchyPr
                 throw new ApplicationError('department-scope-denied', 'A Department Manager may accept only a bounded work packet for their own department.');
             }
             const managedDepartment = hierarchy.departments.find(({ id }) => id === manager.managedDepartmentId);
-            const officeHead = hierarchy.agents.find(({ id, role, managedOfficeId, status }) => id === packet.routedBy
-                && role === AgentRole.HEAD_MANAGER && managedOfficeId === managedDepartment?.officeId
-                && !['OFFLINE', 'ERROR'].includes(status));
+            const officeHead = hierarchy.agents.find((agent) => agent.id === packet.routedBy
+                && agent.role === AgentRole.HEAD_MANAGER && agent.managedOfficeId === managedDepartment?.officeId
+                && isAgentAvailable(agent));
             const persistedOfficeHead = officeHead && dependencies.agentRepository.getById(officeHead.id);
             if (!managedDepartment || packet.officeId !== managedDepartment.officeId || !persistedOfficeHead
                 || persistedOfficeHead.role !== AgentRole.HEAD_MANAGER
-                || persistedOfficeHead.managedOfficeId !== managedDepartment.officeId) {
+                || persistedOfficeHead.managedOfficeId !== managedDepartment.officeId || !isAgentAvailable(persistedOfficeHead)) {
                 throw new ApplicationError('office-head-route-required', 'Department work must arrive through the Office Head Manager responsible for the department office.');
             }
             const employees = hierarchy.agents.filter((agent) => agent.role === AgentRole.EMPLOYEE
-                && agent.departmentId === manager.managedDepartmentId && !['OFFLINE', 'ERROR'].includes(agent.status))
+                && agent.departmentId === manager.managedDepartmentId && isAgentAvailable(agent))
                 .sort((a, b) => a.id.localeCompare(b.id));
             if (!employees.length) throw new ApplicationError('department-workforce-unavailable', 'The department has no available employees.');
             const sourceTasks = packet.tasks.map((task) => normalizeSourceTask(task));
@@ -61,7 +61,7 @@ export function createDepartmentTaskDecomposition({ agentRepository, hierarchyPr
                 systemPrompt: PROMPT.systemPrompt,
                 input: { departmentId: manager.managedDepartmentId,
                     sourceTasks, dependencies: sourceDependencies,
-                    availableEmployees: employees.map(({ id, name }) => ({ id, name })) },
+                    availableEmployees: employees.map(({ id, name, capabilities = [] }) => ({ id, name, capabilities })) },
                 outputSchema: PROMPT.outputSchema,
             }, { signal: input.signal, budget: input.budget });
             if (response.finishReason !== 'STOP') {
@@ -78,10 +78,12 @@ function normalizeSourceTask(value) {
     if (!value || typeof value !== 'object' || typeof value.id !== 'string' || !value.id.trim()
         || typeof value.title !== 'string' || !value.title.trim() || value.title.length > MAX_TEXT
         || (value.description != null && (typeof value.description !== 'string' || value.description.length > MAX_TEXT))
+        || (value.requiredCapabilities !== undefined && !validCapabilities(value.requiredCapabilities))
         || !Array.isArray(value.acceptanceCriteria) || value.acceptanceCriteria.length < 1 || value.acceptanceCriteria.length > 20) {
         throw new ApplicationError('invalid-department-task-packet', 'The routed packet contains a malformed task.');
     }
     return Object.freeze({ id: value.id, title: value.title.trim(), description: value.description?.trim() ?? null,
+        requiredCapabilities: Object.freeze(value.requiredCapabilities ?? []),
         acceptanceCriteria: Object.freeze(value.acceptanceCriteria.map((criterion) => {
             if (typeof criterion !== 'string' || !criterion.trim() || criterion.length > MAX_TEXT) {
                 throw new ApplicationError('invalid-department-task-packet', 'Task acceptance criteria must be bounded text.');
@@ -96,16 +98,24 @@ function validateDecomposition(output, sourceTasks, sourceDependencies, employee
         || !Array.isArray(output.subtasks) || !output.subtasks.length || output.subtasks.length > MAX_SUBTASKS
         || !Array.isArray(output.dependencies) || output.dependencies.length > 200) invalid();
     const subtasks = output.subtasks.map((item, index) => {
+        const allowedKeys = ['acceptanceCriteria', 'description', 'employeeIndex', 'parentTaskIndex', 'title'];
         if (!item || typeof item !== 'object' || Array.isArray(item)
-            || Object.keys(item).sort().join(',') !== 'acceptanceCriteria,description,employeeIndex,parentTaskIndex,title'
+            || (Object.keys(item).sort().join(',') !== allowedKeys.slice().sort().join(',')
+                && Object.keys(item).sort().join(',') !== [...allowedKeys, 'requiredCapabilities'].sort().join(','))
             || !validIndex(item.parentTaskIndex, sourceTasks.length) || !validIndex(item.employeeIndex, employees.length)
             || typeof item.description !== 'string' || item.description.length > MAX_TEXT
+            || (item.requiredCapabilities !== undefined && !validCapabilities(item.requiredCapabilities))
             || !Array.isArray(item.acceptanceCriteria) || !item.acceptanceCriteria.length || item.acceptanceCriteria.length > 20) invalid();
         const title = boundedText(item.title);
         const acceptanceCriteria = item.acceptanceCriteria.map(boundedText);
+        const requiredCapabilities = [...new Map([...sourceTasks[item.parentTaskIndex].requiredCapabilities,
+            ...(item.requiredCapabilities ?? [])].map((capability) => [capability.trim().toLocaleLowerCase('en-US'), capability.trim()])).values()];
+        const employee = employees[item.employeeIndex];
+        const availableCapabilities = new Set((employee.capabilities ?? []).map((capability) => capability.trim().toLocaleLowerCase('en-US')));
+        if (requiredCapabilities.some((capability) => !availableCapabilities.has(capability.toLocaleLowerCase('en-US')))) invalid();
         return Object.freeze({ id: createEntityId(idFactory()), parentTaskId: sourceTasks[item.parentTaskIndex].id,
             title, description: item.description.trim() || null, departmentId,
-            assigneeId: employees[item.employeeIndex].id,
+            assigneeId: employee.id, requiredCapabilities: Object.freeze(requiredCapabilities),
             acceptanceCriteria: Object.freeze(acceptanceCriteria.map((description, criterionIndex) => Object.freeze({
                 id: createEntityId(idFactory()), description, required: true,
             }))) });
@@ -136,6 +146,12 @@ function validateDecomposition(output, sourceTasks, sourceDependencies, employee
     try { assertTaskDependencyGraph(subtasks.map(({ id }) => ({ id, status: TaskStatus.CREATED })), dependencies); }
     catch { invalid(); }
     return Object.freeze({ departmentId, subtasks: Object.freeze(subtasks), dependencies: Object.freeze(dependencies.map(Object.freeze)) });
+}
+
+function validCapabilities(capabilities) {
+    return Array.isArray(capabilities) && capabilities.length <= 32
+        && capabilities.every((capability) => typeof capability === 'string' && capability.trim().length > 0 && capability.trim().length <= 100)
+        && new Set(capabilities.map((capability) => capability.trim().toLocaleLowerCase('en-US'))).size === capabilities.length;
 }
 
 function validIndex(value, length) { return Number.isSafeInteger(value) && value >= 0 && value < length; }

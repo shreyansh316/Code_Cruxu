@@ -78,4 +78,25 @@ describe('Phase 051 — Department Manager decomposition', () => {
             expect(result.error.code).toBe('invalid-department-decomposition');
         }
     });
+
+    it('carries parent skill requirements to subtasks and checks the selected employee capabilities', async () => {
+        const organization = org();
+        organization.agents.find(({ id }) => id === 'employee-a-051').capabilities = ['npm'];
+        const routedPacket = packet();
+        routedPacket.tasks[0].requiredCapabilities = ['npm'];
+        const output = validOutput();
+        output.subtasks[1].employeeIndex = 0;
+        const { useCase, provider } = makeDecomposition(output, organization);
+        const result = await useCase.run({ departmentManagerId: 'manager-051', departmentPacket: routedPacket, model: 'model' });
+        expect(result.ok).toBe(true);
+        expect(result.value.subtasks.filter(({ parentTaskId }) => parentTaskId === 'office-task-a-051')
+            .map(({ requiredCapabilities }) => requiredCapabilities)).toEqual([['npm'], ['npm']]);
+        expect(provider.generate.mock.calls[0][0].input.availableEmployees[0].capabilities).toEqual(['npm']);
+
+        const unsupported = validOutput();
+        unsupported.subtasks[0].employeeIndex = 1;
+        expect((await makeDecomposition(unsupported, organization).useCase.run({
+            departmentManagerId: 'manager-051', departmentPacket: routedPacket, model: 'model',
+        })).error.code).toBe('invalid-department-decomposition');
+    });
 });

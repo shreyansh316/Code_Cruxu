@@ -1,5 +1,5 @@
 import { AgentRole, TaskStatus } from '../constants';
-import { assertOrganizationHierarchyInvariant, assertPlanApproved, assertTaskDependencyGraph, createEntityId, DomainInvariantError } from '../domain';
+import { assertOrganizationHierarchyInvariant, assertPlanApproved, assertTaskDependencyGraph, createEntityId, DomainInvariantError, isAgentAvailable } from '../domain';
 import { ApplicationError, createUseCase } from './useCase';
 
 /** Delegate CEO-approved office plans only through each persisted Office Head route. */
@@ -17,13 +17,13 @@ export function createDirectorOfficeOrchestration({ agentRepository, hierarchyPr
                 throw new DomainInvariantError('invalid-director-orchestration', 'Orchestration requires a Director and one to twenty office plans.');
             }
             const director = dependencies.agentRepository.getById(input.directorId);
-            if (!director || director.role !== AgentRole.DIRECTOR || ['OFFLINE', 'ERROR'].includes(director.status)) {
+            if (!director || director.role !== AgentRole.DIRECTOR || !isAgentAvailable(director)) {
                 throw new ApplicationError('director-forbidden', 'Only an available Director may delegate office work.');
             }
             const hierarchy = dependencies.hierarchyProvider.getSnapshot();
             assertOrganizationHierarchyInvariant(hierarchy);
             const persistedDirector = hierarchy.agents.find(({ id }) => id === director.id);
-            if (!persistedDirector || persistedDirector.role !== AgentRole.DIRECTOR || ['OFFLINE', 'ERROR'].includes(persistedDirector.status)) {
+            if (!persistedDirector || persistedDirector.role !== AgentRole.DIRECTOR || !isAgentAvailable(persistedDirector)) {
                 throw new ApplicationError('director-forbidden', 'The Director is not present in the current organization hierarchy.');
             }
             const seenOffices = new Set();

@@ -1,5 +1,6 @@
 import { BaseSqliteRepository } from './BaseSqliteRepository';
 import { assertEntityId } from '../../shared/identifiers';
+import { evaluateAgentLifecycleTransition } from '../../shared/agentLifecyclePolicy';
 export class OrganizationRepository extends BaseSqliteRepository {
     constructor(database) {
         super(database, 'organizations', {
@@ -50,14 +51,24 @@ export class DepartmentRepository extends BaseSqliteRepository {
 export class ObjectiveRepository extends BaseSqliteRepository {
     constructor(database) {
         super(database, 'objectives', {
-            id: 'id', title: 'title', description: 'description', status: 'status', priority: 'priority',
+            id: 'id', organizationId: 'organization_id', title: 'title', description: 'description', status: 'status', priority: 'priority',
             createdAt: 'created_at', updatedAt: 'updated_at',
-        }, { id: 'id', title: 'title', description: 'description', status: 'status', priority: 'priority' });
+        }, { id: 'id', organizationId: 'organization_id', title: 'title', description: 'description', status: 'status', priority: 'priority' });
     }
     create(value) { return this.insert(value); }
     list() { return this.query(); }
+    listByOrganization(organizationId) {
+        return this.query('organization_id = ?', [assertEntityId(organizationId)], 'status, priority DESC, title, id');
+    }
+    listUnassigned() { return this.query('organization_id IS NULL', [], 'status, priority DESC, title, id'); }
     listByStatus(status) { return this.query('status = ?', [status]); }
     update(id, changes) {
+        const current = this.getById(id);
+        if (!current) return undefined;
+        if (Object.hasOwn(changes ?? {}, 'organizationId') && current.organizationId
+            && changes.organizationId !== current.organizationId) {
+            throw new TypeError('Objective organization ownership cannot be changed after assignment.');
+        }
         return this.updateById(id, changes);
     }
     delete(id) { return this.deleteById(id); }
@@ -86,25 +97,69 @@ export class ProjectRepository extends BaseSqliteRepository {
 export class AgentRepository extends BaseSqliteRepository {
     constructor(database) {
         super(database, 'agents', {
-            id: 'id', name: 'name', role: 'role', specialization: 'specialization', status: 'status',
+            id: 'id', organizationId: 'organization_id', name: 'name', role: 'role', specialization: 'specialization', status: 'status',
+            capabilities: 'capabilities_json', lifecycleStatus: 'lifecycle_status',
             managedOfficeId: 'managed_office_id', managedDepartmentId: 'managed_department_id',
             departmentId: 'department_id', createdAt: 'created_at', updatedAt: 'updated_at',
         }, {
-            id: 'id', name: 'name', role: 'role', specialization: 'specialization', status: 'status',
+            id: 'id', organizationId: 'organization_id', name: 'name', role: 'role', specialization: 'specialization', status: 'status',
+            capabilities: 'capabilities_json',
             managedOfficeId: 'managed_office_id', managedDepartmentId: 'managed_department_id',
             departmentId: 'department_id',
         });
     }
-    create(value) { return this.insert(value); }
-    list() { return this.query(); }
-    listByRole(role) { return this.query('role = ?', [role]); }
+    create(value) { return this.insert(serializeAgent(resolveAgentOrganization(this.database, value))); }
+    getById(id) { return mapAgent(super.getById(id)); }
+    list() { return this.query().map(mapAgent); }
+    listByRole(role) { return this.query('role = ?', [role]).map(mapAgent); }
+    listByOrganization(organizationId) {
+        return this.query('organization_id = ?', [assertEntityId(organizationId)], 'role, name, id').map(mapAgent);
+    }
     listByDepartment(departmentId) {
-        return this.query('department_id = ?', [departmentId]);
+        return this.query('department_id = ?', [departmentId]).map(mapAgent);
     }
     update(id, changes) {
-        return this.updateById(id, changes);
+        const current = this.getById(id);
+        if (!current) return undefined;
+        if (Object.hasOwn(changes ?? {}, 'organizationId') && current.organizationId
+            && changes.organizationId !== current.organizationId) {
+            throw new TypeError('Agent organization ownership cannot be changed after assignment.');
+        }
+        return mapAgent(this.updateById(id, serializeAgent(resolveAgentOrganization(this.database, { ...current, ...changes }))));
+    }
+    transitionLifecycle(id, nextStatus) {
+        const current = this.getById(id);
+        if (!current) return undefined;
+        const transition = evaluateAgentLifecycleTransition(current.lifecycleStatus, nextStatus);
+        if (!transition.changed) return current;
+        this.database.prepare("UPDATE agents SET lifecycle_status = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?")
+            .run(transition.lifecycleStatus, assertEntityId(id));
+        return this.getById(id);
     }
     delete(id) { return this.deleteById(id); }
+}
+
+function serializeAgent(value) {
+    if (!value || !Object.hasOwn(value, 'capabilities')) return value;
+    if (!Array.isArray(value.capabilities) || value.capabilities.length > 32
+        || value.capabilities.some((capability) => typeof capability !== 'string' || !capability.trim() || capability.trim().length > 100)
+        || new Set(value.capabilities.map((capability) => capability.trim().toLowerCase())).size !== value.capabilities.length) {
+        throw new TypeError('Agent capabilities must contain at most 32 unique, non-empty labels of at most 100 characters.');
+    }
+    return { ...value, capabilities: JSON.stringify(value.capabilities.map((capability) => capability.trim())) };
+}
+
+function mapAgent(row) {
+    if (!row || typeof row.capabilities !== 'string') return row;
+    try {
+        const capabilities = JSON.parse(row.capabilities);
+        if (Array.isArray(capabilities) && capabilities.every((item) => typeof item === 'string')) {
+            return { ...row, capabilities, lifecycleStatus: row.lifecycleStatus ?? 'ACTIVE' };
+        }
+    } catch {
+        // Keep the persisted record readable; malformed legacy values expose no capabilities.
+    }
+    return { ...row, capabilities: [], lifecycleStatus: row.lifecycleStatus ?? 'ACTIVE' };
 }
 export class TaskRepository extends BaseSqliteRepository {
     constructor(database) {
@@ -112,6 +167,7 @@ export class TaskRepository extends BaseSqliteRepository {
             id: 'id', taskCode: 'task_code', title: 'title', description: 'description', status: 'status',
             priority: 'priority', projectId: 'project_id', assigneeId: 'assignee_id', creatorId: 'creator_id',
             acceptanceCriteria: 'acceptance_criteria', result: 'result', blockerReason: 'blocker_reason',
+            requiredCapabilities: 'required_capabilities_json',
             retryCount: 'retry_count', maxRetries: 'max_retries', tokenBudget: 'token_budget',
             timeBudgetMs: 'time_budget_ms', startedAt: 'started_at', completedAt: 'completed_at',
             createdAt: 'created_at', updatedAt: 'updated_at',
@@ -119,6 +175,7 @@ export class TaskRepository extends BaseSqliteRepository {
             id: 'id', taskCode: 'task_code', title: 'title', description: 'description', status: 'status',
             priority: 'priority', projectId: 'project_id', assigneeId: 'assignee_id', creatorId: 'creator_id',
             acceptanceCriteria: 'acceptance_criteria', result: 'result', blockerReason: 'blocker_reason',
+            requiredCapabilities: 'required_capabilities_json',
             retryCount: 'retry_count', maxRetries: 'max_retries', tokenBudget: 'token_budget',
             timeBudgetMs: 'time_budget_ms', startedAt: 'started_at', completedAt: 'completed_at',
         });
@@ -137,7 +194,15 @@ export class TaskRepository extends BaseSqliteRepository {
 function serializeTask(value) {
     if (!value) return value;
     const serialized = { ...value };
-    for (const field of ['acceptanceCriteria', 'result']) {
+    if (Object.hasOwn(value, 'requiredCapabilities')) {
+        const capabilities = value.requiredCapabilities;
+        if (!Array.isArray(capabilities) || capabilities.length > 32
+            || capabilities.some((capability) => typeof capability !== 'string' || !capability.trim() || capability.trim().length > 100)
+            || new Set(capabilities.map((capability) => capability.trim().toLocaleLowerCase('en-US'))).size !== capabilities.length) {
+            throw new TypeError('Task required capabilities must contain at most 32 unique, non-empty labels of at most 100 characters.');
+        }
+    }
+    for (const field of ['acceptanceCriteria', 'result', 'requiredCapabilities']) {
         if (Object.hasOwn(value, field) && value[field] != null && typeof value[field] !== 'string') {
             serialized[field] = JSON.stringify(value[field]);
         }
@@ -148,7 +213,7 @@ function serializeTask(value) {
 function mapTask(row) {
     if (!row) return row;
     const mapped = { ...row };
-    for (const field of ['acceptanceCriteria', 'result']) {
+    for (const field of ['acceptanceCriteria', 'result', 'requiredCapabilities']) {
         if (typeof row[field] !== 'string') continue;
         try {
             mapped[field] = JSON.parse(row[field]);
@@ -158,6 +223,25 @@ function mapTask(row) {
         }
     }
     return mapped;
+}
+
+function resolveAgentOrganization(database, agent) {
+    let linkedOrganizationId;
+    if (agent?.role === 'HEAD_MANAGER' && agent.managedOfficeId) {
+        linkedOrganizationId = database.prepare('SELECT organization_id FROM offices WHERE id = ?').get(agent.managedOfficeId)?.organization_id;
+    }
+    else if (agent?.role === 'DEPT_MANAGER' && agent.managedDepartmentId) {
+        linkedOrganizationId = database.prepare(`SELECT offices.organization_id FROM departments
+            JOIN offices ON offices.id = departments.office_id WHERE departments.id = ?`).get(agent.managedDepartmentId)?.organization_id;
+    }
+    else if (agent?.role === 'EMPLOYEE' && agent.departmentId) {
+        linkedOrganizationId = database.prepare(`SELECT offices.organization_id FROM departments
+            JOIN offices ON offices.id = departments.office_id WHERE departments.id = ?`).get(agent.departmentId)?.organization_id;
+    }
+    if (linkedOrganizationId && agent.organizationId && linkedOrganizationId !== agent.organizationId) {
+        throw new TypeError('Agent organization ownership must match its persisted office or department.');
+    }
+    return linkedOrganizationId ? { ...agent, organizationId: linkedOrganizationId } : agent;
 }
 
 const MEMORY_SCOPE_OWNERS = {

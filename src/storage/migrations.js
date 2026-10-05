@@ -175,6 +175,57 @@ export const SCHEMA_MIGRATIONS = [
           CREATE INDEX idx_audit_task_created ON audit_logs(task_id, created_at) WHERE task_id IS NOT NULL;
         `),
     },
+    {
+        version: 9,
+        name: 'agent-capabilities',
+        up: (database) => database.exec(`
+          ALTER TABLE agents ADD COLUMN capabilities_json TEXT NOT NULL DEFAULT '[]';
+        `),
+    },
+    {
+        version: 10,
+        name: 'agent-lifecycle-state',
+        up: (database) => database.exec(`
+          ALTER TABLE agents ADD COLUMN lifecycle_status TEXT NOT NULL DEFAULT 'ACTIVE'
+            CHECK (lifecycle_status IN ('ACTIVE', 'SUSPENDED', 'RETIRED'));
+        `),
+    },
+    {
+        version: 11,
+        name: 'organization-owned-executives-and-objectives',
+        up: (database) => database.exec(`
+          ALTER TABLE agents ADD COLUMN organization_id TEXT REFERENCES organizations(id) ON DELETE CASCADE;
+          ALTER TABLE objectives ADD COLUMN organization_id TEXT REFERENCES organizations(id) ON DELETE CASCADE;
+          CREATE INDEX idx_agents_organization ON agents(organization_id, role, id) WHERE organization_id IS NOT NULL;
+          CREATE INDEX idx_objectives_organization ON objectives(organization_id, status, id) WHERE organization_id IS NOT NULL;
+
+          UPDATE agents SET organization_id = (
+            SELECT organization_id FROM offices WHERE offices.id = agents.managed_office_id
+          ) WHERE managed_office_id IS NOT NULL;
+          UPDATE agents SET organization_id = (
+            SELECT offices.organization_id FROM departments
+            JOIN offices ON offices.id = departments.office_id
+            WHERE departments.id = agents.managed_department_id
+          ) WHERE managed_department_id IS NOT NULL;
+          UPDATE agents SET organization_id = (
+            SELECT offices.organization_id FROM departments
+            JOIN offices ON offices.id = departments.office_id
+            WHERE departments.id = agents.department_id
+          ) WHERE department_id IS NOT NULL;
+
+          UPDATE agents SET organization_id = (SELECT id FROM organizations)
+            WHERE role IN ('CEO', 'DIRECTOR') AND (SELECT COUNT(*) FROM organizations) = 1;
+          UPDATE objectives SET organization_id = (SELECT id FROM organizations)
+            WHERE (SELECT COUNT(*) FROM organizations) = 1;
+        `),
+    },
+    {
+        version: 12,
+        name: 'task-required-capabilities',
+        up: (database) => database.exec(`
+          ALTER TABLE tasks ADD COLUMN required_capabilities_json TEXT NOT NULL DEFAULT '[]';
+        `),
+    },
 ];
 const CREATE_MIGRATION_LEDGER_SQL = `
   CREATE TABLE IF NOT EXISTS schema_migrations (

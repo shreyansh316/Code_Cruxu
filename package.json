@@ -91,6 +91,16 @@
         "category": "HEADROOM"
       },
       {
+        "command": "headroom.analyzeObjective",
+        "title": "%command.analyzeObjective.title%",
+        "category": "HEADROOM"
+      },
+      {
+        "command": "headroom.proposePlan",
+        "title": "%command.proposePlan.title%",
+        "category": "HEADROOM"
+      },
+      {
         "command": "headroom.showStatus",
         "title": "%command.showStatus.title%",
         "category": "HEADROOM"
@@ -103,6 +113,11 @@
       {
         "command": "headroom.resumeExecution",
         "title": "%command.resumeExecution.title%",
+        "category": "HEADROOM"
+      },
+      {
+        "command": "headroom.cancelExecution",
+        "title": "%command.cancelExecution.title%",
         "category": "HEADROOM"
       },
       {
@@ -123,6 +138,11 @@
       {
         "command": "headroom.reviewPlan",
         "title": "%command.reviewPlan.title%",
+        "category": "HEADROOM"
+      },
+      {
+        "command": "headroom.manageAgentLifecycle",
+        "title": "%command.manageAgentLifecycle.title%",
         "category": "HEADROOM"
       }
     ],

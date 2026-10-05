@@ -1,6 +1,7 @@
 import { AgentRole } from '../constants';
 import { DomainInvariantError } from './errors';
 import { assertCanReportTo, assertOrganizationHierarchyInvariant } from './invariants';
+import { isAgentAvailable } from './agentLifecycle';
 
 /**
  * Validate that a task creator assigns work to a direct report in the same
@@ -19,9 +20,25 @@ export function assertTaskAssignment(task, hierarchy) {
     if (!assignee) {
         invalidAssignment(`Task assignee ${task.assigneeId} is not in the organization hierarchy.`);
     }
+    if (!isAgentAvailable(creator) || !isAgentAvailable(assignee)) {
+        invalidAssignment('Task creators and assignees must be available and in the ACTIVE lifecycle state.');
+    }
 
     assertCanReportTo(creator.role, assignee.role);
     assertMatchingScope(creator, assignee, hierarchy);
+    // Manager assignment is coordination ownership; capability requirements
+    // are enforced when work is decomposed onto an executing employee.
+    if (assignee.role === AgentRole.EMPLOYEE) assertRequiredCapabilities(task.requiredCapabilities, assignee);
+}
+
+function assertRequiredCapabilities(requiredCapabilities, assignee) {
+    if (requiredCapabilities === undefined) return;
+    const available = new Set((Array.isArray(assignee.capabilities) ? assignee.capabilities : [])
+        .map((capability) => capability.trim().toLocaleLowerCase('en-US')));
+    const missing = requiredCapabilities.filter((capability) => !available.has(capability.trim().toLocaleLowerCase('en-US')));
+    if (missing.length) {
+        invalidAssignment(`Assignee ${assignee.id} lacks required capabilities: ${missing.join(', ')}.`);
+    }
 }
 
 function assertMatchingScope(creator, assignee, hierarchy) {

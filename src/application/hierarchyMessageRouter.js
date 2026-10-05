@@ -1,5 +1,5 @@
 import { AgentRole } from '../constants';
-import { assertOrganizationHierarchyInvariant, DomainInvariantError } from '../domain';
+import { assertOrganizationHierarchyInvariant, DomainInvariantError, isAgentAvailable } from '../domain';
 import { ApplicationError, createUseCase } from './useCase';
 
 const ALLOWED = new Map([
@@ -25,7 +25,7 @@ export function createHierarchyMessageRouter({ hierarchyProvider } = {}) {
             const sender = hierarchy.agents.find(({ id }) => id === input.senderId);
             const recipient = hierarchy.agents.find(({ id }) => id === input.recipientId);
             if (!sender || !recipient) throw new ApplicationError('agent-not-found', 'A message participant does not exist.');
-            if (['OFFLINE', 'ERROR'].includes(sender.status) || ['OFFLINE', 'ERROR'].includes(recipient.status)) {
+            if (!isAgentAvailable(sender) || !isAgentAvailable(recipient)) {
                 throw new DomainInvariantError('agent-unavailable', 'Both message participants must be available.');
             }
             if (!ALLOWED.get(sender.role)?.has(recipient.role) || !sameHierarchyEdge(sender, recipient, hierarchy)) {

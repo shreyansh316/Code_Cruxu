@@ -31,6 +31,7 @@ export { createOfficeHeadRouting } from './officeHeadRouting';
 export { createOfficeConfigurationUseCase } from './officeConfiguration';
 export { createOfficeWorkforceConfigurationUseCase } from './officeWorkforceConfiguration';
 export { createDepartmentTaskDecomposition } from './departmentDecomposition';
+export { createAgentLifecycleManagement } from './agentLifecycleManagement';
 export { getPromptContract, listPromptContractIds } from './promptRegistry';
 export { assembleBoundedAgentContext } from './contextAssembly';
 export { validateStructuredAIOutput } from './structuredOutput';

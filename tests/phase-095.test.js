@@ -51,6 +51,8 @@ describe('Phase 095 — office-specific department workforces', () => {
             expect(configuredOffice.departments).toHaveLength(1);
             expect(configuredOffice.departments[0].employees).toHaveLength(4);
             expect(configuredOffice.departments[0].manager.role).toBe(AgentRole.DEPT_MANAGER);
+            expect(configuredOffice.departments[0].manager.organizationId).toBe('org-095');
+            expect(configuredOffice.departments[0].employees.every(({ organizationId }) => organizationId === 'org-095')).toBe(true);
             expect(new Set(configuredOffice.departments[0].employees.map(({ specialization }) => specialization)).size).toBe(4);
             expect(configuredOffice.departments[0].employees.every(({ departmentId }) => departmentId === configuredOffice.departments[0].id)).toBe(true);
         }

@@ -1,6 +1,7 @@
 import { EventType } from '../constants';
 import { createDomainEvent, createEntityId, DomainInvariantError, QuestionStatus, transitionQuestion } from '../domain';
 import { ApplicationError, createUseCase } from './useCase';
+import { normalizeQuestionText } from '../shared/normalizeQuestionText';
 
 const MAX_QUESTION_LENGTH = 2000;
 const MAX_ANSWER_LENGTH = 10_000;
@@ -32,6 +33,12 @@ export function createObjectiveQuestionWorkflow({
             if (!questionText || questionText.length > MAX_QUESTION_LENGTH) {
                 throw new DomainInvariantError('invalid-objective-question',
                     `Question text must contain 1 to ${MAX_QUESTION_LENGTH} characters.`);
+            }
+            const normalizedQuestion = normalizeQuestionText(questionText);
+            if (dependencies.questionRepository.listByObjective(objectiveId)
+                .some((existing) => normalizeQuestionText(existing.question) === normalizedQuestion)) {
+                throw new DomainInvariantError('duplicate-objective-question',
+                    'This clarification has already been asked for the objective. Review the existing question before adding another.');
             }
             const category = input.category == null ? null : input.category.trim();
             if (category !== null && (!category || category.length > 100)) {
@@ -74,12 +81,17 @@ export function createObjectiveQuestionWorkflow({
     });
 
     const skip = createUseCase({
-        name: 'objective-question-skip', dependencies: { questionRepository, unitOfWork },
+        name: 'objective-question-skip', dependencies: { questionRepository, eventPublisher, unitOfWork, clock, idFactory },
         execute: ({ input, dependencies }) => {
             const question = getQuestion(dependencies.questionRepository, input?.questionId);
             const transitioned = transitionQuestion(question, QuestionStatus.SKIPPED);
-            return dependencies.unitOfWork.run(() => dependencies.questionRepository.update(transitioned.id,
-                { status: transitioned.status }));
+            return dependencies.unitOfWork.run(() => {
+                const updated = dependencies.questionRepository.update(transitioned.id, { status: transitioned.status });
+                dependencies.eventPublisher.append(createQuestionEvent({
+                    dependencies, type: EventType.QUESTION_SKIPPED, question: updated,
+                }));
+                return updated;
+            });
         },
     });
 
