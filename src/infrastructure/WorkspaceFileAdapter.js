@@ -9,10 +9,11 @@ const HARD_MAX_FILES_PER_SCAN = 5000;
 
 /** Create a workspace-confined filesystem adapter with a strict byte bound. */
 export async function createWorkspaceFileAdapter({ workspaceRoot, maxFileBytes = DEFAULT_MAX_FILE_BYTES,
-    maxFilesPerScan = DEFAULT_MAX_FILES_PER_SCAN }) {
+    maxFilesPerScan = DEFAULT_MAX_FILES_PER_SCAN, onActivity = () => undefined }) {
     if (typeof workspaceRoot !== 'string' || workspaceRoot.trim() === ''
         || !Number.isInteger(maxFileBytes) || maxFileBytes < 1 || maxFileBytes > HARD_MAX_FILE_BYTES
-        || !Number.isInteger(maxFilesPerScan) || maxFilesPerScan < 1 || maxFilesPerScan > HARD_MAX_FILES_PER_SCAN) {
+        || !Number.isInteger(maxFilesPerScan) || maxFilesPerScan < 1 || maxFilesPerScan > HARD_MAX_FILES_PER_SCAN
+        || typeof onActivity !== 'function') {
         throw new DomainInvariantError('invalid-workspace-file-options',
             'A workspace root and safe workspace file and scan limits are required.');
     }
@@ -40,16 +41,24 @@ export async function createWorkspaceFileAdapter({ workspaceRoot, maxFileBytes =
         },
         readFile: async (path) => {
             const target = resolveWorkspacePath(root, path);
-            const canonical = await realpath(target);
-            assertContained(root, canonical);
-            const handle = await open(canonical, 'r');
             try {
-                const info = await handle.stat();
-                assertWithinLimit(info.size, maxFileBytes);
-                return (await handle.readFile()).toString('utf8');
+                const canonical = await realpath(target);
+                assertContained(root, canonical);
+                const handle = await open(canonical, 'r');
+                try {
+                    const info = await handle.stat();
+                    assertWithinLimit(info.size, maxFileBytes);
+                    const contents = (await handle.readFile()).toString('utf8');
+                    reportActivity(onActivity, { operation: 'read', path, bytes: info.size, succeeded: true });
+                    return contents;
+                }
+                finally {
+                    await handle.close();
+                }
             }
-            finally {
-                await handle.close();
+            catch (error) {
+                reportActivity(onActivity, { operation: 'read', path, bytes: 0, succeeded: false });
+                throw error;
             }
         },
         writeFile: async (path, contents) => {
@@ -69,9 +78,30 @@ export async function createWorkspaceFileAdapter({ workspaceRoot, maxFileBytes =
             catch (error) {
                 if (error.code !== 'ENOENT') throw error;
             }
-            await writeFile(target, contents, { encoding: 'utf8', flag: 'w' });
+            try {
+                await writeFile(target, contents, { encoding: 'utf8', flag: 'w' });
+                reportActivity(onActivity, { operation: 'write', path, bytes: Buffer.byteLength(contents, 'utf8'), succeeded: true });
+            }
+            catch (error) {
+                reportActivity(onActivity, { operation: 'write', path, bytes: 0, succeeded: false });
+                throw error;
+            }
         },
     });
+}
+
+function reportActivity(observer, activity) {
+    try {
+        observer(Object.freeze({
+            operation: activity.operation,
+            path: activity.path.slice(0, 240),
+            bytes: Math.min(activity.bytes, HARD_MAX_FILE_BYTES),
+            succeeded: activity.succeeded,
+        }));
+    }
+    catch {
+        // Observability must never change the result of a workspace operation.
+    }
 }
 
 function resolveWorkspacePath(root, path) {
