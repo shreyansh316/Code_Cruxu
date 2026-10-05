@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added a deterministic per-file complexity audit (`npm run audit:complexity`) that records the current worst src/ file sizes, function counts, and branch counts as the Phase 451 baseline and fails when any file exceeds it.
 - Added Director-mediated cross-office dependency routing with Office Head handoff validation and durable audit records.
 - Added file-backed objective recovery coverage across an Extension Host database close/reopen.
 - Added a production readiness review with release owners, platform evidence requirements, and Marketplace rollback guidance.

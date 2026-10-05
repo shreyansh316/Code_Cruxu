@@ -265,6 +265,7 @@
     "test:vscode": "node ./test/runTest.js",
     "benchmark": "vitest run --config vitest.benchmark.config.js --reporter=verbose",
     "check:sqlite": "node scripts/check-sqlite.js",
+    "audit:complexity": "node scripts/complexity-audit.js",
     "package": "node ./test/runTest.js --package",
     "test:vscode:vsix": "node ./test/runTest.js --vsix",
     "vscode:prepublish": "npm run compile"
