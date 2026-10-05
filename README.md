@@ -1,7 +1,11 @@
 # HEADROOM
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/shreyansh316/Code_Cruxu/main/assets/headroom-banner.png" alt="HEADROOM" width="100%">
+  <img
+    src="./assets/headroom-banner.png"
+    alt="HEADROOM"
+    width="100%"
+  />
 </p>
 
 <p align="center">
