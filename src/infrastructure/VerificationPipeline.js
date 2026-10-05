@@ -37,7 +37,7 @@ export function createVerificationPipeline({ commandRunner, checks, onActivity =
                         : result.aborted ? 'CANCELLED'
                             : result.exitCode === 0 ? 'PASSED' : 'FAILED';
                     results.push({ id: check.id, status, exitCode: result.exitCode, signal: result.signal,
-                        stdout: result.stdout, stderr: result.stderr, outputTruncated: result.outputTruncated });
+                        stdout: safeOutput(result.stdout), stderr: safeOutput(result.stderr), outputTruncated: result.outputTruncated });
                     reportActivity(onActivity, { event: 'finished', check: safeCheckName(check.id), status,
                         durationMs: Math.max(0, Date.now() - startedAt),
                         outputPreview: redactSecrets([result.stdout, result.stderr].filter(Boolean).join('\n'), 1000),
@@ -48,12 +48,16 @@ export function createVerificationPipeline({ commandRunner, checks, onActivity =
                     reportActivity(onActivity, { event: 'finished', check: safeCheckName(check.id), status: 'ERROR',
                         durationMs: Math.max(0, Date.now() - startedAt) });
                     results.push({ id: check.id, status: 'ERROR', exitCode: null, signal: null,
-                        stdout: '', stderr: error instanceof Error ? error.message : String(error), outputTruncated: false });
+                        stdout: '', stderr: safeOutput(error instanceof Error ? error.message : String(error)), outputTruncated: false });
                 }
             }
             return { passed: results.length === normalizedChecks.length && results.every((result) => result.status === 'PASSED'), results };
         },
     });
+}
+
+function safeOutput(value) {
+    return typeof value === 'string' ? redactSecrets(value.slice(0, 1024 * 1024), 1024 * 1024) : '';
 }
 
 function safeCheckName(value) {

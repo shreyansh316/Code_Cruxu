@@ -1,4 +1,5 @@
 import { createEntityId, DomainInvariantError, validateTaskAcceptanceCriteria, validateTaskResult } from '../domain';
+import { redactSecrets } from '../shared/redactSecrets';
 
 const MAX_PACKET_BYTES = 64_000;
 const MAX_ITEMS = 100;
@@ -52,7 +53,7 @@ function boundedText(value, label) {
     if (typeof value !== 'string' || !value.trim() || value.length > 2_000) {
         throw new DomainInvariantError('invalid-employee-contract', `${label} must be non-empty bounded text.`);
     }
-    return value.trim();
+    return redactSecrets(value.trim(), 2_000);
 }
 function entityId(value) {
     try { return createEntityId(value); }

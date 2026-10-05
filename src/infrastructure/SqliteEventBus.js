@@ -1,9 +1,11 @@
 import { EventType } from '../constants';
 import { createDomainEvent } from '../domain/events';
 import { DomainInvariantError } from '../domain/errors';
+import { redactSecrets } from '../shared/redactSecrets';
 
 const MAX_DISPATCH_EVENTS = 500;
 const MAX_RECORDED_ERROR_LENGTH = 2000;
+const MAX_EVENT_PAYLOAD_BYTES = 64 * 1024;
 
 /** Durable SQLite event log with explicitly registered, ordered subscribers. */
 export class SqliteEventBus {
@@ -17,19 +19,24 @@ export class SqliteEventBus {
 
     append(event) {
         const validEvent = createDomainEvent(event);
+        const safePayload = sanitizeEventValue(validEvent.payload);
         let payload;
         try {
-            payload = JSON.stringify(validEvent.payload);
+            payload = JSON.stringify(safePayload);
         }
         catch {
             throw new DomainInvariantError('invalid-domain-event', 'Event payload must be JSON serializable.');
         }
+        if (Buffer.byteLength(payload, 'utf8') > MAX_EVENT_PAYLOAD_BYTES) {
+            throw new DomainInvariantError('invalid-domain-event', `Event payload cannot exceed ${MAX_EVENT_PAYLOAD_BYTES} bytes.`);
+        }
+        const safeEvent = Object.freeze({ ...validEvent, payload: Object.freeze(safePayload) });
         this.database.prepare(`
           INSERT INTO events (id, type, payload, processed, event_version, aggregate_id, occurred_at)
           VALUES (?, ?, ?, 0, ?, ?, ?)
         `).run(validEvent.eventId, validEvent.type, payload, validEvent.version,
             validEvent.aggregateId, validEvent.occurredAt);
-        return validEvent;
+        return safeEvent;
     }
 
     subscribe({ id, types }, handler) {
@@ -63,7 +70,7 @@ export class SqliteEventBus {
                     deliveries.push({ eventId: event.eventId, subscriberId: subscription.id, status: 'SUCCEEDED', attempts: delivery.attempts + 1, error: null });
                 }
                 catch (error) {
-                    const message = (error instanceof Error ? error.message : String(error)).slice(0, MAX_RECORDED_ERROR_LENGTH);
+                    const message = redactSecrets(error instanceof Error ? error.message : String(error), MAX_RECORDED_ERROR_LENGTH);
                     this._finishDelivery(event.eventId, subscription.id, 'FAILED', message);
                     deliveries.push({ eventId: event.eventId, subscriberId: subscription.id, status: 'FAILED', attempts: delivery.attempts + 1, error: message });
                 }
@@ -117,9 +124,20 @@ function readEvent(row) {
     try {
         payload = JSON.parse(row.payload ?? '{}');
         return createDomainEvent({ eventId: row.id, type: row.type, aggregateId: row.aggregate_id,
-            occurredAt: row.occurred_at || row.created_at, payload });
+            occurredAt: row.occurred_at || row.created_at, payload: sanitizeEventValue(payload) });
     }
     catch (cause) {
         throw new DomainInvariantError('invalid-stored-event', `Stored event ${row.id} does not match its contract.`, { cause });
     }
+}
+
+function sanitizeEventValue(value) {
+    if (typeof value === 'string') return redactSecrets(value, MAX_EVENT_PAYLOAD_BYTES);
+    if (Array.isArray(value)) return value.map(sanitizeEventValue);
+    if (value && typeof value === 'object') {
+        return Object.fromEntries(Object.entries(value).map(([key, entry]) => [redactSecrets(key, 256),
+            /(?:api[_-]?key|authorization|bearer|token|password|secret|access[_-]?key|private[_-]?key)/i.test(key)
+                ? '[redacted]' : sanitizeEventValue(entry)]));
+    }
+    return value;
 }

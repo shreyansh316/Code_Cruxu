@@ -118,7 +118,8 @@ export function createCommandCenterSnapshot({ objectives, tasks, directorQuestio
 }
 
 function boundedText(value, maxLength, fallback) {
-    return typeof value === 'string' && value.trim() ? value.trim().slice(0, maxLength) : fallback;
+    return typeof value === 'string' && value.trim()
+        ? redactSecrets(value.trim().slice(0, maxLength), maxLength) : fallback;
 }
 
 function taskDuration(record, capturedAt, completed) {

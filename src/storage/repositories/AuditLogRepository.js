@@ -1,6 +1,8 @@
 import { assertEntityId } from '../../shared/identifiers';
+import { redactSecrets } from '../../shared/redactSecrets';
 
 const MAX_AUDIT_QUERY_LIMIT = 1000;
+const MAX_AUDIT_DETAILS_BYTES = 64 * 1024;
 
 /** Append-only audit persistence with parameterized, bounded read queries. */
 export class AuditLogRepository {
@@ -28,6 +30,13 @@ export class AuditLogRepository {
         }
         if (serializedDetails === undefined) {
             throw new TypeError('Audit details must be JSON serializable.');
+        }
+        if (Buffer.byteLength(serializedDetails, 'utf8') > MAX_AUDIT_DETAILS_BYTES) {
+            throw new TypeError(`Audit details cannot exceed ${MAX_AUDIT_DETAILS_BYTES} bytes.`);
+        }
+        serializedDetails = JSON.stringify(sanitizeAuditValue(JSON.parse(serializedDetails)));
+        if (Buffer.byteLength(serializedDetails, 'utf8') > MAX_AUDIT_DETAILS_BYTES) {
+            throw new TypeError(`Sanitized audit details cannot exceed ${MAX_AUDIT_DETAILS_BYTES} bytes.`);
         }
         this.database.prepare(`
           INSERT INTO audit_logs (id, action, entity, entity_id, agent_id, task_id, details)
@@ -88,6 +97,20 @@ export class AuditLogRepository {
     }
 }
 
+function sanitizeAuditValue(value) {
+    if (typeof value === 'string') return redactSecrets(value, MAX_AUDIT_DETAILS_BYTES);
+    if (Array.isArray(value)) return value.map(sanitizeAuditValue);
+    if (value && typeof value === 'object') {
+        return Object.fromEntries(Object.entries(value).map(([key, entry]) => {
+            const safeKey = redactSecrets(key, 256);
+            const safeValue = /(?:api[_-]?key|authorization|bearer|token|password|secret|access[_-]?key|private[_-]?key)/i.test(key)
+                ? '[redacted]' : sanitizeAuditValue(entry);
+            return [safeKey, safeValue];
+        }));
+    }
+    return value;
+}
+
 function validateLimit(limit) {
     if (!Number.isInteger(limit) || limit < 1 || limit > MAX_AUDIT_QUERY_LIMIT) {
         throw new TypeError(`Audit query limit must be between 1 and ${MAX_AUDIT_QUERY_LIMIT}.`);
@@ -98,7 +121,7 @@ function mapAudit(row) {
     if (!row) return undefined;
     let details;
     try {
-        details = JSON.parse(row.details ?? 'null');
+        details = sanitizeAuditValue(JSON.parse(row.details ?? 'null'));
     }
     catch {
         details = null;

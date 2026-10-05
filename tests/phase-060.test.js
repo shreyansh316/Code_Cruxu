@@ -3,10 +3,11 @@ import { createCEOExecutionControl, createCEOExecutionReport } from '../src/appl
 import { AgentRole } from '../src/constants';
 import { ExecutionControl } from '../src/domain';
 
-const agents = [{ id: 'ceo-060', role: AgentRole.CEO }, { id: 'other-060', role: AgentRole.DIRECTOR }];
+const agents = [{ id: 'ceo-060', role: AgentRole.CEO, organizationId: 'organization-060' },
+    { id: 'other-060', role: AgentRole.DIRECTOR, organizationId: 'organization-060' }];
 const fixtures = {
     agentRepository: { getById: (id) => agents.find((agent) => agent.id === id) },
-    objectiveRepository: { getById: (id) => id === 'objective-060' ? { id, title: 'Ship safely', status: 'ACTIVE' } : undefined },
+    objectiveRepository: { getById: (id) => id === 'objective-060' ? { id, organizationId: 'organization-060', title: 'Ship safely', status: 'ACTIVE' } : undefined },
     projectRepository: { listByObjective: () => [{ id: 'project-060' }] },
     taskRepository: { listByProject: () => [{ id: 'task-060', status: 'BLOCKED', blockerReason: 'Waiting on review' }] },
     auditRepository: { listByTask: () => [{ action: 'TASK_BLOCKED' }] },

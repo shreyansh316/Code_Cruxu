@@ -2,6 +2,7 @@ import { retrieveScopedMemories } from '../domain/memoryRetrieval';
 import { AgentRole, MemoryScope } from '../constants';
 import { DomainInvariantError } from '../domain/errors';
 import { assertEntityId } from '../shared/identifiers';
+import { redactSecrets } from '../shared/redactSecrets';
 
 const MAX_ITEMS = 25;
 const MAX_BYTES = 64_000;
@@ -34,8 +35,9 @@ export function assembleBoundedAgentContext({ memoryRepository, authorize } = {}
 
     const candidates = memoryRepository.listByOwner(scope, normalizedOwnerId,
         { limit: Math.min(100, limit * CANDIDATE_MULTIPLIER), ownerType })
-        .map((memory) => ({ ...memory, title: boundedText(memory.title, 500), category: memory.category?.slice(0, 100) ?? null,
-            content: boundedText(memory.content, 3000) }));
+        .map((memory) => ({ ...memory, title: redactSecrets(boundedText(memory.title, 500), 500),
+            category: memory.category ? redactSecrets(memory.category.slice(0, 100), 100) : null,
+            content: redactSecrets(boundedText(memory.content, 3000), 3000) }));
     const ranked = retrieveScopedMemories(candidates, { scope, ownerId: normalizedOwnerId, ownerType, query, categories, verifiedOnly, minImportance,
         limit: Math.min(100, limit * CANDIDATE_MULTIPLIER) });
     const items = [];

@@ -20,7 +20,7 @@ describe('Phase 064 — review evidence bundle', () => {
         expect(bundle.value.provenance).toMatchObject({ beforeSnapshotId: before.snapshotId, afterSnapshotId: after.snapshotId, head: 'b'.repeat(40) });
         expect(bundle.value.changes.renamed).toMatchObject([{ from: 'old.js', to: 'new.js' }]);
         expect(bundle.value.checks[0]).toMatchObject({ status: 'FAILED', exitCode: 1 });
-        expect(bundle.value.checks[0].stderr).toBe('api_key=[REDACTED]');
+        expect(bundle.value.checks[0].stderr).toBe('api_key=[redacted]');
         expect(bundle.value.acceptance.criteria[0].evidence).toBe('Criterion satisfied');
     });
     it('refuses missing provenance, checks, or task acceptance evidence', async () => {

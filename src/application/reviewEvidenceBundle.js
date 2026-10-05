@@ -1,4 +1,5 @@
 import { createEntityId, DomainInvariantError, validateTaskResult } from '../domain';
+import { redactSecrets } from '../shared/redactSecrets';
 import { ApplicationError, createUseCase } from './useCase';
 
 const MAX_CHECKS = 20;
@@ -61,7 +62,7 @@ function boundedLog(value) {
     if (typeof value !== 'string' || Buffer.byteLength(value, 'utf8') > MAX_LOG_BYTES) {
         throw new DomainInvariantError('invalid-review-check-evidence', 'Verification logs must be bounded text.');
     }
-    return value.replace(/(api[_-]?key|authorization|bearer|token|secret)(\s*[:=]\s*)([^\s,;]+)/gi, '$1$2[REDACTED]');
+    return redactSecrets(value, MAX_LOG_BYTES);
 }
 function validateHead(value) {
     if (typeof value !== 'string' || !/^[a-f0-9]{40,64}$/i.test(value)) {

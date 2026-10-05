@@ -12,7 +12,8 @@ describe('Phase 222 — verification output activity', () => {
 
         const result = await pipeline.run();
         const activity = feed.listRecent()[0];
-        expect(result.results[0].stdout).toContain('verify-secret');
+        expect(result.results[0].stdout).toBe('failed api_key=[redacted]');
+        expect(result.results[0].stdout).not.toContain('verify-secret');
         expect(activity).toMatchObject({ target: 'unit-tests', status: 'FAILED', detail: 'failed api_key=[redacted]', detailTruncated: true });
         expect(JSON.stringify(activity)).not.toContain('verify-secret');
     });

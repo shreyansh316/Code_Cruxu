@@ -1,6 +1,7 @@
 import { AgentRole } from '../constants';
 import { createEntityId, DomainInvariantError } from '../domain';
 import { ApplicationError, createUseCase } from './useCase';
+import { redactSecrets } from '../shared/redactSecrets';
 
 const MAX_PROJECTS = 500;
 const MAX_TASKS = 5000;
@@ -21,6 +22,10 @@ export function createCEOExecutionReport({ agentRepository, objectiveRepository,
             const objectiveId = createEntityId(input.objectiveId);
             const objective = dependencies.objectiveRepository.getById(objectiveId);
             if (!objective) throw new ApplicationError('objective-not-found', 'The reported objective does not exist.');
+            if (typeof ceo.organizationId !== 'string' || !ceo.organizationId
+                || objective.organizationId !== ceo.organizationId) {
+                throw new ApplicationError('ceo-report-forbidden', 'The CEO may report only on objectives owned by its organization.');
+            }
             const projects = dependencies.projectRepository.listByObjective(objective.id);
             if (!Array.isArray(projects) || projects.length > MAX_PROJECTS) throw new DomainInvariantError('report-limit-exceeded', 'Objective report exceeds its project limit.');
             const tasks = projects.flatMap((project) => dependencies.taskRepository.listByProject(project.id));
@@ -34,7 +39,8 @@ export function createCEOExecutionReport({ agentRepository, objectiveRepository,
             const audit = [];
             for (const task of tasks) {
                 counts[task.status] = (counts[task.status] ?? 0) + 1;
-                if (task.blockerReason) blockers.push(Object.freeze({ taskId: task.id, reason: String(task.blockerReason).slice(0, 2000) }));
+                if (task.blockerReason) blockers.push(Object.freeze({ taskId: task.id,
+                    reason: redactSecrets(String(task.blockerReason), 2000) }));
                 for (const usage of dependencies.usageRepository.listByTask(task.id, { limit: 1000 })) {
                     estimatedCost += usage.estimatedCost;
                     inputTokens += usage.inputTokens;
@@ -45,7 +51,8 @@ export function createCEOExecutionReport({ agentRepository, objectiveRepository,
                 audit.push(Object.freeze({ taskId: task.id, entries: events.length,
                     latestAction: events.at(-1)?.action ?? null }));
             }
-            return Object.freeze({ objective: Object.freeze({ id: objective.id, title: objective.title, status: objective.status }),
+            return Object.freeze({ objective: Object.freeze({ id: objective.id,
+                title: redactSecrets(String(objective.title ?? ''), 500), status: objective.status }),
                 projectCount: projects.length, taskCount: tasks.length, taskStatusCounts: Object.freeze({ ...counts }),
                 blockers: Object.freeze(blockers), cost: Object.freeze({ estimatedCost, inputTokens, outputTokens, failedRequests }),
                 audit: Object.freeze(audit) });

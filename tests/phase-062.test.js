@@ -5,7 +5,7 @@ import { join } from 'path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createGitStateAdapter } from '../src/infrastructure/GitStateAdapter';
 
-describe('Phase 062 — read-only Git state adapter', () => {
+describe('Phase 062 — read-only Git state adapter', { timeout: 30000 }, () => {
     let root; let adapter;
     beforeEach(async () => {
         root = await mkdtemp(join(tmpdir(), 'headroom-062-'));

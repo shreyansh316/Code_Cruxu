@@ -19,8 +19,8 @@ export class ExecutionActivityFeed {
         try { normalized = normalizeActivity(source, event, this.clock()); }
         catch { return false; }
         if (!normalized) return false;
-        if (typeof taskId === 'string' && taskId.trim()) normalized.taskId = taskId.trim().slice(0, 160);
-        if (typeof agentId === 'string' && agentId.trim()) normalized.agentId = agentId.trim().slice(0, 160);
+        if (typeof taskId === 'string' && taskId.trim()) normalized.taskId = redactSecrets(taskId.trim(), 160);
+        if (typeof agentId === 'string' && agentId.trim()) normalized.agentId = redactSecrets(agentId.trim(), 160);
         this.entries.unshift(Object.freeze(normalized));
         this.entries.length = Math.min(this.entries.length, this.maxEntries);
         return true;

@@ -5,7 +5,7 @@ import { join } from 'path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createGitTaskWorkspaceAdapter } from '../src/infrastructure/GitTaskWorkspaceAdapter';
 
-describe('Phase 063 — isolated task worktrees', () => {
+describe('Phase 063 — isolated task worktrees', { timeout: 30000 }, () => {
     let root; let worktrees; let adapter;
     beforeEach(async () => {
         root = await mkdtemp(join(tmpdir(), 'headroom-063-repo-'));

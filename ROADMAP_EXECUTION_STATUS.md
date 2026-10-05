@@ -18,7 +18,7 @@ This is a durable handoff note for the roadmap supplied by the project owner. Th
 | 201–225 Live Workspace and Execution | Phase tests 201–223 and workspace/command/activity implementations are present. | Implemented locally; full range audit still required. |
 | 226–250 Explainability | Explain-code contract, bounded prompt, evidence-backed projection, VS Code command, parser, and provenance labels are covered by tests 226–232. | Partially implemented; 233–250 not audited. |
 | 251–275 Engineering Review | Adversarial review implementation and tests 251–256 are present. | Partially implemented; 257–275 not audited. |
-| 276–325 Security | Local regression coverage now includes child environment filtering (276), sensitive path protections and operation budgets (277), provider response/schema/usage/timeout validation (278), ADS path denial (279), Win32 trailing-dot/space aliases (280), reserved device paths (281), chunk-bounded reads (282), bounded Gemini response bodies (283), typed memory ownership (284), enforced token-count timeout (285), nested credential-container exclusion (286), cloud/deployment credential path classification (287), key/certificate variant classification (288), centralized extended Win32 device alias blocking (289), and connection credential redaction (290). | In progress; 291–325 remain. |
+| 276–325 Security | Local regression coverage now includes child environment filtering (276), sensitive path protections and operation budgets (277), provider response/schema/usage/timeout validation (278), ADS path denial (279), Win32 trailing-dot/space aliases (280), reserved device paths (281), chunk-bounded reads (282), bounded Gemini response bodies (283), typed memory ownership (284), enforced token-count timeout (285), nested credential-container exclusion (286), cloud/deployment credential path classification (287), key/certificate variant classification (288), centralized extended Win32 device alias blocking (289), connection credential redaction (290), verification-result sanitation (291), activity identity sanitation (292), prompt packet trust boundaries (293), canonical result secret filtering (294), employee metadata sanitation (295), review-evidence log redaction (296), bounded/redacted audit detail writes and legacy reads (297–298), memory context redaction (299), CEO report redaction (300), Command Center text redaction (301), usage metadata sanitation (302), durable event sanitation (303), PEM private-key redaction (304), and CEO report organization authorization (305). | In progress; 306–325 remain. |
 | 326–350 AI Workforce Runtime | Provider, context, authorization, structured-output, fallback, and execution modules exist; this complete roadmap range has not been audited against runtime acceptance evidence. | Audit and close gaps. |
 | 351–370 Memory and Knowledge | Scoped SQLite memory, ranking, privacy controls, authorization, and bounded context assembly exist. | Partial; expiration, invalidation, ownership, and complete range audit remain. |
 | 371–385 Decision Memory | Plan approvals are recorded in the audit log; complete decision records with context/options/evidence/alternatives are not proven. | Incomplete; implement and verify. |
@@ -30,13 +30,13 @@ This is a durable handoff note for the roadmap supplied by the project owner. Th
 
 ## Latest verified local gates
 
-- Full suite last passed after the Phase 279–284 changes: 157 test files / 503 tests. Rerun after current Phase 285 work.
-- Focused Phase 279–284, memory-scope/privacy, and related regression tests pass.
-- Typecheck and lint pass on 280 JavaScript files; rerun after current Phase 285 work.
+- Full suite excluding the out-of-scope untracked `tests/phase-451.test.js`: 175 files / 526 tests passed after Phases 294–302. Focused Phase 303–305 tests pass; rerun full suite after these additions.
+- The normal `npm test` also discovers the untracked Phase 451 fixture and fails its expected worst-branch tie-break (`a.js` vs `b.js`); those user-present Phase 451 files have not been changed.
+- Typecheck and lint pass on 301 JavaScript files; compile and SQLite compatibility pass after Phase 302. `git diff --check` passes.
 - SQLite compatibility passed on Windows x64 with SQLite 3.49.2 after the memory API changes.
 - VS Code package and Extension Host tests are blocked before launch by the missing Python toolchain required by `node-gyp`; do not report these gates as passed.
 - No commit or push has been performed for the accumulated changes.
 
 ## Next work
 
-Continue the remaining 276–325 security scope from Phase 291 after inspecting current filesystem, process, provider, AI-context, and data boundaries. Then proceed through later roadmap ranges in order and update this status using concrete implementation/test evidence. Finish with a system-wide Phase 450 audit before reporting the consolidated work as ready for the owner's commit.
+Continue the remaining 276–325 security scope from Phase 306 after inspecting current filesystem, process, provider, AI-context, and data boundaries. Then proceed through later roadmap ranges in order and update this status using concrete implementation/test evidence. Finish with a system-wide Phase 450 audit before reporting the consolidated work as ready for the owner's commit.

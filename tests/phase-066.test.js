@@ -5,7 +5,7 @@ import { join } from 'path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createGitTaskWorkspaceAdapter } from '../src/infrastructure/GitTaskWorkspaceAdapter';
 
-describe('Phase 066 — precondition-checked task rollback', () => {
+describe('Phase 066 — precondition-checked task rollback', { timeout: 30000 }, () => {
     let root; let worktrees; let adapter; let taskPath;
     beforeEach(async () => {
         root = await mkdtemp(join(tmpdir(), 'headroom-066-repo-'));

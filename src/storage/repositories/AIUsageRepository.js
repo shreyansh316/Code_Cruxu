@@ -1,6 +1,9 @@
 import { assertEntityId } from '../../shared/identifiers';
+import { redactSecrets } from '../../shared/redactSecrets';
 
 const MAX_USAGE_QUERY_LIMIT = 1000;
+const MAX_USAGE_MODEL_LENGTH = 200;
+const MAX_USAGE_PURPOSE_LENGTH = 120;
 
 /** Validated, attributable AI usage accounting over the existing SQLite table. */
 export class AIUsageRepository {
@@ -23,8 +26,9 @@ export class AIUsageRepository {
             id, agent_id, task_id, model, input_tokens, output_tokens,
             estimated_cost, duration_ms, purpose, success, request_id, attempt
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(id, agentId, taskId, value.model.trim(), value.inputTokens, value.outputTokens,
-            value.estimatedCost, value.durationMs, value.purpose?.trim() || null, Number(value.success ?? true),
+        `).run(id, agentId, taskId, redactSecrets(value.model.trim(), MAX_USAGE_MODEL_LENGTH), value.inputTokens, value.outputTokens,
+            value.estimatedCost, value.durationMs, value.purpose?.trim()
+                ? redactSecrets(value.purpose.trim(), MAX_USAGE_PURPOSE_LENGTH) : null, Number(value.success ?? true),
             requestId, attempt);
         return this.getById(id);
     }
@@ -52,7 +56,7 @@ export class AIUsageRepository {
 }
 
 function validateUsage(value) {
-    if (!value || typeof value.model !== 'string' || value.model.trim() === ''
+    if (!value || typeof value.model !== 'string' || value.model.trim() === '' || value.model.trim().length > MAX_USAGE_MODEL_LENGTH
         || (value.requestId != null && (typeof value.requestId !== 'string' || value.requestId.trim() === ''))
         || !Number.isSafeInteger(value.attempt ?? 1) || (value.attempt ?? 1) < 1 || (value.attempt ?? 1) > 4
         || !Number.isSafeInteger(value.inputTokens) || value.inputTokens < 0
@@ -60,7 +64,7 @@ function validateUsage(value) {
         || !Number.isFinite(value.estimatedCost) || value.estimatedCost < 0
         || !Number.isSafeInteger(value.durationMs) || value.durationMs < 0
         || typeof (value.success ?? true) !== 'boolean'
-        || (value.purpose != null && typeof value.purpose !== 'string')) {
+        || (value.purpose != null && (typeof value.purpose !== 'string' || value.purpose.length > MAX_USAGE_PURPOSE_LENGTH))) {
         throw new TypeError('AI usage requires a model, nonnegative integer counts/duration, finite cost, and boolean success.');
     }
 }
@@ -69,9 +73,10 @@ function mapUsage(row) {
     if (!row) return undefined;
     return {
         id: row.id, requestId: row.request_id, attempt: row.attempt,
-        agentId: row.agent_id, taskId: row.task_id, model: row.model,
+        agentId: row.agent_id, taskId: row.task_id, model: redactSecrets(row.model, MAX_USAGE_MODEL_LENGTH),
         inputTokens: row.input_tokens, outputTokens: row.output_tokens,
         estimatedCost: row.estimated_cost, durationMs: row.duration_ms,
-        purpose: row.purpose, success: row.success === 1, createdAt: row.created_at,
+        purpose: row.purpose === null ? null : redactSecrets(row.purpose, MAX_USAGE_PURPOSE_LENGTH),
+        success: row.success === 1, createdAt: row.created_at,
     };
 }

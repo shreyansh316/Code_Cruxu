@@ -1,5 +1,6 @@
 import { DomainInvariantError } from './errors';
 import { validateTaskAcceptanceCriteria } from './taskAcceptanceCriteria';
+import { redactSecrets } from '../shared/redactSecrets';
 
 const MAX_RESULT_SUMMARY_LENGTH = 4_000;
 const MAX_CRITERION_EVIDENCE_LENGTH = 2_000;
@@ -41,11 +42,11 @@ export function validateTaskResult(value, criteria) {
         throw new DomainInvariantError('task-acceptance-incomplete', 'Required acceptance criteria must be met before submitting a task for review.');
     }
     const result = {
-        summary: value.summary.trim(),
+        summary: redactSecrets(value.summary.trim(), MAX_RESULT_SUMMARY_LENGTH),
         acceptanceCriteria: acceptanceCriteria.map((criterion) => ({
             criterionId: criterion.id,
             met: criterion.met,
-            evidence: submitted.get(criterion.id).evidence.trim(),
+            evidence: redactSecrets(submitted.get(criterion.id).evidence.trim(), MAX_CRITERION_EVIDENCE_LENGTH),
         })),
     };
     if (new TextEncoder().encode(JSON.stringify(result)).byteLength > MAX_RESULT_BYTES) {
