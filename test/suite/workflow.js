@@ -31,7 +31,7 @@ async function runWorkflow(api) {
         database.prepare('INSERT INTO departments (id, office_id, name, slug) VALUES (?, ?, ?, ?)')
             .run('e2e-dept', 'e2e-office', 'Platform', 'platform');
         const agents = new api.AgentRepository(database);
-        agents.create({ id: 'e2e-ceo', name: 'CEO', role: api.AgentRole.CEO });
+        agents.create({ id: 'e2e-ceo', organizationId: 'e2e-org', name: 'CEO', role: api.AgentRole.CEO });
         agents.create({ id: 'e2e-director', name: 'Director', role: api.AgentRole.DIRECTOR });
         agents.create({ id: 'e2e-head', name: 'Office Head', role: api.AgentRole.HEAD_MANAGER, managedOfficeId: 'e2e-office' });
         agents.create({ id: 'e2e-manager', name: 'Department Manager', role: api.AgentRole.DEPT_MANAGER, managedDepartmentId: 'e2e-dept' });
@@ -124,18 +124,19 @@ async function runWorkflow(api) {
         const employeeId = decompositionOutcome.value.subtasks[0].assigneeId;
         await routeAndPersist(routedDepartment.departmentManagerId, employeeId);
 
+        const nodeBinary = resolveNodeExecutable();
         const taskPlan = approvedPlan.tasks[0];
         const permissions = { readFiles: ['src/deliverable.txt'], writeFiles: ['src/deliverable.txt'],
-            commands: [{ command: process.execPath, args: ['verify.js'] }] };
+            commands: [{ command: nodeBinary, args: ['verify.js'] }] };
         const workspaceFiles = await api.createWorkspaceFileAdapter({ workspaceRoot });
         const taskTools = await api.createTaskScopedTools({ workspaceRoot, filesystem: workspaceFiles,
-            processRunner: api.createCommandRunner({ allowedCommands: [process.execPath], timeoutMs: 5000 }), permissions });
+            processRunner: api.createCommandRunner({ allowedCommands: [nodeBinary], timeoutMs: 5000 }), permissions });
         await fs.writeFile(path.join(workspaceRoot, 'verify.js'),
             "const fs = require('fs'); if (fs.readFileSync('src/deliverable.txt', 'utf8') !== 'HEADROOM verified\\n') process.exit(1); console.log('contents verified');\n");
         const rawVerificationByTask = new Map();
         const verificationPipeline = api.createVerificationPipeline({
             commandRunner: { execute: (request) => taskTools.process.execute(request) },
-            checks: [{ id: 'deliverable-content', command: process.execPath, args: ['verify.js'], cwd: workspaceRoot }],
+            checks: [{ id: 'deliverable-content', command: nodeBinary, args: ['verify.js'], cwd: workspaceRoot }],
         });
         const employeeVerification = api.createEmployeeResultVerificationUseCase({ taskRepository,
             verificationPipeline: { run: async (input) => {
@@ -239,6 +240,28 @@ async function runWorkflow(api) {
 
 function errorText(outcome) {
     return outcome?.error ? `${outcome.error.code}: ${outcome.error.message}` : 'Expected workflow step to succeed.';
+}
+
+function resolveNodeExecutable() {
+    if (process.env.HEADROOM_NODE_PATH && require('fs').existsSync(process.env.HEADROOM_NODE_PATH)) {
+        return process.env.HEADROOM_NODE_PATH;
+    }
+    if (!process.versions?.electron) {
+        return process.execPath;
+    }
+    const envPath = process.env.PATH || '';
+    const pathExts = process.platform === 'win32'
+        ? (process.env.PATHEXT || '.EXE;.CMD;.BAT').split(';')
+        : [''];
+    for (const dir of envPath.split(path.delimiter)) {
+        for (const ext of pathExts) {
+            const candidate = path.join(dir, `node${ext}`);
+            if (require('fs').existsSync(candidate)) {
+                return candidate;
+            }
+        }
+    }
+    return process.execPath;
 }
 
 module.exports = { runWorkflow };

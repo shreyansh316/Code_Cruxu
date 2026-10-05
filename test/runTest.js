@@ -127,6 +127,7 @@ async function main() {
             extensionTestsEnv: {
                 HEADROOM_WORKFLOW_API: workflowApiPath,
                 HEADROOM_WORKFLOW_TEMP_ROOT: nativeAddonBackupDirectory,
+                HEADROOM_NODE_PATH: process.execPath,
             },
             launchArgs: [
                 `--user-data-dir=${path.join(temporaryDirectory, 'user-data')}`,
