@@ -45,6 +45,10 @@ export function createExecutionRecoveryUseCase({
                     nextQueueState = 'COMPLETED';
                     outcome = 'ALREADY_COMPLETED';
                 }
+                else if (task.status === TaskStatus.FAILED) {
+                    nextQueueState = 'FAILED';
+                    outcome = 'ALREADY_FAILED';
+                }
                 else {
                     nextQueueState = 'CANCELLED';
                     outcome = task.status === TaskStatus.REVIEW ? 'REVIEW_PENDING' : 'NOT_RUNNABLE';

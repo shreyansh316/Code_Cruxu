@@ -17,11 +17,18 @@ describe('Phase 211 — activity actor visibility', () => {
         expect(JSON.stringify(snapshot.executionActivity)).not.toContain('agent-id-private');
     });
 
-    it('omits missing employee names rather than displaying internal identifiers', () => {
+    it('labels unresolved employee identity without displaying internal identifiers', () => {
         const feed = new ExecutionActivityFeed();
         feed.record('command', { event: 'started' }, { agentId: 'missing-agent' });
         const snapshot = createCommandCenterSnapshot({ objectives: [], tasks: [], executionActivity: feed.listRecent() });
-        expect(snapshot.executionActivity[0].agentName).toBe('');
+        expect(snapshot.executionActivity[0].agentName).toBe('Employee identity unavailable');
         expect(JSON.stringify(snapshot.executionActivity)).not.toContain('missing-agent');
+    });
+
+    it('labels activity without an actor instead of silently leaving attribution blank', () => {
+        const feed = new ExecutionActivityFeed();
+        feed.record('command', { event: 'started' });
+        const snapshot = createCommandCenterSnapshot({ objectives: [], tasks: [], executionActivity: feed.listRecent() });
+        expect(snapshot.executionActivity[0].agentName).toBe('Actor not recorded');
     });
 });

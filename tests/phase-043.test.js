@@ -47,9 +47,10 @@ describe('Phase 043 — agent runtime contracts', () => {
     });
     afterEach(() => connection.close());
 
-    function runtime(adapter) {
+    function runtime(adapter, taskToolsProvider) {
         return createAuthorizedAgentRuntime({ agentRepository: agents, taskRepository: tasks,
-            hierarchyProvider, adapter, clock: { now: () => '2026-10-04T08:00:00.000Z' }, idFactory: nextId });
+            hierarchyProvider, adapter, taskToolsProvider,
+            clock: { now: () => '2026-10-04T08:00:00.000Z' }, idFactory: nextId });
     }
 
     function run(useCase, overrides = {}) {
@@ -112,6 +113,76 @@ describe('Phase 043 — agent runtime contracts', () => {
         controller.abort();
         const outcome = await running;
         expect(outcome.value).toMatchObject({ outcome: 'CANCELLED', taskId: 'task-043' });
+    });
+
+    it('resolves task-scoped filesystem and process tools only after persisted identity authorization', async () => {
+        const calls = [];
+        const taskTools = {
+            filesystem: { readFile: async (_path, { signal }) => { fsSignal = signal; return 'scoped'; }, writeFile: async () => undefined,
+                createFile: async () => undefined, deleteFile: async () => undefined,
+                renameFile: async () => undefined, unsafeOperation: () => undefined },
+            process: { execute: async () => ({ exitCode: 0 }) },
+            unsafeProcessOperation: () => undefined,
+        };
+        const provider = { forTask: ({ actor, task }) => {
+            calls.push({ actorId: actor.id, taskId: task.id });
+            return taskTools;
+        } };
+        let deliveredTools;
+        let adapterSignal;
+        let processSignal;
+        let fsSignal;
+        taskTools.process.execute = async ({ signal }) => {
+            processSignal = signal;
+            return { exitCode: 0 };
+        };
+        const useCase = runtime({ execute: async (_request, options) => {
+            deliveredTools = options.tools;
+            adapterSignal = options.signal;
+            await options.tools.filesystem.readFile('src/input.js');
+            await options.tools.process.execute({ signal: new AbortController().signal });
+            return validResult;
+        } }, provider);
+        const unauthorized = await run(useCase, { agentId: 'other-employee-043' });
+        expect(unauthorized.error.code).toBe('unauthorized-agent-task');
+        expect(calls).toEqual([]);
+        const outcome = await run(useCase);
+        expect(outcome.value.outcome).toBe('SUCCEEDED');
+        expect(calls).toEqual([{ actorId: 'employee-043', taskId: 'task-043' }]);
+        expect(deliveredTools.filesystem.readFile).not.toBe(taskTools.filesystem.readFile);
+        expect(typeof deliveredTools.filesystem.readFile).toBe('function');
+        expect(deliveredTools.process.execute).not.toBe(taskTools.process.execute);
+        expect(typeof deliveredTools.process.execute).toBe('function');
+        expect(deliveredTools.filesystem.createFile).not.toBe(taskTools.filesystem.createFile);
+        expect(deliveredTools.filesystem.deleteFile).not.toBe(taskTools.filesystem.deleteFile);
+        expect(deliveredTools.filesystem.renameFile).not.toBe(taskTools.filesystem.renameFile);
+        expect(processSignal).toBe(adapterSignal);
+        expect(fsSignal).toBe(adapterSignal);
+        expect(deliveredTools.filesystem).not.toHaveProperty('unsafeOperation');
+        expect(deliveredTools).not.toHaveProperty('unsafeProcessOperation');
+        expect(Object.isFrozen(deliveredTools)).toBe(true);
+        expect(Object.isFrozen(deliveredTools.filesystem)).toBe(true);
+        expect(Object.isFrozen(deliveredTools.process)).toBe(true);
+    });
+
+    it('blocks a scoped filesystem operation after the authorized execution signal is aborted', async () => {
+        const controller = new AbortController();
+        let underlyingCalls = 0;
+        let operationError;
+        const provider = { forTask: () => ({
+            filesystem: { readFile: async () => { underlyingCalls += 1; return 'content'; }, writeFile: async () => undefined },
+            process: { execute: async () => ({ exitCode: 0 }) },
+        }) };
+        const useCase = runtime({ execute: async (_request, { tools }) => {
+            controller.abort();
+            try { await tools.filesystem.readFile('src/file.js'); }
+            catch (error) { operationError = error; }
+            return validResult;
+        } }, provider);
+        const outcome = await useCase.run({ taskId: 'task-043', agentId: 'employee-043', signal: controller.signal });
+        expect(outcome.value.outcome).toBe('CANCELLED');
+        expect(operationError.code).toBe('task-execution-cancelled');
+        expect(underlyingCalls).toBe(0);
     });
 
     it('maps adapter failures to stable outcomes without exposing exception text', async () => {

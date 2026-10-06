@@ -9,7 +9,10 @@ const SHELLS = new Set(['sh', 'bash', 'dash', 'zsh', 'fish', 'cmd', 'powershell'
 export function normalizeAllowedExecutable(command) {
     if (typeof command !== 'string' || !command.trim()) throw new DomainInvariantError('invalid-command-allowlist', 'Allowed executable paths must be non-empty.');
     const executable = resolve(command);
-    const name = command.split(/[\\/]/).at(-1).toLowerCase().replace(/\.exe$/, '');
+    // Win32 ignores trailing dots/spaces in path components; canonicalize before
+    // the shell check so aliases such as `cmd.exe.` cannot bypass the denylist.
+    const name = command.split(/[\\/]/).at(-1).trimEnd().replace(/[. ]+$/g, '').toLowerCase()
+        .replace(/\.(?:exe|com|bat|cmd)$/, '');
     if (SHELLS.has(name)) throw new DomainInvariantError('command-shell-not-allowed', 'Shell interpreters cannot be added to the command allowlist.');
     return executable;
 }

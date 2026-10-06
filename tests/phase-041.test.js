@@ -72,15 +72,18 @@ describe('Phase 041 — execution recovery', () => {
 
     it('reconciles already completed and non-runnable task states explicitly', async () => {
         seed('task-done', TaskStatus.COMPLETED);
+        seed('task-failed', TaskStatus.FAILED);
         seed('task-review', TaskStatus.REVIEW);
         seed('task-cancelled', TaskStatus.CANCELLED);
         const outcome = await recover.run();
         expect(Object.fromEntries(outcome.value.map(({ taskId, outcome: value }) => [taskId, value]))).toEqual({
             'task-done': 'ALREADY_COMPLETED',
+            'task-failed': 'ALREADY_FAILED',
             'task-review': 'REVIEW_PENDING',
             'task-cancelled': 'NOT_RUNNABLE',
         });
         expect(queue.getByTaskId('task-done').state).toBe('COMPLETED');
+        expect(queue.getByTaskId('task-failed').state).toBe('FAILED');
         expect(queue.getByTaskId('task-review').state).toBe('CANCELLED');
         expect(tasks.getById('task-done').status).toBe(TaskStatus.COMPLETED);
     });

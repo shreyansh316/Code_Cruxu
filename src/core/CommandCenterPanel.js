@@ -21,6 +21,7 @@ export function createCommandCenterSnapshot({ objectives, tasks, directorQuestio
     const objectiveTitles = new Map(orderedObjectives.map((record) => [record?.id, boundedText(record?.title, 200, 'Untitled objective')]));
     const taskTitles = new Map(tasks.map((record) => [record?.id, boundedText(record?.title, 200, 'Untitled task')]));
     const agentNames = new Map(agents.map((record) => [record?.id, safeAgentName(record)]));
+    const activeWorkload = countActiveWorkload(tasks);
     return Object.freeze({
         executionStatus: ['PAUSED', 'CANCELLED'].includes(executionStatus) ? executionStatus : 'RUNNING',
         taskProgress: Object.freeze({ ...calculateTaskProgress(tasks) }),
@@ -69,7 +70,8 @@ export function createCommandCenterSnapshot({ objectives, tasks, directorQuestio
             action: boundedText(record?.action, 100, 'Activity'),
             target: boundedText(record?.target, 180, ''),
             taskTitle: taskTitles.get(record?.taskId) ?? '',
-            agentName: agentNames.get(record?.agentId) ?? '',
+            agentName: activityActorLabel(record, agentNames),
+            activityPersisted: record?.persisted === true,
             status: boundedText(record?.status, 32, 'UNKNOWN'),
             durationMs: Number.isSafeInteger(record?.durationMs) ? Math.min(10_000_000, Math.max(0, record.durationMs)) : 0,
             bytes: Number.isSafeInteger(record?.bytes) ? Math.min(10_000_000, Math.max(0, record.bytes)) : 0,
@@ -90,22 +92,21 @@ export function createCommandCenterSnapshot({ objectives, tasks, directorQuestio
                 headManager: safeAgentName(findOfficeHead(agents, office?.id)),
                 headManagerStatus: boundedText(findOfficeHead(agents, office?.id)?.status, 32, 'UNKNOWN'),
                 headManagerLifecycleStatus: boundedText(findOfficeHead(agents, office?.id)?.lifecycleStatus, 32, 'ACTIVE'),
-                headManagerActiveTaskCount: activeTaskCount(tasks, findOfficeHead(agents, office?.id)),
+                headManagerActiveTaskCount: workloadForAgent(activeWorkload, findOfficeHead(agents, office?.id)),
                 departments: Object.freeze(departments.filter((department) => department?.officeId === office?.id)
                     .sort((a, b) => compareText(a?.name, b?.name) || compareText(a?.id, b?.id)).slice(0, 20).map((department) => Object.freeze({
                         name: boundedText(department?.name, 120, 'Department'),
                         manager: safeAgentName(findDepartmentManager(agents, department?.id)),
                         managerStatus: boundedText(findDepartmentManager(agents, department?.id)?.status, 32, 'UNKNOWN'),
                         managerLifecycleStatus: boundedText(findDepartmentManager(agents, department?.id)?.lifecycleStatus, 32, 'ACTIVE'),
-                        managerActiveTaskCount: activeTaskCount(tasks, findDepartmentManager(agents, department?.id)),
+                        managerActiveTaskCount: workloadForAgent(activeWorkload, findDepartmentManager(agents, department?.id)),
                         employees: Object.freeze(agents.filter((agent) => agent?.departmentId === department?.id)
                             .sort((a, b) => compareText(a?.name, b?.name) || compareText(a?.id, b?.id)).slice(0, 4)
                             .map((agent) => Object.freeze({ name: safeAgentName(agent), specialization: boundedText(agent?.specialization, 100, ''),
                                 capabilities: Object.freeze(Array.isArray(agent?.capabilities) ? agent.capabilities.slice(0, 8).map((value) => boundedText(value, 100, '')) : []),
                                 status: boundedText(agent?.status, 32, 'UNKNOWN'),
                                 lifecycleStatus: boundedText(agent?.lifecycleStatus, 32, 'ACTIVE'),
-                                activeTaskCount: tasks.filter((task) => task?.assigneeId === agent?.id
-                                    && !TERMINAL_TASK_STATUSES.has(task?.status)).length }))),
+                                activeTaskCount: workloadForAgent(activeWorkload, agent) }))),
                     }))),
             }))),
         collapsedSections: Object.freeze([...new Set(collapsedSections.filter((section) => COMMAND_CENTER_SECTIONS.has(section)))]),
@@ -155,6 +156,11 @@ function safeAgentName(agent) {
     return agent ? boundedText(agent.name, 120, 'Employee') : 'Unassigned';
 }
 
+function activityActorLabel(record, agentNames) {
+    if (typeof record?.agentId !== 'string' || !record.agentId.trim()) return 'Actor not recorded';
+    return agentNames.get(record.agentId) ?? 'Employee identity unavailable';
+}
+
 function findOfficeHead(agents, officeId) {
     return agents.find((agent) => agent?.managedOfficeId === officeId && agent?.role === 'HEAD_MANAGER');
 }
@@ -163,8 +169,17 @@ function findDepartmentManager(agents, departmentId) {
     return agents.find((agent) => agent?.managedDepartmentId === departmentId && agent?.role === 'DEPT_MANAGER');
 }
 
-function activeTaskCount(tasks, agent) {
-    return agent ? tasks.filter((task) => task?.assigneeId === agent.id && !TERMINAL_TASK_STATUSES.has(task?.status)).length : 0;
+function countActiveWorkload(tasks) {
+    const workload = new Map();
+    for (const task of tasks) {
+        if (typeof task?.assigneeId !== 'string' || TERMINAL_TASK_STATUSES.has(task.status)) continue;
+        workload.set(task.assigneeId, (workload.get(task.assigneeId) ?? 0) + 1);
+    }
+    return workload;
+}
+
+function workloadForAgent(workload, agent) {
+    return agent ? workload.get(agent.id) ?? 0 : 0;
 }
 
 /** Owns one VS Code panel and exposes only a bounded read-only workspace snapshot. */
@@ -330,37 +345,50 @@ function renderCommandCenterHtml() {
   <style nonce="${nonce}">
     body { color: var(--vscode-foreground); background: var(--vscode-editor-background); font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); padding: 1rem 1.5rem; }
     header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+    .command-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; }
     h1 { font-size: 1.4rem; margin: 0; }
     h2 { font-size: 1.05rem; margin-top: 1.5rem; }
     button { color: var(--vscode-button-foreground); background: var(--vscode-button-background); border: 0; padding: .45rem .8rem; cursor: pointer; }
     button:hover { background: var(--vscode-button-hoverBackground); }
     button:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 2px; }
+    .skip-link { position: absolute; left: -10000px; top: 0; z-index: 1; padding: .5rem; color: var(--vscode-foreground); background: var(--vscode-editor-background); }
+    .skip-link:focus { left: .5rem; top: .5rem; outline: 2px solid var(--vscode-focusBorder); }
     .summary { color: var(--vscode-descriptionForeground); margin: .5rem 0 1rem; }
-    .record { display: flex; justify-content: space-between; gap: 1rem; padding: .55rem .7rem; border-bottom: 1px solid var(--vscode-panel-border); }
-    .status { color: var(--vscode-descriptionForeground); white-space: nowrap; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+    .record { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .35rem 1rem; min-width: 0; padding: .55rem .7rem; border-bottom: 1px solid var(--vscode-panel-border); }
+    .record > :first-child { flex: 1 1 12rem; min-width: 0; overflow-wrap: anywhere; }
+    .status { flex: 0 1 auto; color: var(--vscode-descriptionForeground); text-align: right; overflow-wrap: anywhere; }
     .empty, .error { color: var(--vscode-descriptionForeground); padding: .65rem .7rem; }
     .error { color: var(--vscode-errorForeground); }
     ul { list-style: none; margin: 0; padding: 0; }
     .section-toggle { margin-left: .75rem; }
+    @media (max-width: 600px) { body { padding: .5rem; } header { align-items: stretch; flex-direction: column; } .command-actions { justify-content: flex-start; } .status { text-align: left; } }
   </style>
 </head>
 <body>
-  <header><h1>HEADROOM Command Center</h1><div><button id="new-objective" type="button">New objective</button><button id="ask-director" type="button">Ask Director</button><button id="propose-plan" type="button">Ask Director for plan</button><button id="pause-execution" type="button">Pause</button><button id="resume-execution" type="button" hidden>Resume</button><button id="cancel-execution" type="button">Cancel execution</button><button id="refresh" type="button">Refresh</button></div></header>
-  <p id="summary" class="summary" role="status" aria-live="polite">Loading current workspace data…</p>
+  <a class="skip-link" href="#main-content">Skip to command center content</a>
+  <header><h1>HEADROOM Command Center</h1><nav class="command-actions" aria-label="Command center actions"><button id="new-objective" type="button">New objective</button><button id="ask-director" type="button">Ask Director</button><button id="propose-plan" type="button">Ask Director for plan</button><button id="pause-execution" type="button">Pause</button><button id="resume-execution" type="button" hidden>Resume</button><button id="cancel-execution" type="button">Cancel execution</button><button id="refresh" type="button">Refresh</button></nav></header>
+  <p id="summary" class="summary">Loading current workspace data…</p>
+  <p id="execution-announcement" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
+  <main id="main-content" tabindex="-1">
   <section aria-labelledby="workspace-heading"><h2 id="workspace-heading">Workspace</h2><ul id="workspace" aria-label="Current workspace and editor"></ul></section>
   <section aria-labelledby="changed-files-heading"><h2 id="changed-files-heading">Changed files</h2><ul id="changed-files" aria-label="Files changed in the workspace"></ul></section>
   <section aria-labelledby="workforce-heading"><h2 id="workforce-heading">Organization</h2><ul id="workforce" aria-label="Office departments and employee identities"></ul></section>
   <section aria-labelledby="progress-heading"><h2 id="progress-heading">Task progress</h2><progress id="task-progress" max="100" value="0" aria-label="Completed task percentage"></progress><span id="progress-summary">No task progress yet.</span></section>
-  <section aria-labelledby="objectives-heading"><h2 id="objectives-heading">Objectives</h2><button class="section-toggle" type="button" data-section-toggle="objectives" aria-controls="objectives" aria-expanded="true">Hide</button><ul id="objectives"></ul></section>
-  <section aria-labelledby="tasks-heading"><h2 id="tasks-heading">Active tasks</h2><button class="section-toggle" type="button" data-section-toggle="tasks" aria-controls="tasks" aria-expanded="true">Hide</button><ul id="tasks"></ul></section>
-  <section aria-labelledby="completed-heading"><h2 id="completed-heading">Completed tasks</h2><button class="section-toggle" type="button" data-section-toggle="completed-tasks" aria-controls="completed-tasks" aria-expanded="true">Hide</button><ul id="completed-tasks" aria-label="Completed tasks"></ul></section>
-  <section aria-labelledby="errors-heading"><h2 id="errors-heading">Task errors and blockers</h2><button class="section-toggle" type="button" data-section-toggle="task-errors" aria-controls="task-errors" aria-expanded="true">Hide</button><ul id="task-errors" aria-label="Failed and blocked tasks"></ul></section>
-  <section aria-labelledby="director-heading"><h2 id="director-heading">AI Director</h2><button id="answer-director-question" type="button">Respond to pending question</button><button class="section-toggle" type="button" data-section-toggle="director-questions" aria-controls="director-questions" aria-expanded="true">Hide</button><ul id="director-questions" aria-label="Director clarification questions"></ul></section>
-  <section aria-labelledby="activity-heading"><h2 id="activity-heading">Live activity</h2><button class="section-toggle" type="button" data-section-toggle="activity" aria-controls="activity" aria-expanded="true">Hide</button><ul id="activity" aria-label="Recent recorded activity"></ul></section>
-  <section aria-labelledby="execution-activity-heading"><h2 id="execution-activity-heading">Workspace and execution activity</h2><button class="section-toggle" type="button" data-section-toggle="execution-activity" aria-controls="execution-activity" aria-expanded="true">Hide</button><ul id="execution-activity" aria-label="Recent file, terminal, and verification activity"></ul></section>
+  <section aria-labelledby="objectives-heading"><h2 id="objectives-heading">Objectives</h2><button class="section-toggle" type="button" data-section-toggle="objectives" aria-label="Hide Objectives section" aria-controls="objectives" aria-expanded="true">Hide</button><ul id="objectives"></ul></section>
+  <section aria-labelledby="tasks-heading"><h2 id="tasks-heading">Active tasks</h2><button class="section-toggle" type="button" data-section-toggle="tasks" aria-label="Hide Active tasks section" aria-controls="tasks" aria-expanded="true">Hide</button><ul id="tasks"></ul></section>
+  <section aria-labelledby="completed-heading"><h2 id="completed-heading">Completed tasks</h2><button class="section-toggle" type="button" data-section-toggle="completed-tasks" aria-label="Hide Completed tasks section" aria-controls="completed-tasks" aria-expanded="true">Hide</button><ul id="completed-tasks" aria-label="Completed tasks"></ul></section>
+  <section aria-labelledby="errors-heading"><h2 id="errors-heading">Task errors and blockers</h2><button class="section-toggle" type="button" data-section-toggle="task-errors" aria-label="Hide Task errors and blockers section" aria-controls="task-errors" aria-expanded="true">Hide</button><ul id="task-errors" aria-label="Failed and blocked tasks"></ul></section>
+  <section aria-labelledby="director-heading"><h2 id="director-heading">AI Director</h2><button id="answer-director-question" type="button">Respond to pending question</button><button class="section-toggle" type="button" data-section-toggle="director-questions" aria-label="Hide Director questions section" aria-controls="director-questions" aria-expanded="true">Hide</button><ul id="director-questions" aria-label="Director clarification questions"></ul></section>
+  <section aria-labelledby="activity-heading"><h2 id="activity-heading">Live activity</h2><button class="section-toggle" type="button" data-section-toggle="activity" aria-label="Hide Live activity section" aria-controls="activity" aria-expanded="true">Hide</button><ul id="activity" aria-label="Recent recorded activity"></ul></section>
+  <section aria-labelledby="execution-activity-heading"><h2 id="execution-activity-heading">Workspace and execution activity</h2><button class="section-toggle" type="button" data-section-toggle="execution-activity" aria-label="Hide Workspace and execution activity section" aria-controls="execution-activity" aria-expanded="true">Hide</button><ul id="execution-activity" aria-label="Recent file, terminal, and verification activity"></ul></section>
+  </main>
   <script nonce="${nonce}">
     const api = acquireVsCodeApi();
     const summary = document.getElementById('summary');
+    const executionAnnouncement = document.getElementById('execution-announcement');
+    let lastAnnouncedExecutionStatus;
+    let workspaceLoadFailed = false;
     const objectives = document.getElementById('objectives');
     const tasks = document.getElementById('tasks');
     const completedTasks = document.getElementById('completed-tasks');
@@ -374,6 +402,9 @@ function renderCommandCenterHtml() {
     const changedFiles = document.getElementById('changed-files');
     const workforce = document.getElementById('workforce');
     const sectionIds = ['objectives', 'tasks', 'completed-tasks', 'task-errors', 'director-questions', 'activity', 'execution-activity'];
+    const sectionLabels = { objectives: 'Objectives', tasks: 'Active tasks', 'completed-tasks': 'Completed tasks',
+      'task-errors': 'Task errors and blockers', 'director-questions': 'Director questions', activity: 'Live activity',
+      'execution-activity': 'Workspace and execution activity' };
     function setSectionCollapsed(section, collapsed, persist) {
       const list = document.getElementById(section);
       const button = document.querySelector('[data-section-toggle="' + section + '"]');
@@ -381,6 +412,7 @@ function renderCommandCenterHtml() {
       list.hidden = collapsed;
       button.setAttribute('aria-expanded', String(!collapsed));
       button.textContent = collapsed ? 'Show' : 'Hide';
+      button.setAttribute('aria-label', (collapsed ? 'Show ' : 'Hide ') + sectionLabels[section] + ' section');
       if (persist) api.postMessage({ type: 'setSectionCollapsed', section, collapsed });
     }
     for (const button of document.querySelectorAll('[data-section-toggle]')) {
@@ -485,7 +517,8 @@ function renderCommandCenterHtml() {
         const row = document.createElement('li');
         row.className = 'record';
         const detail = document.createElement('span');
-        detail.textContent = record.action + (record.agentName ? ' · ' + record.agentName : '')
+        detail.textContent = record.action + ' · Actor: ' + record.agentName
+          + (record.activityPersisted ? '' : ' · Not saved to task report')
           + (record.taskTitle ? ' · ' + record.taskTitle : '')
           + (record.target ? ' · ' + record.target : '')
           + (record.detail ? ' · ' + record.detail : '')
@@ -597,10 +630,22 @@ function renderCommandCenterHtml() {
       if (message?.type === 'loadError') {
         summary.textContent = 'Could not load workspace data. Use Refresh to try again.';
         summary.className = 'error';
+        executionAnnouncement.textContent = summary.textContent;
+        workspaceLoadFailed = true;
         return;
       }
       if (message?.type !== 'snapshot' || !message.snapshot) return;
       const snapshot = message.snapshot;
+      const executionStatus = ['PAUSED', 'CANCELLED'].includes(snapshot.executionStatus) ? snapshot.executionStatus : 'RUNNING';
+      const label = executionStatus === 'PAUSED' ? 'paused' : executionStatus === 'CANCELLED' ? 'cancelled' : 'running';
+      if (workspaceLoadFailed) {
+        executionAnnouncement.textContent = 'Workspace data loaded. Execution ' + label + '.';
+        workspaceLoadFailed = false;
+        lastAnnouncedExecutionStatus = executionStatus;
+      } else if (executionStatus !== lastAnnouncedExecutionStatus) {
+        executionAnnouncement.textContent = 'Execution ' + label + '.';
+        lastAnnouncedExecutionStatus = executionStatus;
+      }
       const pauseButton = document.getElementById('pause-execution');
       const resumeButton = document.getElementById('resume-execution');
       const cancelButton = document.getElementById('cancel-execution');
@@ -629,15 +674,16 @@ function renderCommandCenterHtml() {
       const completion = Number.isFinite(progress.completionPercentage)
         ? Math.min(100, Math.max(0, progress.completionPercentage)) : 0;
       taskProgress.value = completion;
+      taskProgress.setAttribute('aria-valuetext', progress.total > 0
+        ? progress.completed + ' of ' + progress.total + ' tasks completed (' + completion + '%).'
+        : 'No task progress yet.');
       progressSummary.textContent = progress.total > 0
         ? progress.completed + ' of ' + progress.total + ' tasks completed (' + completion + '%).'
         : 'No task progress yet.';
       const collapsed = Array.isArray(snapshot.collapsedSections) ? snapshot.collapsedSections : [];
       for (const section of sectionIds) setSectionCollapsed(section, collapsed.includes(section), false);
       summary.className = 'summary';
-      const executionLabel = snapshot.executionStatus === 'PAUSED' ? 'paused'
-        : snapshot.executionStatus === 'CANCELLED' ? 'cancelled' : 'running';
-      summary.textContent = 'Execution ' + executionLabel + ' · ' + objectiveRecords.length + ' objective(s) · ' + taskRecords.length + ' active task(s) · ' + completedRecords.length + ' completed task(s) · ' + taskErrorRecords.length + ' task error(s) · ' + questionRecords.length + ' Director question(s) · ' + activityRecords.length + ' recent event(s) · ' + executionActivityRecords.length + ' workspace/execution event(s)';
+      summary.textContent = 'Execution ' + executionStatus.toLowerCase() + ' · ' + objectiveRecords.length + ' objective(s) · ' + taskRecords.length + ' active task(s) · ' + completedRecords.length + ' completed task(s) · ' + taskErrorRecords.length + ' task error(s) · ' + questionRecords.length + ' Director question(s) · ' + activityRecords.length + ' recent event(s) · ' + executionActivityRecords.length + ' workspace/execution event(s)';
     });
   </script>
 </body>

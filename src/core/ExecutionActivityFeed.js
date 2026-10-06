@@ -1,16 +1,23 @@
 import { redactSecrets } from '../shared/redactSecrets';
+import { randomUUID } from 'node:crypto';
 
 const MAX_ACTIVITY_ENTRIES = 100;
 const MAX_ACTIVITY_TEXT = 180;
 
-/** Bounded, process-local activity feed. It intentionally accepts metadata only. */
+/** Bounded metadata feed with optional durable task-audit projection. */
 export class ExecutionActivityFeed {
-    constructor({ clock = () => new Date(), maxEntries = MAX_ACTIVITY_ENTRIES } = {}) {
+    constructor({ clock = () => new Date(), maxEntries = MAX_ACTIVITY_ENTRIES,
+        auditRepository, idFactory = () => randomUUID() } = {}) {
         if (typeof clock !== 'function' || !Number.isInteger(maxEntries) || maxEntries < 1 || maxEntries > MAX_ACTIVITY_ENTRIES) {
             throw new TypeError('Execution activity feed requires a clock and a bounded entry limit.');
         }
+        if ((auditRepository !== undefined && typeof auditRepository?.append !== 'function') || typeof idFactory !== 'function') {
+            throw new TypeError('Execution activity persistence requires an audit repository and ID factory.');
+        }
         this.clock = clock;
         this.maxEntries = maxEntries;
+        this.auditRepository = auditRepository;
+        this.idFactory = idFactory;
         this.entries = [];
     }
 
@@ -21,9 +28,27 @@ export class ExecutionActivityFeed {
         if (!normalized) return false;
         if (typeof taskId === 'string' && taskId.trim()) normalized.taskId = redactSecrets(taskId.trim(), 160);
         if (typeof agentId === 'string' && agentId.trim()) normalized.agentId = redactSecrets(agentId.trim(), 160);
+        normalized.persisted = this._persist(normalized);
         this.entries.unshift(Object.freeze(normalized));
         this.entries.length = Math.min(this.entries.length, this.maxEntries);
         return true;
+    }
+
+    _persist(entry) {
+        if (!this.auditRepository || !entry.taskId || !entry.agentId) return false;
+        const details = { activitySource: entry.source, activityAction: entry.action,
+            target: entry.target, status: entry.status, durationMs: entry.durationMs, bytes: entry.bytes,
+            detail: entry.detail, detailTruncated: entry.detailTruncated };
+        try {
+            this.auditRepository.append({ id: this.idFactory(), action: 'TASK_EXECUTION_ACTIVITY',
+                entity: 'execution-activity', entityId: this.idFactory(), actorId: entry.agentId,
+                taskId: entry.taskId, details });
+            return true;
+        }
+        catch {
+            // Activity observers must not change the outcome of the bounded task tool operation.
+            return false;
+        }
     }
 
     observer(source, { taskId, agentId } = {}) {

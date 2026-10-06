@@ -14,7 +14,7 @@
 import * as vscode from 'vscode';
 import { basename, join } from 'path';
 import { randomUUID } from 'node:crypto';
-import { AgentLifecycleStatus, AgentRole, COMMANDS } from '../constants';
+import { AgentRole, COMMANDS } from '../constants';
 import { ExecutionControl, isAgentAvailable } from '../domain';
 import { AgentRepository, AIUsageRepository, applyMigrations, assertUpgradeCompatible, AuditLogRepository, diagnoseDatabaseIntegrity,
     DepartmentRepository, DirectorQuestionRepository, ExecutionQueueRepository, ObjectiveRepository, OfficeRepository, OrganizationRepository,
@@ -34,8 +34,14 @@ import { createHumanCodeReviewDecision } from '../application/humanCodeReview';
 import { createCodeExplanationUseCase, createReviewEvidenceExplanation } from '../application/codeExplanation';
 import { createEngineeringReviewUseCase } from '../application/engineeringReview';
 import { createPersistedPlanDecision } from '../application/persistedPlanDecision';
-import { createAgentLifecycleManagement } from '../application/agentLifecycleManagement';
 import { createAIUsageRecorder, createGeminiAIProviderAdapter, createGitStateAdapter, SqliteEventBus, createSqliteUnitOfWork } from '../infrastructure';
+import { configureTaskToolPermissions, manageAgentLifecycle, recordEngineeringDecision, recallEngineeringDecisions, showEngineeringDecisions }
+    from './HeadroomAdministrationCommands';
+import { registerDebuggingCommands } from './HeadroomDebuggingCommands';
+import { executeAssignedTask } from './HeadroomTaskExecutionCommands';
+import { registerUsageCommands } from './HeadroomUsageCommands';
+import { chooseCodeExplanationAction } from './CodeExplanationCommands';
+import { saveReviewFindingsFromEditor } from './ReviewFindingCommands';
 import { getMessage } from './messages';
 import { redactSecrets } from '../shared/redactSecrets';
 const HEALTH_CHECKS = Object.freeze([
@@ -83,6 +89,7 @@ export class HeadroomContext {
     _executionActivity = new ExecutionActivityFeed();
     _gitStateAdapters = new Map();
     _directorRequestController;
+    _activeTaskExecution;
     constructor(context) {
         this._context = context;
     }
@@ -107,6 +114,7 @@ export class HeadroomContext {
             const objectiveRepository = new ObjectiveRepository(this._databaseConnection.database);
             const directorQuestionRepository = new DirectorQuestionRepository(this._databaseConnection.database);
             const auditLogRepository = new AuditLogRepository(this._databaseConnection.database);
+            this._executionActivity = new ExecutionActivityFeed({ auditRepository: auditLogRepository });
             const taskRepository = new TaskRepository(this._databaseConnection.database);
             const organizationRepository = new OrganizationRepository(this._databaseConnection.database);
             const officeRepository = new OfficeRepository(this._databaseConnection.database);
@@ -259,7 +267,7 @@ export class HeadroomContext {
             const confirmation = await vscode.window.showWarningMessage(
                 getMessage('execution.cancelConfirmation'), { modal: true }, getMessage('execution.cancelConfirm'));
             if (confirmation !== getMessage('execution.cancelConfirm')) return;
-            const result = this._executionControl.cancel();
+            const result = this._activeTaskExecution?.cancel() ?? this._executionControl.cancel();
             this._directorRequestController?.abort();
             vscode.window.showInformationMessage(result.changed
                 ? getMessage('execution.cancelled')
@@ -288,6 +296,31 @@ export class HeadroomContext {
         this._addDisposable(vscode.commands.registerCommand(COMMANDS.REVIEW_SELECTION, async (area) => {
             await this._reviewSelection(area);
         }));
+        this._addDisposable(vscode.commands.registerCommand(COMMANDS.SAVE_REVIEW_FINDINGS, async () => {
+            await saveReviewFindingsFromEditor({ database: this._databaseConnection.database });
+        }));
+        this._addDisposable(vscode.commands.registerCommand(COMMANDS.SHOW_ENGINEERING_DECISIONS, async (taskId) => {
+            await this._showEngineeringDecisions(taskId);
+        }));
+        this._addDisposable(vscode.commands.registerCommand(COMMANDS.RECALL_ENGINEERING_DECISIONS, async () => {
+            await recallEngineeringDecisions({ database: this._databaseConnection.database });
+        }));
+        this._addDisposable(vscode.commands.registerCommand(COMMANDS.RECORD_ENGINEERING_DECISION, async (taskId) => {
+            await this._recordEngineeringDecision(taskId);
+        }));
+        this._addDisposable(vscode.commands.registerCommand(COMMANDS.CONFIGURE_TASK_TOOL_PERMISSIONS, async () => {
+            await configureTaskToolPermissions({ database: this._databaseConnection.database,
+                refresh: () => this._commandCenter?.refresh(), refreshStatus: this._refreshStatusViews });
+        }));
+        this._addDisposable(vscode.commands.registerCommand(COMMANDS.RUN_ASSIGNED_TASK, async () => {
+            await executeAssignedTask({ database: this._databaseConnection.database, context: this._context,
+                configuration: this._configuration, executionControl: this._executionControl,
+                activity: this._executionActivity,
+                onExecution: (execution) => { this._activeTaskExecution = execution; },
+                refresh: () => this._commandCenter?.refresh(), refreshStatus: this._refreshStatusViews });
+        }));
+        registerUsageCommands(this);
+        registerDebuggingCommands(this);
     }
     _addDisposable(disposable) {
         if (!disposable || typeof disposable.dispose !== 'function') {
@@ -314,6 +347,13 @@ export class HeadroomContext {
             : getMessage('status.inactive');
         vscode.window.showInformationMessage(getMessage('status.message', { status }));
     }
+    async _showEngineeringDecisions(taskId) {
+        await showEngineeringDecisions({ database: this._databaseConnection.database, taskId });
+    }
+    async _recordEngineeringDecision(taskId) {
+        await recordEngineeringDecision({ database: this._databaseConnection.database, taskId,
+            refresh: () => this._commandCenter?.refresh() });
+    }
     async _providerHealth() {
         if (this._configuration.aiProvider === 'mock') return { status: 'READY', detail: 'Mock provider selected.' };
         try {
@@ -327,20 +367,24 @@ export class HeadroomContext {
     }
     async _createObjective() {
         const database = this._databaseConnection.database;
+        const agentRepository = new AgentRepository(database);
         const organizations = new OrganizationRepository(database).list()
-            .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+            .map((organization) => ({ organization, ceos: agentRepository.listByOrganization(organization.id)
+                .filter((agent) => agent.role === AgentRole.CEO && isAgentAvailable(agent)) }))
+            .filter(({ ceos }) => ceos.length === 1)
+            .sort((a, b) => a.organization.name.localeCompare(b.organization.name) || a.organization.id.localeCompare(b.organization.id));
         if (!organizations.length) {
-            vscode.window.showInformationMessage(getMessage('objective.organization.missing'));
+            vscode.window.showInformationMessage('Create an organization with exactly one active CEO before submitting an objective.');
             return;
         }
-        let organization = organizations[0];
+        let selected = { organization: organizations[0].organization, ceoId: organizations[0].ceos[0].id };
         if (organizations.length > 1) {
-            const selectedOrganization = await vscode.window.showQuickPick(organizations.map((entry) => ({
-                label: entry.name, description: entry.id, organization: entry,
+            const selectedOrganization = await vscode.window.showQuickPick(organizations.map(({ organization, ceos }) => ({
+                label: organization.name, description: organization.id, organization, ceoId: ceos[0].id,
             })), { title: getMessage('objective.organization.pick'), ignoreFocusOut: true });
-            organization = selectedOrganization?.organization;
+            selected = selectedOrganization && { organization: selectedOrganization.organization, ceoId: selectedOrganization.ceoId };
         }
-        if (!organization) return;
+        if (!selected) return;
         const title = await vscode.window.showInputBox({
             title: getMessage('objective.title'), prompt: getMessage('objective.title.prompt'),
             placeHolder: getMessage('objective.title.placeholder'), ignoreFocusOut: true,
@@ -357,9 +401,11 @@ export class HeadroomContext {
         if (description === undefined) return;
         const intake = createObjectiveIntakeUseCase({
             objectiveRepository: new ObjectiveRepository(database),
+            organizationRepository: new OrganizationRepository(database),
+            agentRepository,
             idFactory: () => randomUUID(),
         });
-        const result = await intake.run({ organizationId: organization.id, title, description });
+        const result = await intake.run({ ceoId: selected.ceoId, organizationId: selected.organization.id, title, description });
         if (!result.ok) {
             vscode.window.showErrorMessage(getMessage('objective.create.failed', { error: result.error.message }));
             return;
@@ -482,7 +528,8 @@ export class HeadroomContext {
         const gemini = createGeminiAIProviderAdapter({ credentialStore: createSecretStorageAdapter(this._context.secrets) });
         return createBoundedAIProvider({ provider: gemini,
             inputTokenCounter: (request, options) => gemini.countInputTokens(request, options),
-            usageRecorder: createAIUsageRecorder({ usageRepository: new AIUsageRepository(database), purpose }),
+            usageRecorder: createAIUsageRecorder({ usageRepository: new AIUsageRepository(database),
+                provider: this._configuration?.aiProvider ?? null, purpose }),
             defaultBudget: DEFAULT_AI_REQUEST_BUDGET });
     }
     async _explainSelection() {
@@ -497,10 +544,12 @@ export class HeadroomContext {
             vscode.window.showInformationMessage(getMessage('director.analysis.providerRequired'));
             return;
         }
+        const action = await chooseCodeExplanationAction();
+        if (!action) return;
         const fileName = redactSecrets(basename(editor.document.fileName ?? 'selected code'), 160);
         const sentCharacters = Math.min(selectedCode.length, 8000);
         const confirmation = await vscode.window.showWarningMessage(
-            `Send up to ${sentCharacters} selected characters from ${fileName} to the configured AI provider for an evidence-backed explanation? Common credential patterns are redacted first.`,
+            `Send up to ${sentCharacters} selected characters from ${fileName} to the configured AI provider for “${action}”? Common credential patterns are redacted first.`,
             { modal: true }, 'Send selection');
         if (confirmation !== 'Send selection') return;
 
@@ -512,7 +561,7 @@ export class HeadroomContext {
         });
         let result;
         try {
-            result = await useCase.run({ action: 'EXPLAIN_FILE', selected: fileName,
+            result = await useCase.run({ action, selected: fileName,
                 context: { selectedCode: selectedCode.slice(0, 8000) },
                 evidence: [{ id: 'active-selection', type: 'source', label: `${fileName} selected code` }],
                 model: this._configuration.reasoningModel, signal: controller.signal });
@@ -1082,87 +1131,8 @@ export class HeadroomContext {
             ? 'director.questions.skipped' : 'director.questions.answered'));
     }
     async _manageAgentLifecycle() {
-        const database = this._databaseConnection.database;
-        const organizationRepository = new OrganizationRepository(database);
-        const agentRepository = new AgentRepository(database);
-        const organizations = organizationRepository.list().sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
-        if (!organizations.length) {
-            vscode.window.showInformationMessage(getMessage('lifecycle.noOrganizations'));
-            return;
-        }
-        const selectedOrganization = await vscode.window.showQuickPick(organizations.map((organization) => ({
-            label: organization.name, description: organization.id, organization,
-        })), { title: getMessage('lifecycle.pickOrganization'), ignoreFocusOut: true });
-        if (!selectedOrganization) return;
-        const organization = selectedOrganization.organization;
-        const officeRepository = new OfficeRepository(database);
-        const departmentRepository = new DepartmentRepository(database);
-        const offices = officeRepository.listByOrganization(organization.id);
-        const officeIds = new Set(offices.map(({ id }) => id));
-        const departments = offices.flatMap((office) => departmentRepository.listByOffice(office.id));
-        const departmentIds = new Set(departments.map(({ id }) => id));
-        const allAgents = agentRepository.listByOrganization(organization.id);
-        const organizationAgents = allAgents.filter((agent) =>
-            (agent.role === AgentRole.HEAD_MANAGER && officeIds.has(agent.managedOfficeId))
-            || (agent.role === AgentRole.DEPT_MANAGER && departmentIds.has(agent.managedDepartmentId))
-            || (agent.role === AgentRole.EMPLOYEE && departmentIds.has(agent.departmentId))
-            || ([AgentRole.CEO, AgentRole.DIRECTOR].includes(agent.role) && agent.organizationId === organization.id));
-        const ceos = organizationAgents.filter((agent) => agent.role === AgentRole.CEO && isAgentAvailable(agent));
-        if (!ceos.length) {
-            vscode.window.showErrorMessage(getMessage('lifecycle.noActiveCEO'));
-            return;
-        }
-        let actor = ceos[0];
-        if (ceos.length > 1) {
-            const selectedCEO = await vscode.window.showQuickPick(ceos.map((agent) => ({
-                label: agent.name, description: getMessage('lifecycle.ceoDescription'), agent,
-            })), { title: getMessage('lifecycle.pickCEO'), ignoreFocusOut: true });
-            if (!selectedCEO) return;
-            actor = selectedCEO.agent;
-        }
-        const candidates = organizationAgents.filter((agent) => agent.role !== AgentRole.CEO
-            && (agent.lifecycleStatus ?? AgentLifecycleStatus.ACTIVE) !== AgentLifecycleStatus.RETIRED)
-            .sort((a, b) => a.role.localeCompare(b.role) || a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
-        if (!candidates.length) {
-            vscode.window.showInformationMessage(getMessage('lifecycle.noTargets'));
-            return;
-        }
-        const selectedTarget = await vscode.window.showQuickPick(candidates.map((agent) => ({
-            label: agent.name, description: `${agent.role} · ${agent.status} · ${agent.lifecycleStatus ?? AgentLifecycleStatus.ACTIVE}`,
-            agent,
-        })), { title: getMessage('lifecycle.pickTarget'), ignoreFocusOut: true });
-        if (!selectedTarget) return;
-        const target = selectedTarget.agent;
-        const current = target.lifecycleStatus ?? AgentLifecycleStatus.ACTIVE;
-        const transitions = current === AgentLifecycleStatus.ACTIVE
-            ? [AgentLifecycleStatus.SUSPENDED, AgentLifecycleStatus.RETIRED]
-            : [AgentLifecycleStatus.ACTIVE, AgentLifecycleStatus.RETIRED];
-        const action = await vscode.window.showQuickPick(transitions.map((lifecycleStatus) => ({
-            label: getMessage(`lifecycle.action.${lifecycleStatus}`), lifecycleStatus,
-        })), { title: getMessage('lifecycle.pickAction'), ignoreFocusOut: true });
-        if (!action) return;
-        const reason = await vscode.window.showInputBox({
-            title: getMessage('lifecycle.reason.title'), prompt: getMessage('lifecycle.reason.prompt'), ignoreFocusOut: true,
-            validateInput: (value) => typeof value === 'string' && value.trim().length >= 1 && value.trim().length <= 1000
-                ? undefined : getMessage('lifecycle.reason.invalid'),
-        });
-        if (reason === undefined) return;
-        const workflow = createAgentLifecycleManagement({
-            agentRepository, hierarchyProvider: { getSnapshot: () => ({ organization, offices, departments, agents: organizationAgents }) },
-            auditRepository: new AuditLogRepository(database), unitOfWork: createSqliteUnitOfWork(database),
-            clock: { now: () => new Date() }, idFactory: () => randomUUID(),
-        });
-        const result = await workflow.run({ actorId: actor.id, agentId: target.id,
-            lifecycleStatus: action.lifecycleStatus, reason });
-        if (!result.ok) {
-            vscode.window.showErrorMessage(getMessage('lifecycle.failed', { error: result.error.message }));
-            return;
-        }
-        this._commandCenter?.refresh();
-        this._refreshStatusViews();
-        vscode.window.showInformationMessage(getMessage('lifecycle.updated', {
-            name: target.name, status: result.value.lifecycleStatus,
-        }));
+        await manageAgentLifecycle({ database: this._databaseConnection.database,
+            refresh: () => this._commandCenter?.refresh(), refreshStatus: this._refreshStatusViews });
     }
     get extensionContext() {
         return this._context;

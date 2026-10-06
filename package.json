@@ -60,21 +60,25 @@
         {
           "id": "headroom.organizationView",
           "name": "%views.organization.name%",
+          "icon": "media/headroom-icon.svg",
           "type": "tree"
         },
         {
           "id": "headroom.objectiveView",
           "name": "%views.objectives.name%",
+          "icon": "media/headroom-icon.svg",
           "type": "tree"
         },
         {
           "id": "headroom.taskView",
           "name": "%views.tasks.name%",
+          "icon": "media/headroom-icon.svg",
           "type": "tree"
         },
         {
           "id": "headroom.healthView",
           "name": "%views.health.name%",
+          "icon": "media/headroom-icon.svg",
           "type": "tree"
         }
       ]
@@ -153,6 +157,61 @@
       {
         "command": "headroom.reviewSelection",
         "title": "%command.reviewSelection.title%",
+        "category": "HEADROOM"
+      },
+      {
+        "command": "headroom.saveReviewFindings",
+        "title": "%command.saveReviewFindings.title%",
+        "category": "HEADROOM"
+      },
+      {
+        "command": "headroom.showEngineeringDecisions",
+        "title": "%command.showEngineeringDecisions.title%",
+        "category": "HEADROOM"
+      },
+      {
+        "command": "headroom.recallEngineeringDecisions",
+        "title": "%command.recallEngineeringDecisions.title%",
+        "category": "HEADROOM"
+      },
+      {
+        "command": "headroom.recordEngineeringDecision",
+        "title": "%command.recordEngineeringDecision.title%",
+        "category": "HEADROOM"
+      },
+      {
+        "command": "headroom.configureTaskToolPermissions",
+        "title": "%command.configureTaskToolPermissions.title%",
+        "category": "HEADROOM"
+      },
+      {
+        "command": "headroom.runAssignedTask",
+        "title": "%command.runAssignedTask.title%",
+        "category": "HEADROOM"
+      },
+      {
+        "command": "headroom.showTaskUsageSummary",
+        "title": "%command.showTaskUsageSummary.title%",
+        "category": "HEADROOM"
+      },
+      {
+        "command": "headroom.showTaskExecutionReport",
+        "title": "%command.showTaskExecutionReport.title%",
+        "category": "HEADROOM"
+      },
+      {
+        "command": "headroom.startDebuggingSession",
+        "title": "%command.startDebuggingSession.title%",
+        "category": "HEADROOM"
+      },
+      {
+        "command": "headroom.advanceDebuggingSession",
+        "title": "%command.advanceDebuggingSession.title%",
+        "category": "HEADROOM"
+      },
+      {
+        "command": "headroom.stopDebuggingSession",
+        "title": "%command.stopDebuggingSession.title%",
         "category": "HEADROOM"
       }
     ],
@@ -251,6 +310,18 @@
         {
           "command": "headroom.reviewPlan"
         }
+      ],
+      "view/item/context": [
+        {
+          "command": "headroom.showTaskExecutionReport",
+          "when": "view == headroom.taskView && viewItem == headroom.task",
+          "group": "inline"
+        },
+        {
+          "command": "headroom.showTaskUsageSummary",
+          "when": "view == headroom.taskView && viewItem == headroom.task",
+          "group": "inline"
+        }
       ]
     }
   },
@@ -260,6 +331,7 @@
     "compile": "node esbuild.js",
     "watch": "node esbuild.js --watch",
     "test": "vitest run",
+    "test:security": "node scripts/security-regression.js",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:vscode": "node ./test/runTest.js",

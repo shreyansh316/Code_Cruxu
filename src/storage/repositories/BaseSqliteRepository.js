@@ -18,11 +18,12 @@ export class BaseSqliteRepository {
         const placeholders = fields.map(() => '?');
         const parameters = fields.map(([property]) => input[property]);
         this.database.prepare(`INSERT INTO ${this.table} (${columns.join(', ')}) VALUES (${placeholders.join(', ')})`).run(...parameters);
-        const created = this.getById(value.id);
+        const created = this.readInsertResult(value.id);
         if (!created)
             throw new Error(`Inserted ${this.table} record could not be read back.`);
         return created;
     }
+    readInsertResult(id) { return this.getById(id); }
     getById(id) {
         id = assertEntityId(id);
         return this.database.prepare(`SELECT ${this.selectList()} FROM ${this.table} WHERE id = ?`).get(id);

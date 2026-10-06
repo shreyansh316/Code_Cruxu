@@ -1,10 +1,11 @@
 import { EventType, TaskStatus } from '../constants';
 import { createDomainEvent, createEntityId, DomainInvariantError, validateTaskResult } from '../domain';
 import { ApplicationError, createUseCase } from './useCase';
+import { stopTaskDebuggingSession } from './stopTaskDebuggingSession';
 
 /** Persist an assigned employee's complete result and route the task into review. */
 export function createTaskResultSubmissionUseCase({
-    taskRepository, auditRepository, eventPublisher, unitOfWork, clock, idFactory,
+    taskRepository, auditRepository, eventPublisher, unitOfWork, clock, idFactory, debuggingSessionRepository,
 } = {}) {
     if (typeof taskRepository?.getById !== 'function' || typeof taskRepository?.update !== 'function'
         || typeof auditRepository?.append !== 'function' || typeof eventPublisher?.append !== 'function'
@@ -14,7 +15,7 @@ export function createTaskResultSubmissionUseCase({
     }
     return createUseCase({
         name: 'task-result-submission',
-        dependencies: { taskRepository, auditRepository, eventPublisher, unitOfWork, clock, idFactory },
+        dependencies: { taskRepository, auditRepository, eventPublisher, unitOfWork, clock, idFactory, debuggingSessionRepository },
         execute: ({ input, dependencies }) => {
             if (!input || typeof input.taskId !== 'string' || typeof input.agentId !== 'string') {
                 throw new DomainInvariantError('invalid-task-result', 'A task id and submitting agent id are required.');
@@ -34,8 +35,13 @@ export function createTaskResultSubmissionUseCase({
                 const updated = dependencies.taskRepository.update(task.id, {
                     result: validated.result,
                     acceptanceCriteria: validated.acceptanceCriteria,
+                    executionRetryReason: null,
                     status: TaskStatus.REVIEW,
                 });
+                stopTaskDebuggingSession({ sessionRepository: dependencies.debuggingSessionRepository,
+                    auditRepository: dependencies.auditRepository, taskId: task.id, actorId: input.agentId,
+                    reason: 'task-entered-review', summary: 'The task result was submitted for review while debugging was active.',
+                    occurredAt, idFactory: dependencies.idFactory });
                 dependencies.auditRepository.append({
                     id: createEntityId(dependencies.idFactory()), action: 'TASK_RESULT_SUBMITTED',
                     entity: 'task', entityId: task.id, actorId: input.agentId, taskId: task.id,

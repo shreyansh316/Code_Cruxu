@@ -67,11 +67,12 @@ export class AuditLogRepository {
         `).all(entity.trim(), entityId, limit).map(mapAudit);
     }
 
-    listByTask(taskId, { limit = 100 } = {}) {
+    listByTask(taskId, { limit = 100, order = 'ASC' } = {}) {
         taskId = assertEntityId(taskId, 'Audit task id');
         validateLimit(limit);
+        if (!['ASC', 'DESC'].includes(order)) throw new TypeError('Audit task query order must be ASC or DESC.');
         return this.database.prepare(`
-          SELECT * FROM audit_logs WHERE task_id = ? ORDER BY created_at, rowid LIMIT ?
+          SELECT * FROM audit_logs WHERE task_id = ? ORDER BY created_at ${order}, rowid ${order} LIMIT ?
         `).all(taskId, limit).map(mapAudit);
     }
 

@@ -33,7 +33,9 @@ function setup() {
     return { context, handlers };
 }
 function seedOrganization(context, id = 'org-052-default') {
-    new OrganizationRepository(context.databaseConnection.database).create({ id, name: 'Organization' });
+    const database = context.databaseConnection.database;
+    new OrganizationRepository(database).create({ id, name: 'Organization' });
+    new AgentRepository(database).create({ id: `ceo-${id}`, organizationId: id, name: 'CEO', role: 'CEO', status: 'IDLE' });
 }
 
 describe('Phase 052 — CEO objective interaction', () => {
@@ -114,7 +116,7 @@ describe('Phase 052 — CEO objective interaction', () => {
         try {
             await context.initialize();
             const database = context.databaseConnection.database;
-            seedOrganization(context, 'org-052');
+            new OrganizationRepository(database).create({ id: 'org-052', name: 'Organization' });
             new ObjectiveRepository(database).create({ id: 'objective-052', organizationId: 'org-052', title: 'Build release',
                 description: 'Deliver the release.' });
             new AgentRepository(database).create({ id: 'ceo-052', organizationId: 'org-052', name: 'CEO', role: 'CEO' });

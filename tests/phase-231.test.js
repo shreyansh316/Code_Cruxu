@@ -11,6 +11,7 @@ describe('Phase 231 — explain selected code command flow', () => {
         vscode.window.activeTextEditor = {
             selection: {}, document: { fileName: 'C:\\repo\\source.js', getText: () => `const api_key = '${token}';` },
         };
+        vscode.window.showQuickPick.mockResolvedValue({ action: 'EXPLAIN_FILE' });
         vscode.window.showWarningMessage.mockResolvedValue('Send selection');
         const response = { CHANGE: [], WHY: [{ text: 'Credential assignment appears in the selected code.', source: 'RECONSTRUCTED_DECISION', evidenceIds: ['active-selection'] }],
             REQUIREMENT: [], CONTEXT: [], ALTERNATIVES: [], REJECTED_OPTIONS: [], TRADE_OFFS: [], RISKS: [], TESTS: [], confidence: 'UNASSESSED' };
@@ -27,6 +28,7 @@ describe('Phase 231 — explain selected code command flow', () => {
 
         await context._explainSelection();
 
+        expect(vscode.window.showQuickPick).toHaveBeenCalledOnce();
         expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(expect.stringContaining('Common credential patterns are redacted first.'),
             { modal: true }, 'Send selection');
         expect(sentRequest.systemPrompt).toContain('evidence IDs');

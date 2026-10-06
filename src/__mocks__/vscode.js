@@ -19,6 +19,9 @@ const vscode = {
         showErrorMessage: vi.fn().mockResolvedValue(undefined),
         showQuickPick: vi.fn().mockResolvedValue(undefined),
         showTextDocument: vi.fn().mockResolvedValue(undefined),
+        withProgress: vi.fn(async (_options, task) => task({ report: vi.fn() }, {
+            onCancellationRequested: vi.fn(() => ({ dispose: vi.fn() })),
+        })),
         showInputBox: vi.fn().mockResolvedValue(undefined),
         createStatusBarItem: vi.fn().mockReturnValue({
             id: '',
@@ -75,6 +78,7 @@ const vscode = {
         Right: 2,
     },
     ViewColumn: { One: 1 },
+    ProgressLocation: { Notification: 15 },
     // Disposable
     Disposable: class {
         dispose() { }
@@ -132,7 +136,7 @@ const vscode = {
     },
 };
 export const {
-    ExtensionContext, window, commands, workspace, Uri, StatusBarAlignment, ViewColumn,
+    ExtensionContext, window, commands, workspace, Uri, StatusBarAlignment, ViewColumn, ProgressLocation,
     Disposable, EventEmitter, TreeItem, TreeItemCollapsibleState, ThemeIcon, MarkdownString,
 } = vscode;
 export default vscode;

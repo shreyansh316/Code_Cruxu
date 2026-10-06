@@ -26,6 +26,17 @@ export const COMMANDS = {
     MANAGE_AGENT_LIFECYCLE: 'headroom.manageAgentLifecycle',
     EXPLAIN_SELECTION: 'headroom.explainSelection',
     REVIEW_SELECTION: 'headroom.reviewSelection',
+    SAVE_REVIEW_FINDINGS: 'headroom.saveReviewFindings',
+    SHOW_ENGINEERING_DECISIONS: 'headroom.showEngineeringDecisions',
+    RECALL_ENGINEERING_DECISIONS: 'headroom.recallEngineeringDecisions',
+    RECORD_ENGINEERING_DECISION: 'headroom.recordEngineeringDecision',
+    CONFIGURE_TASK_TOOL_PERMISSIONS: 'headroom.configureTaskToolPermissions',
+    RUN_ASSIGNED_TASK: 'headroom.runAssignedTask',
+    SHOW_TASK_USAGE_SUMMARY: 'headroom.showTaskUsageSummary',
+    SHOW_TASK_EXECUTION_REPORT: 'headroom.showTaskExecutionReport',
+    START_DEBUGGING_SESSION: 'headroom.startDebuggingSession',
+    ADVANCE_DEBUGGING_SESSION: 'headroom.advanceDebuggingSession',
+    STOP_DEBUGGING_SESSION: 'headroom.stopDebuggingSession',
 };
 // ============================================================
 // VIEW IDs — must match package.json contributes.views
@@ -86,6 +97,9 @@ export var EventType;
     EventType["TASK_BLOCKED"] = "TASK_BLOCKED";
     EventType["TASK_COMPLETED"] = "TASK_COMPLETED";
     EventType["TASK_FAILED"] = "TASK_FAILED";
+    EventType["TASK_CANCELLED"] = "TASK_CANCELLED";
+    EventType["TASK_START_FAILED"] = "TASK_START_FAILED";
+    EventType["TASK_RETRY_SCHEDULED"] = "TASK_RETRY_SCHEDULED";
     EventType["TASK_REVIEW_REQUIRED"] = "TASK_REVIEW_REQUIRED";
     EventType["TASK_REVIEW_PASSED"] = "TASK_REVIEW_PASSED";
     EventType["TASK_REVIEW_FAILED"] = "TASK_REVIEW_FAILED";
@@ -115,6 +129,7 @@ export var MemoryScope;
     MemoryScope["DEPARTMENT"] = "DEPARTMENT";
     MemoryScope["TASK"] = "TASK";
     MemoryScope["PROJECT"] = "PROJECT";
+    MemoryScope["EMPLOYEE"] = "EMPLOYEE";
     MemoryScope["DECISION"] = "DECISION";
     MemoryScope["KNOWLEDGE"] = "KNOWLEDGE";
 })(MemoryScope || (MemoryScope = {}));

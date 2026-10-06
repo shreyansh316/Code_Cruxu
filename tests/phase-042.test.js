@@ -2,8 +2,8 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
     createExecutionOrchestrator, createExecutionQueueUseCase, createPlanApprovalUseCase,
-    createTaskCreationUseCase, createTaskResultSubmissionUseCase, createTaskReviewUseCase,
-    createTaskScheduler,
+    createTaskCreationUseCase, createTaskExecutionFailureRecovery, createTaskResultSubmissionUseCase, createTaskReviewUseCase,
+    createTaskExecutionLifecycle, createTaskScheduler,
 } from '../src/application';
 import { AgentRole, ObjectiveStatus, TaskStatus } from '../src/constants';
 import { ExecutionControl } from '../src/domain';
@@ -38,6 +38,10 @@ describe('Phase 042 — execution orchestration', () => {
     let orchestrator;
     let nextId;
     let executions;
+    let failuresRemaining;
+    let failTaskStart;
+    let cancelDuringExecution;
+    let scheduler;
 
     beforeEach(async () => {
         connection = new SqliteConnection();
@@ -79,19 +83,45 @@ describe('Phase 042 — execution orchestration', () => {
             queueRepository, hierarchyProvider, auditRepository: audit, eventPublisher: events,
             unitOfWork, clock, idFactory: nextId });
         executions = 0;
-        const scheduler = createTaskScheduler({ queueWorkflow, queueRepository,
-            executor: { execute: async () => {
+        failuresRemaining = 0;
+        failTaskStart = false;
+        cancelDuringExecution = false;
+        const taskLifecycle = createTaskExecutionLifecycle({ taskRepository: tasks, auditRepository: audit,
+            eventPublisher: events, unitOfWork, clock, idFactory: nextId });
+        scheduler = createTaskScheduler({ queueWorkflow, queueRepository,
+            executor: { execute: async ({ signal }) => {
                 executions += 1;
+                if (cancelDuringExecution) {
+                    cancelDuringExecution = false;
+                    queueMicrotask(() => scheduler.cancel());
+                    await new Promise((resolve) => signal.addEventListener('abort', resolve, { once: true }));
+                }
+                if (failuresRemaining > 0) {
+                    failuresRemaining -= 1;
+                    const error = new Error('Transient execution failure');
+                    error.code = 'transient-execution-failure';
+                    throw error;
+                }
                 return { summary: `Execution ${executions} passed.`, acceptanceCriteria: [
                     { criterionId: 'criterion-042', met: true, evidence: 'Automated verification passed.' },
                 ] };
-            } }, executionControl: new ExecutionControl(), parallelLimit: 2 });
+            } }, executionControl: new ExecutionControl(), parallelLimit: 2, onStart: (task, context) => {
+                if (failTaskStart) {
+                    failTaskStart = false;
+                    const error = new Error('Start persistence unavailable');
+                    error.code = 'task-start-persistence-failed';
+                    throw error;
+                }
+                return taskLifecycle.onStart(task, context);
+            } });
         const resultSubmission = createTaskResultSubmissionUseCase({ taskRepository: tasks,
             auditRepository: audit, eventPublisher: events, unitOfWork, clock, idFactory: nextId });
         const review = createTaskReviewUseCase({ taskRepository: tasks, agentRepository: agents, hierarchyProvider,
             auditRepository: audit, eventPublisher: events, unitOfWork, clock, idFactory: nextId });
+        const executionFailureRecovery = createTaskExecutionFailureRecovery({ taskRepository: tasks, queueRepository,
+            auditRepository: audit, eventPublisher: events, unitOfWork, clock, idFactory: nextId });
         orchestrator = createExecutionOrchestrator({ taskCreationUseCase: taskCreation, scheduler,
-            resultSubmissionUseCase: resultSubmission, reviewUseCase: review,
+            resultSubmissionUseCase: resultSubmission, reviewUseCase: review, executionFailureRecovery,
             objectiveRepository: objectives, taskRepository: tasks, auditRepository: audit,
             eventPublisher: events, unitOfWork, clock, idFactory: nextId });
     });
@@ -124,6 +154,55 @@ describe('Phase 042 — execution orchestration', () => {
         expect(outcome.value.tasks[0]).toMatchObject({ status: TaskStatus.COMPLETED, retryCount: 1 });
         expect(queueRepository.getByTaskId('task-042').state).toBe('COMPLETED');
         expect(audit.listByTask('task-042').map(({ action }) => action)).toContain('TASK_REVIEW_REWORK');
+    });
+
+    it('retries a transient executor failure within the persisted retry budget', async () => {
+        failuresRemaining = 1;
+        const outcome = await orchestrator.run({ plan: approvedPlan, assignments,
+            reviewDecisions: [{ taskId: 'task-042', reviewerId: 'manager-042', decision: 'APPROVED' }] });
+        expect(outcome.ok).toBe(true);
+        expect(executions).toBe(2);
+        expect(outcome.value.tasks[0]).toMatchObject({ status: TaskStatus.COMPLETED, retryCount: 1 });
+        expect(tasks.getById('task-042').executionRetryReason).toBeNull();
+        expect(queueRepository.getByTaskId('task-042').state).toBe('COMPLETED');
+        expect(audit.listByTask('task-042').map(({ action }) => action)).toContain('TASK_EXECUTION_RETRY_SCHEDULED');
+        expect(events.database.prepare('SELECT type FROM events WHERE type = ?').all('TASK_RETRY_SCHEDULED')).toHaveLength(1);
+    });
+
+    it('moves a task to a terminal failed queue state when its retry budget is exhausted', async () => {
+        failuresRemaining = 5;
+        const outcome = await orchestrator.run({ plan: approvedPlan, assignments, maxRetries: 1 });
+        expect(outcome.ok).toBe(true);
+        expect(executions).toBe(2);
+        expect(outcome.value.status).toBe(ObjectiveStatus.FAILED);
+        expect(outcome.value.tasks[0]).toMatchObject({ status: TaskStatus.FAILED, retryCount: 1 });
+        expect(queueRepository.getByTaskId('task-042').state).toBe('FAILED');
+        expect(outcome.value.executionFailures).toEqual([{ taskId: 'task-042', code: 'transient-execution-failure' }]);
+    });
+
+    it('persists scheduler cancellation as a terminal task state instead of execution failure recovery', async () => {
+        cancelDuringExecution = true;
+        const outcome = await orchestrator.run({ plan: approvedPlan, assignments });
+        expect(outcome.ok).toBe(true);
+        expect(outcome.value.status).toBe(ObjectiveStatus.FAILED);
+        expect(outcome.value.tasks[0].status).toBe(TaskStatus.CANCELLED);
+        expect(queueRepository.getByTaskId('task-042').state).toBe('CANCELLED');
+        expect(outcome.value.executionFailures).toEqual([{ taskId: 'task-042', code: 'task-execution-cancelled' }]);
+        expect(audit.listByTask('task-042').map(({ action }) => action)).toContain('TASK_CANCELLED');
+        expect(events.database.prepare('SELECT type FROM events WHERE type = ?').all('TASK_CANCELLED')).toHaveLength(1);
+    });
+
+    it('records start-hook failures without consuming retries or misclassifying unstarted tasks', async () => {
+        failTaskStart = true;
+        const outcome = await orchestrator.run({ plan: approvedPlan, assignments });
+        expect(outcome.ok).toBe(true);
+        expect(outcome.value.status).toBe(ObjectiveStatus.ACTIVE);
+        expect(outcome.value.tasks[0]).toMatchObject({ status: TaskStatus.ASSIGNED, retryCount: 0 });
+        expect(queueRepository.getByTaskId('task-042').state).toBe('QUEUED');
+        expect(executions).toBe(0);
+        expect(outcome.value.executionFailures).toEqual([{ taskId: 'task-042', code: 'task-start-persistence-failed' }]);
+        expect(audit.listByTask('task-042').map(({ action }) => action)).toContain('TASK_EXECUTION_START_FAILED');
+        expect(events.database.prepare('SELECT type FROM events WHERE type = ?').all('TASK_START_FAILED')).toHaveLength(1);
     });
 
     it('refuses an unapproved plan before creating execution work', async () => {

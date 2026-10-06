@@ -1,6 +1,8 @@
 import { BaseSqliteRepository } from './BaseSqliteRepository';
 import { assertEntityId } from '../../shared/identifiers';
+import { normalizeTaskToolPermissions } from '../../shared/taskToolPermissions';
 import { evaluateAgentLifecycleTransition } from '../../shared/agentLifecyclePolicy';
+import { redactSecrets } from '../../shared/redactSecrets';
 export class OrganizationRepository extends BaseSqliteRepository {
     constructor(database) {
         super(database, 'organizations', {
@@ -168,7 +170,8 @@ export class TaskRepository extends BaseSqliteRepository {
             priority: 'priority', projectId: 'project_id', assigneeId: 'assignee_id', creatorId: 'creator_id',
             acceptanceCriteria: 'acceptance_criteria', result: 'result', blockerReason: 'blocker_reason',
             requiredCapabilities: 'required_capabilities_json',
-            retryCount: 'retry_count', maxRetries: 'max_retries', tokenBudget: 'token_budget',
+            toolPermissions: 'tool_permissions_json',
+            retryCount: 'retry_count', maxRetries: 'max_retries', executionRetryReason: 'execution_retry_reason', tokenBudget: 'token_budget',
             timeBudgetMs: 'time_budget_ms', startedAt: 'started_at', completedAt: 'completed_at',
             createdAt: 'created_at', updatedAt: 'updated_at',
         }, {
@@ -176,7 +179,8 @@ export class TaskRepository extends BaseSqliteRepository {
             priority: 'priority', projectId: 'project_id', assigneeId: 'assignee_id', creatorId: 'creator_id',
             acceptanceCriteria: 'acceptance_criteria', result: 'result', blockerReason: 'blocker_reason',
             requiredCapabilities: 'required_capabilities_json',
-            retryCount: 'retry_count', maxRetries: 'max_retries', tokenBudget: 'token_budget',
+            toolPermissions: 'tool_permissions_json',
+            retryCount: 'retry_count', maxRetries: 'max_retries', executionRetryReason: 'execution_retry_reason', tokenBudget: 'token_budget',
             timeBudgetMs: 'time_budget_ms', startedAt: 'started_at', completedAt: 'completed_at',
         });
     }
@@ -194,6 +198,10 @@ export class TaskRepository extends BaseSqliteRepository {
 function serializeTask(value) {
     if (!value) return value;
     const serialized = { ...value };
+    if (Object.hasOwn(value, 'executionRetryReason') && value.executionRetryReason !== null
+        && (typeof value.executionRetryReason !== 'string' || !/^[a-z][a-z0-9.-]{0,63}$/.test(value.executionRetryReason))) {
+        throw new TypeError('Task execution retry reasons must be null or stable error codes.');
+    }
     if (Object.hasOwn(value, 'requiredCapabilities')) {
         const capabilities = value.requiredCapabilities;
         if (!Array.isArray(capabilities) || capabilities.length > 32
@@ -201,6 +209,10 @@ function serializeTask(value) {
             || new Set(capabilities.map((capability) => capability.trim().toLocaleLowerCase('en-US'))).size !== capabilities.length) {
             throw new TypeError('Task required capabilities must contain at most 32 unique, non-empty labels of at most 100 characters.');
         }
+    }
+    if (Object.hasOwn(value, 'toolPermissions')) {
+        const permissions = normalizeTaskToolPermissions(value.toolPermissions);
+        serialized.toolPermissions = permissions === null ? null : JSON.stringify(permissions);
     }
     for (const field of ['acceptanceCriteria', 'result', 'requiredCapabilities']) {
         if (Object.hasOwn(value, field) && value[field] != null && typeof value[field] !== 'string') {
@@ -213,8 +225,13 @@ function serializeTask(value) {
 function mapTask(row) {
     if (!row) return row;
     const mapped = { ...row };
-    for (const field of ['acceptanceCriteria', 'result', 'requiredCapabilities']) {
+    for (const field of ['acceptanceCriteria', 'result', 'requiredCapabilities', 'toolPermissions']) {
         if (typeof row[field] !== 'string') continue;
+        if (field === 'toolPermissions') {
+            try { mapped[field] = normalizeTaskToolPermissions(JSON.parse(row[field])); }
+            catch { throw new TypeError('Persisted task tool permissions are malformed; execution must fail closed.'); }
+            continue;
+        }
         try {
             mapped[field] = JSON.parse(row[field]);
         }
@@ -251,10 +268,11 @@ const MEMORY_SCOPE_OWNERS = {
     DEPARTMENT: 'departmentId',
     TASK: 'taskId',
     PROJECT: 'projectId',
+    EMPLOYEE: 'agentId',
 };
 const MEMORY_OWNER_COLUMNS = {
     organizationId: 'organization_id', officeId: 'office_id', departmentId: 'department_id',
-    taskId: 'task_id', projectId: 'project_id', objectiveId: 'objective_id',
+    taskId: 'task_id', projectId: 'project_id', objectiveId: 'objective_id', agentId: 'agent_id',
 };
 export class MemoryRepository extends BaseSqliteRepository {
     constructor(database) {
@@ -262,40 +280,60 @@ export class MemoryRepository extends BaseSqliteRepository {
             id: 'id', scope: 'scope', category: 'category', title: 'title', content: 'content',
             importance: 'importance', verified: 'verified', organizationId: 'organization_id',
             officeId: 'office_id', departmentId: 'department_id', taskId: 'task_id', projectId: 'project_id',
-            objectiveId: 'objective_id', createdAt: 'created_at', updatedAt: 'updated_at',
+            objectiveId: 'objective_id', agentId: 'agent_id', createdAt: 'created_at', updatedAt: 'updated_at', expiresAt: 'expires_at',
+            invalidatedAt: 'invalidated_at', sourceKind: 'source_kind', sourceReference: 'source_reference',
+            verifiedByAgentId: 'verified_by_agent_id', verifiedAt: 'verified_at', verificationNote: 'verification_note',
         }, {
             id: 'id', scope: 'scope', category: 'category', title: 'title', content: 'content',
             importance: 'importance', verified: 'verified', organizationId: 'organization_id',
             officeId: 'office_id', departmentId: 'department_id', taskId: 'task_id', projectId: 'project_id',
-            objectiveId: 'objective_id',
+            objectiveId: 'objective_id', agentId: 'agent_id', expiresAt: 'expires_at',
+            sourceKind: 'source_kind', sourceReference: 'source_reference', verifiedByAgentId: 'verified_by_agent_id',
+            verifiedAt: 'verified_at', verificationNote: 'verification_note',
         });
     }
     create(value) {
         assertMemoryOwnership(value);
-        return this.insert(value);
+        assertExpiration(value.expiresAt);
+        assertMemoryProvenance(value);
+        const provenance = normalizeMemoryProvenance(value);
+        return this.insert({ ...value, ...provenance, expiresAt: value.expiresAt ?? null });
     }
-    list() { return this.query(); }
-    listByScope(scope) {
+    list({ now = new Date().toISOString() } = {}) {
+        assertExpiration(now, 'Memory query time');
+        return this.query('invalidated_at IS NULL AND (expires_at IS NULL OR expires_at > ?)', [now], 'created_at, id');
+    }
+    listByScope(scope, { now = new Date().toISOString() } = {}) {
         assertMemoryScope(scope);
-        return this.query('scope = ?', [scope]);
+        assertExpiration(now, 'Memory query time');
+        return this.query('scope = ? AND invalidated_at IS NULL AND (expires_at IS NULL OR expires_at > ?)', [scope, now], 'created_at, id');
     }
-    listByOwner(scope, ownerId, { limit = 100, ownerType } = {}) {
+    getById(id, { now = new Date().toISOString() } = {}) {
+        assertExpiration(now, 'Memory query time');
+        return this.database.prepare(`SELECT ${this.selectList()} FROM memories WHERE id = ?
+          AND invalidated_at IS NULL AND (expires_at IS NULL OR expires_at > ?)`).get(assertEntityId(id), now);
+    }
+    readInsertResult(id) { return super.getById(id); }
+    listByOwner(scope, ownerId, { limit = 100, ownerType, now = new Date().toISOString() } = {}) {
         assertMemoryScope(scope);
         if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
             throw new TypeError('Memory owner query limit must be between 1 and 100.');
         }
         const property = MEMORY_SCOPE_OWNERS[scope];
         const ownerProperty = property ?? assertTypedMemoryOwner(scope, ownerType);
-        return this.query(`scope = ? AND ${MEMORY_OWNER_COLUMNS[ownerProperty]} = ?`,
-            [scope, assertEntityId(ownerId)], 'created_at, id', limit);
+        assertExpiration(now, 'Memory query time');
+        return this.query(`scope = ? AND ${MEMORY_OWNER_COLUMNS[ownerProperty]} = ? AND invalidated_at IS NULL AND (expires_at IS NULL OR expires_at > ?)`,
+            [scope, assertEntityId(ownerId), now], 'created_at, id', limit);
     }
-    getByOwner(scope, ownerId, memoryId, { ownerType } = {}) {
+    getByOwner(scope, ownerId, memoryId, { ownerType, now = new Date().toISOString() } = {}) {
         assertMemoryScope(scope);
         ownerId = assertEntityId(ownerId);
         memoryId = assertEntityId(memoryId, 'Memory id');
         const property = MEMORY_SCOPE_OWNERS[scope] ?? assertTypedMemoryOwner(scope, ownerType);
-        return this.database.prepare(`SELECT ${this.selectList()} FROM memories WHERE id = ? AND scope = ? AND ${MEMORY_OWNER_COLUMNS[property]} = ?`)
-            .get(memoryId, scope, ownerId);
+        assertExpiration(now, 'Memory query time');
+        return this.database.prepare(`SELECT ${this.selectList()} FROM memories WHERE id = ? AND scope = ?
+          AND ${MEMORY_OWNER_COLUMNS[property]} = ? AND invalidated_at IS NULL AND (expires_at IS NULL OR expires_at > ?)`)
+            .get(memoryId, scope, ownerId, now);
     }
     deleteByOwner(scope, ownerId, memoryId, { ownerType } = {}) {
         assertMemoryScope(scope);
@@ -305,8 +343,81 @@ export class MemoryRepository extends BaseSqliteRepository {
         return this.database.prepare(`DELETE FROM memories WHERE id = ? AND scope = ? AND ${MEMORY_OWNER_COLUMNS[property]} = ?`)
             .run(memoryId, scope, ownerId).changes > 0;
     }
-    update(id, changes) { return this.updateById(id, changes); }
+    invalidateByOwner(scope, ownerId, memoryId, { ownerType, invalidatedAt = new Date().toISOString() } = {}) {
+        assertMemoryScope(scope);
+        ownerId = assertEntityId(ownerId);
+        memoryId = assertEntityId(memoryId, 'Memory id');
+        const property = MEMORY_SCOPE_OWNERS[scope] ?? assertTypedMemoryOwner(scope, ownerType);
+        assertExpiration(invalidatedAt, 'Memory invalidation time');
+        return this.database.prepare(`UPDATE memories SET invalidated_at = ?,
+          updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+          WHERE id = ? AND scope = ? AND ${MEMORY_OWNER_COLUMNS[property]} = ? AND invalidated_at IS NULL`)
+            .run(invalidatedAt, memoryId, scope, ownerId).changes > 0;
+    }
+    update(id, changes) {
+        assertExpiration(changes?.expiresAt);
+        const current = this.getById(id);
+        if (!current) return undefined;
+        for (const property of ['scope', ...Object.keys(MEMORY_OWNER_COLUMNS)]) {
+            if (Object.hasOwn(changes ?? {}, property) && changes[property] !== current[property]) {
+                throw new TypeError('Memory ownership cannot be changed after creation.');
+            }
+        }
+        if (changes?.verified === true || changes?.verified === 1) assertMemoryProvenance({ ...current, ...changes });
+        return this.updateById(id, changes);
+    }
     delete(id) { return this.deleteById(id); }
+    deleteExpired({ now = new Date().toISOString(), limit = 250 } = {}) {
+        assertExpiration(now, 'Memory cleanup time');
+        if (!Number.isInteger(limit) || limit < 1 || limit > 1000) throw new TypeError('Expired memory cleanup batch size must be between 1 and 1000.');
+        return this.database.prepare(`DELETE FROM memories WHERE rowid IN (
+          SELECT rowid FROM memories WHERE expires_at IS NOT NULL AND expires_at <= ? ORDER BY expires_at, id LIMIT ?
+        )`).run(now, limit).changes;
+    }
+}
+
+const MEMORY_SOURCE_KINDS = new Set(['LEGACY', 'USER_NOTE', 'OBSERVATION', 'TASK_RESULT', 'REVIEW_FINDING', 'DECISION_RECORD', 'TEST_RESULT', 'AI_GENERATED']);
+function normalizeMemoryProvenance(value) {
+    return {
+        sourceKind: value.sourceKind ?? 'LEGACY',
+        sourceReference: optionalRedactedText(value.sourceReference, 300, 'Memory source reference'),
+        verifiedByAgentId: value.verifiedByAgentId == null ? null : assertEntityId(value.verifiedByAgentId, 'Memory verifier id'),
+        verifiedAt: value.verifiedAt ?? null,
+        verificationNote: optionalRedactedText(value.verificationNote, 500, 'Memory verification note'),
+    };
+}
+function optionalRedactedText(value, maxLength, label) {
+    if (value == null) return null;
+    if (typeof value !== 'string' || !value.trim() || value.length > maxLength) {
+        throw new TypeError(`${label} must be non-empty text up to ${maxLength} characters.`);
+    }
+    return redactSecrets(value.trim(), maxLength);
+}
+function assertMemoryProvenance(value) {
+    if (value.sourceKind !== undefined && !MEMORY_SOURCE_KINDS.has(value.sourceKind)) {
+        throw new TypeError('Memory source kind is unsupported.');
+    }
+    if (value.verified === true || value.verified === 1) {
+        const timestamp = value.verifiedAt;
+        if (!value.sourceKind || value.sourceKind === 'LEGACY' || value.sourceKind === 'AI_GENERATED'
+            || typeof value.sourceReference !== 'string' || !value.sourceReference.trim() || value.sourceReference.length > 300
+            || typeof value.verifiedByAgentId !== 'string' || !value.verifiedByAgentId.trim()
+            || typeof timestamp !== 'string' || timestamp.length !== 24
+            || !Number.isFinite(Date.parse(timestamp)) || new Date(timestamp).toISOString() !== timestamp) {
+            throw new TypeError('Verified memory requires a non-AI source reference and verifier attribution.');
+        }
+        assertEntityId(value.verifiedByAgentId, 'Memory verifier id');
+        if (value.verificationNote != null && (typeof value.verificationNote !== 'string' || value.verificationNote.length > 500)) {
+            throw new TypeError('Memory verification note exceeds its bound.');
+        }
+    }
+}
+
+function assertExpiration(value, field = 'Memory expiration') {
+    if (value === undefined || value === null) return;
+    if (typeof value !== 'string' || value.length !== 24 || !Number.isFinite(Date.parse(value)) || new Date(value).toISOString() !== value) {
+        throw new TypeError(`${field} must be a canonical UTC timestamp.`);
+    }
 }
 
 function assertTypedMemoryOwner(scope, ownerType) {
@@ -317,7 +428,7 @@ function assertTypedMemoryOwner(scope, ownerType) {
 }
 
 function assertMemoryScope(scope) {
-    if (!['CEO', 'DIRECTOR', 'OFFICE', 'DEPARTMENT', 'TASK', 'PROJECT', 'DECISION', 'KNOWLEDGE'].includes(scope)) {
+    if (!['CEO', 'DIRECTOR', 'OFFICE', 'DEPARTMENT', 'TASK', 'PROJECT', 'EMPLOYEE', 'DECISION', 'KNOWLEDGE'].includes(scope)) {
         throw new Error(`Unsupported memory scope ${String(scope)}.`);
     }
 }

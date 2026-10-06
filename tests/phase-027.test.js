@@ -5,8 +5,10 @@ import { DomainInvariantError, retrieveScopedMemories } from '../src/domain';
 
 const memories = [
     { id: 'z-title', scope: MemoryScope.TASK, taskId: 'task-a', title: 'SQLite migration', content: 'Migration has rollback', category: 'database', importance: 1, verified: false },
-    { id: 'a-title', scope: MemoryScope.TASK, taskId: 'task-a', title: 'SQLite migration', content: 'SQLite migration verified', category: 'database', importance: 2, verified: true },
-    { id: 'b-content', scope: MemoryScope.TASK, taskId: 'task-a', title: 'Persistence', content: 'SQLite migration details', category: 'notes', importance: 3, verified: true },
+    { id: 'a-title', scope: MemoryScope.TASK, taskId: 'task-a', title: 'SQLite migration', content: 'SQLite migration verified', category: 'database', importance: 2, verified: true,
+        sourceKind: 'TEST_RESULT', sourceReference: 'test:phase-027', verifiedByAgentId: 'reviewer', verifiedAt: '2026-10-06T00:00:00.000Z' },
+    { id: 'b-content', scope: MemoryScope.TASK, taskId: 'task-a', title: 'Persistence', content: 'SQLite migration details', category: 'notes', importance: 3, verified: true,
+        sourceKind: 'TEST_RESULT', sourceReference: 'test:phase-027', verifiedByAgentId: 'reviewer', verifiedAt: '2026-10-06T00:00:00.000Z' },
     { id: 'foreign', scope: MemoryScope.TASK, taskId: 'task-b', title: 'SQLite migration', content: 'Foreign task', category: 'database', importance: 3, verified: true },
     { id: 'wrong-scope', scope: MemoryScope.PROJECT, projectId: 'task-a', title: 'SQLite migration', content: 'Wrong scope', category: 'database', importance: 3, verified: true },
 ];

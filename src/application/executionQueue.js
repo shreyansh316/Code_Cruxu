@@ -20,11 +20,17 @@ export function createExecutionQueueUseCase({
         name: 'execution-queue',
         dependencies: { taskRepository, dependencyRepository, queueRepository, hierarchyProvider,
             auditRepository, eventPublisher, unitOfWork, clock, idFactory },
-        execute: ({ dependencies }) => {
+        execute: ({ input, dependencies }) => {
+            const taskId = input?.taskId;
+            if (input !== undefined && (!input || typeof input !== 'object' || Array.isArray(input)
+                || Object.keys(input).some((key) => key !== 'taskId')
+                || (taskId !== undefined && (typeof taskId !== 'string' || !taskId.trim() || taskId.length > 128)))) {
+                throw new ApplicationError('invalid-execution-queue-request', 'Execution selection must contain one valid task identifier.');
+            }
             const tasks = dependencies.taskRepository.list();
             const dependenciesList = dependencies.dependencyRepository.list();
             const hierarchy = dependencies.hierarchyProvider.getSnapshot();
-            const eligible = tasks.filter(isExecutionCandidate);
+            const eligible = tasks.filter((task) => (!taskId || task.id === taskId) && isExecutionCandidate(task));
             for (const task of eligible) {
                 assertTaskAssignment({ creatorId: task.creatorId, assigneeId: task.assigneeId }, hierarchy);
             }
@@ -64,7 +70,7 @@ export function createExecutionQueueUseCase({
             const selected = dependencies.queueRepository.listByState('QUEUED', { limit: 1000 })
                 .flatMap((entry) => {
                     const task = dependencies.taskRepository.getById(entry.taskId);
-                    if (!task || !isExecutionCandidate(task)) return [];
+                    if (!task || (taskId && task.id !== taskId) || !isExecutionCandidate(task)) return [];
                     assertTaskAssignment({ creatorId: task.creatorId, assigneeId: task.assigneeId }, hierarchy);
                     return getTaskReadiness(task.id, tasks, dependenciesList).ready ? [{ queue: entry, task }] : [];
                 });
@@ -76,5 +82,7 @@ export function createExecutionQueueUseCase({
 function isExecutionCandidate(task) {
     return task.status === TaskStatus.ASSIGNED
         || (task.status === TaskStatus.IN_PROGRESS && typeof task.result?.reviewFeedback === 'string'
-            && task.result.reviewFeedback.trim().length > 0);
+            && task.result.reviewFeedback.trim().length > 0)
+        || (task.status === TaskStatus.IN_PROGRESS && typeof task.executionRetryReason === 'string'
+            && task.retryCount <= task.maxRetries);
 }

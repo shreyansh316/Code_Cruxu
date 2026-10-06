@@ -41,6 +41,7 @@ export function createTaskScheduler({ queueWorkflow, queueRepository, executor, 
 
     async function runClaimed(candidate, controller, dependencies) {
         const taskId = candidate.task.id;
+        let phase = 'START';
         try {
             if (controller.signal.aborted) {
                 dependencies.queueRepository.transition(taskId, 'CLAIMED', 'CANCELLED');
@@ -56,6 +57,7 @@ export function createTaskScheduler({ queueWorkflow, queueRepository, executor, 
                 dependencies.queueRepository.transition(taskId, 'CLAIMED', 'CANCELLED');
                 return { taskId, status: 'CANCELLED' };
             }
+            phase = 'EXECUTION';
             const outcome = await waitForExecutionOrCancellation(
                 () => dependencies.executor.execute({ task: candidate.task, signal: controller.signal }), controller.signal);
             if (outcome.kind === 'cancelled') {
@@ -70,7 +72,8 @@ export function createTaskScheduler({ queueWorkflow, queueRepository, executor, 
         catch (error) {
             const cancelled = controller.signal.aborted || dependencies.executionControl.status === 'CANCELLED';
             dependencies.queueRepository.transition(taskId, 'CLAIMED', cancelled ? 'CANCELLED' : 'QUEUED');
-            return { taskId, status: cancelled ? 'CANCELLED' : 'FAILED' };
+            return { taskId, status: cancelled ? 'CANCELLED' : 'FAILED',
+                ...(cancelled ? {} : { errorCode: safeErrorCode(error), ...(phase === 'START' ? { phase } : {}) }) };
         }
         finally {
             active.delete(taskId);
@@ -89,6 +92,16 @@ export function createTaskScheduler({ queueWorkflow, queueRepository, executor, 
         get activeCount() { return active.size; },
         get status() { return executionControl.status; },
     });
+}
+
+function safeErrorCode(error) {
+    try {
+        const code = error?.code;
+        return typeof code === 'string' && /^[a-z][a-z0-9.-]{0,63}$/.test(code) ? code : 'task-execution-failed';
+    }
+    catch {
+        return 'task-execution-failed';
+    }
 }
 
 function waitForExecutionOrCancellation(execute, signal) {

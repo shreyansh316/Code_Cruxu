@@ -53,20 +53,23 @@ export async function createWorkspaceFileAdapter({ workspaceRoot, maxFileBytes =
             return Object.freeze({ files: Object.freeze(files), truncated: pending.length > 0 || files.length === maxFilesPerScan,
                 limit: maxFilesPerScan });
         },
-        readFile: async (path) => {
+        readFile: async (path, { signal } = {}) => {
+            assertOperationActive(signal);
             consumeOperation();
             const target = resolveWorkspacePath(root, path);
             try {
                 const canonical = await realpath(target);
+                assertOperationActive(signal);
                 assertContained(root, canonical);
                 const handle = await open(canonical, 'r');
                 try {
+                    assertOperationActive(signal);
                     const info = await handle.stat();
                     if (!info.isFile()) {
                         throw new DomainInvariantError('invalid-workspace-file-operation', 'Only regular workspace files can be read.');
                     }
                     assertWithinLimit(info.size, maxFileBytes);
-                    const contents = await readBoundedFile(handle, maxFileBytes);
+                    const contents = await readBoundedFile(handle, maxFileBytes, signal);
                     reportActivity(onActivity, { operation: 'read', path, bytes: contents.length, succeeded: true });
                     return contents.toString('utf8');
                 }
@@ -79,7 +82,8 @@ export async function createWorkspaceFileAdapter({ workspaceRoot, maxFileBytes =
                 throw error;
             }
         },
-        writeFile: async (path, contents) => {
+        writeFile: async (path, contents, { signal } = {}) => {
+            assertOperationActive(signal);
             consumeOperation();
             if (typeof contents !== 'string') {
                 throw new DomainInvariantError('invalid-workspace-file-content', 'Workspace writes require string content.');
@@ -87,6 +91,7 @@ export async function createWorkspaceFileAdapter({ workspaceRoot, maxFileBytes =
             assertWithinLimit(Buffer.byteLength(contents, 'utf8'), maxFileBytes);
             const target = resolveWorkspacePath(root, path);
             const parent = await realpath(dirname(target));
+            assertOperationActive(signal);
             assertContained(root, parent);
             try {
                 const info = await lstat(target);
@@ -98,7 +103,7 @@ export async function createWorkspaceFileAdapter({ workspaceRoot, maxFileBytes =
                 if (error.code !== 'ENOENT') throw error;
             }
             try {
-                await writeFile(target, contents, { encoding: 'utf8', flag: 'w' });
+                await writeFile(target, contents, { encoding: 'utf8', flag: 'w', ...(signal ? { signal } : {}) });
                 reportActivity(onActivity, { operation: 'write', path, bytes: Buffer.byteLength(contents, 'utf8'), succeeded: true });
             }
             catch (error) {
@@ -106,7 +111,8 @@ export async function createWorkspaceFileAdapter({ workspaceRoot, maxFileBytes =
                 throw error;
             }
         },
-        createFile: async (path, contents) => {
+        createFile: async (path, contents, { signal } = {}) => {
+            assertOperationActive(signal);
             consumeOperation();
             if (typeof contents !== 'string') {
                 throw new DomainInvariantError('invalid-workspace-file-content', 'Workspace writes require string content.');
@@ -115,9 +121,10 @@ export async function createWorkspaceFileAdapter({ workspaceRoot, maxFileBytes =
             assertWithinLimit(bytes, maxFileBytes);
             const target = resolveWorkspacePath(root, path);
             const parent = await realpath(dirname(target));
+            assertOperationActive(signal);
             assertContained(root, parent);
             try {
-                await writeFile(target, contents, { encoding: 'utf8', flag: 'wx' });
+                await writeFile(target, contents, { encoding: 'utf8', flag: 'wx', ...(signal ? { signal } : {}) });
                 reportActivity(onActivity, { operation: 'create', path, bytes, succeeded: true });
             }
             catch (error) {
@@ -125,11 +132,12 @@ export async function createWorkspaceFileAdapter({ workspaceRoot, maxFileBytes =
                 throw error;
             }
         },
-        deleteFile: async (path) => {
+        deleteFile: async (path, { signal } = {}) => {
+            assertOperationActive(signal);
             consumeOperation();
             const target = resolveWorkspacePath(root, path);
             let info;
-            try { info = await lstat(target); }
+            try { info = await lstat(target); assertOperationActive(signal); }
             catch (error) {
                 reportActivity(onActivity, { operation: 'delete', path, bytes: 0, succeeded: false });
                 throw error;
@@ -139,6 +147,7 @@ export async function createWorkspaceFileAdapter({ workspaceRoot, maxFileBytes =
                 throw new DomainInvariantError('invalid-workspace-file-operation', 'Only regular workspace files can be deleted.');
             }
             const canonical = await realpath(target);
+            assertOperationActive(signal);
             assertContained(root, canonical);
             try {
                 await unlink(canonical);
@@ -149,19 +158,23 @@ export async function createWorkspaceFileAdapter({ workspaceRoot, maxFileBytes =
                 throw error;
             }
         },
-        renameFile: async (path, newPath) => {
+        renameFile: async (path, newPath, { signal } = {}) => {
+            assertOperationActive(signal);
             consumeOperation();
             let bytes = 0;
             try {
                 const source = resolveWorkspacePath(root, path);
                 const target = resolveWorkspacePath(root, newPath);
                 const sourceInfo = await lstat(source);
+                assertOperationActive(signal);
                 if (sourceInfo.isSymbolicLink() || !sourceInfo.isFile()) {
                     throw new DomainInvariantError('invalid-workspace-file-operation', 'Only regular workspace files can be renamed.');
                 }
                 const canonicalSource = await realpath(source);
+                assertOperationActive(signal);
                 assertContained(root, canonicalSource);
                 const parent = await realpath(dirname(target));
+                assertOperationActive(signal);
                 assertContained(root, parent);
                 try {
                     await lstat(target);
@@ -171,6 +184,7 @@ export async function createWorkspaceFileAdapter({ workspaceRoot, maxFileBytes =
                     if (error.code !== 'ENOENT') throw error;
                 }
                 bytes = sourceInfo.size;
+                assertOperationActive(signal);
                 await rename(canonicalSource, target);
                 reportActivity(onActivity, { operation: 'rename', path: `${path} -> ${newPath}`, bytes, succeeded: true });
             }
@@ -222,17 +236,27 @@ function assertWithinLimit(size, maximum) {
     }
 }
 
-async function readBoundedFile(handle, maximum) {
+async function readBoundedFile(handle, maximum, signal) {
     const chunks = [];
     let totalBytes = 0;
     while (true) {
+        assertOperationActive(signal);
         const capacity = Math.min(64 * 1024, maximum - totalBytes + 1);
         const buffer = Buffer.allocUnsafe(capacity);
         const { bytesRead } = await handle.read(buffer, 0, capacity, null);
+        assertOperationActive(signal);
         if (bytesRead === 0) break;
         totalBytes += bytesRead;
         assertWithinLimit(totalBytes, maximum);
         chunks.push(buffer.subarray(0, bytesRead));
     }
     return Buffer.concat(chunks, totalBytes);
+}
+
+function assertOperationActive(signal) {
+    if (signal === undefined) return;
+    if (typeof AbortSignal === 'undefined' || !(signal instanceof AbortSignal)) {
+        throw new DomainInvariantError('invalid-workspace-operation-signal', 'Workspace cancellation requires an AbortSignal.');
+    }
+    if (signal.aborted) throw new DomainInvariantError('task-execution-cancelled', 'The task was cancelled before the workspace operation completed.');
 }

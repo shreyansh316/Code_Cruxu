@@ -21,8 +21,11 @@ describe('Phase 079 reproducible performance baselines', () => {
         organizationRepository.create({ id: 'organization-benchmark', name: 'Benchmark' });
         const memoryRepository = new MemoryRepository(database);
         const insertMemory = database.prepare(`INSERT INTO memories
-          (id, scope, category, title, content, importance, verified, organization_id)
-          VALUES (?, 'CEO', ?, ?, ?, 2, 1, 'organization-benchmark')`);
+          (id, scope, category, title, content, importance, verified, organization_id, source_kind,
+           source_reference, verified_by_agent_id, verified_at, verification_note)
+          VALUES (?, 'CEO', ?, ?, ?, 2, 1, 'organization-benchmark', 'USER_NOTE',
+           'benchmark:phase-079', 'benchmark-agent', '2026-01-01T00:00:00.000Z', 'Benchmark fixture')`);
+        database.prepare("INSERT INTO agents (id, organization_id, name, role) VALUES ('benchmark-agent', 'organization-benchmark', 'Benchmark', 'CEO')").run();
         const memoryFixtureSize = 1000;
         for (let index = 0; index < memoryFixtureSize; index += 1) {
             const id = `memory-bench-${String(index).padStart(4, '0')}`;

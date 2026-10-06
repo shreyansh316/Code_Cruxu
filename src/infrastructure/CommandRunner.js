@@ -38,7 +38,7 @@ export function createCommandRunner({ allowedCommands, timeoutMs = 30_000, maxOu
             if (cwd !== undefined && (typeof cwd !== 'string' || cwd.trim() === '')) {
                 return Promise.reject(new DomainInvariantError('invalid-command-working-directory', 'Working directory must be a non-empty path.'));
             }
-            if (signal && (typeof signal.addEventListener !== 'function' || typeof signal.aborted !== 'boolean')) {
+            if (signal !== undefined && !isAbortSignal(signal)) {
                 return Promise.reject(new DomainInvariantError('invalid-command-signal', 'Cancellation signal is invalid.'));
             }
             return runProcess(executable, args, cwd, signal, timeoutMs, maxOutputBytes, onActivity,
@@ -46,6 +46,10 @@ export function createCommandRunner({ allowedCommands, timeoutMs = 30_000, maxOu
                 safeCommandLabel(executable));
         },
     });
+}
+
+function isAbortSignal(value) {
+    return typeof AbortSignal !== 'undefined' && value instanceof AbortSignal;
 }
 
 function runProcess(command, args, cwd, signal, timeoutMs, maxOutputBytes, onActivity, allowedEnvironmentVariables, commandLabel) {

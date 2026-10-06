@@ -35,6 +35,13 @@ Phase 091 manual threat review, 2026-10-04. This document records the current ex
 | Secrets or oversized payloads in durable events | Event persistence sanitizes nested values, rejects payloads over 64 KiB, and redacts bounded subscriber error details | `tests/phase-303.test.js` |
 | PEM private key disclosure in captured text | Shared redactor removes supported PEM and OpenSSH private-key blocks before normal output truncation | `tests/phase-304.test.js` |
 | Cross-organization CEO report access | CEO execution reports require persisted CEO organization ownership to exactly match the objective organization | `tests/phase-305.test.js` |
+| Forged objective organization reference | Objective intake resolves the requested organization through persisted storage before generating or writing an objective | `tests/phase-306.test.js` |
+| Unauthorized or cross-organization objective submission | Intake requires an active persisted CEO in the same organization; UI offers only organizations with exactly one active CEO | `tests/phase-308.test.js`, `tests/phase-032.test.js` |
+| Expired organization memory | Expiration timestamps are validated, filtered at owner/context retrieval, and cleaned in bounded batches | `tests/phase-307.test.js` |
+| Cross-tenant memory transfer by owner mutation | Memory owner columns and scope are immutable after creation in repository and SQLite update paths | `tests/phase-309.test.js`, `tests/phase-026.test.js` |
+| Reassignment of persisted objective or agent across organizations | SQLite prevents changing an already assigned organization owner; legacy null-owned rows may receive their initial organization once | `tests/phase-310.test.js` |
+| Residual project/task data after organization deletion | A database trigger deletes each owned project's task tree and project rows before organization/objective cascades complete; unrelated organizations remain | `tests/phase-311.test.js` |
+| Expired memory left on disk when age-retention is disabled | Retention always deletes explicitly expired memory in bounded batches, independently of the age-based memory retention setting | `tests/phase-312.test.js`, `tests/phase-068.test.js` |
 | Secret-like task or agent identifiers in activity metadata | Activity identifiers pass through the same bounded secret redactor before in-memory retention and UI projection | `tests/phase-292.test.js` |
 | Unauthorized hierarchy routing | Adjacent-role and same-office/department checks; manager routes stay within their organization edge | `tests/phase-050.test.js`, `tests/phase-057.test.js`, `tests/phase-091.test.js` |
 | Upgrade corruption or downgrade | Inspect migration ledger before applying transactional migrations; block unknown future/inconsistent versions | `tests/phase-007.test.js`, `tests/phase-070.test.js` |
@@ -96,3 +103,71 @@ Phase 303 sanitizes event payload strings and credential-like keys before durabl
 Phase 304 extends shared text filtering to complete RSA, EC, DSA, OpenSSH, generic, and encrypted PEM private-key blocks. Ordinary prose that merely mentions a private key is preserved.
 
 Phase 305 closes a cross-organization report boundary: a CEO identity without an organization, or whose organization differs from the objective owner, cannot retrieve that objective's task, audit, or usage report.
+
+Phase 313 applies memory expiration to repository-wide reads as well as owner-scoped reads: `list`, `listByScope`, and `getById` exclude rows whose expiry is at or before the query instant. Each read accepts an optional canonical UTC `now` value for deterministic boundary checks. Insert readback remains available for legacy expired rows so inserting/importing them does not fail after persistence; subsequent public reads hide them.
+
+Phase 314 adds a SQLite insert trigger that enforces the scope-to-owner-column shape for memory rows, including exactly one explicit owner for DECISION and KNOWLEDGE scopes. This protects direct database writes in addition to repository validation; foreign keys continue to validate that the chosen owner exists.
+
+Phase 315 validates memory expiry timestamps in SQLite on insert and update, preventing malformed strings or impossible dates from bypassing lexicographic expiry reads and cleanup. Repository validation now enforces the same fixed-width canonical UTC representation.
+
+Phase 317 adds employee-scoped memory owned by an agent id. The version 19 migration preserves existing memory rows, enforces one matching owner column for the new scope at SQLite and repository boundaries, supports authorized bounded context retrieval, and deletes an employee's memories with that employee. Cross-employee retrieval remains denied by the caller-supplied authorization boundary plus exact owner filtering.
+
+Phase 318 adds durable engineering decision records with context, alternatives, selected and rejected options, rationale, trade-offs, evidence, author, task, timestamp, and bounded confidence. The use case verifies persisted task participation, commits the record with an audit attribution in one transaction, redacts common secret patterns, and SQLite prevents record edits or deletion.
+
+Phase 319 adds VS Code commands to record a task-linked decision from explicit user input and inspect a selected task's stored decisions as JSON. Empty rejected-option, trade-off, or evidence lists remain empty when the author has nothing to record; confidence is stored as the author's estimate, not as a calibrated system score.
+
+Migration 27 stores immutable decision lineage. `SUPERSEDES` edges are cycle-checked in SQLite and both relationship types are constrained to decisions whose task/project/objective chains resolve to the same organization. The application workflow additionally requires its author to participate in both tasks and writes the link plus its audit record in one transaction.
+
+Phase 320 adds optional memory context to authorized agent requests. The provider retrieves only the assigned agent's own employee-scoped memories and the active task's memories, applies expiry/authorization/bounds/redaction through context assembly, and the agent contract validates the exact bounded shape before adapter delivery. Caller-supplied memory context is not forwarded.
+
+Phase 321 carries repository-resolved agent capabilities and task requirements in the immutable execution request. The runtime rechecks the current assignment against those persisted capabilities before calling the adapter, so stale assignments stop when skills change.
+
+Phase 322 enforces the task's persisted time budget at the authorized runtime boundary. When the deadline expires, the runtime aborts the adapter signal and returns the stable `task-time-budget-exceeded` failure even if the adapter ignores cancellation; a zero budget prevents adapter startup. Caller cancellation remains a separate `CANCELLED` outcome. This bounds the wait at the application boundary but cannot forcibly stop non-cooperative adapter work already running in-process.
+
+Phase 323 requires a native platform `AbortSignal` at the child-process runner boundary. Duck-typed cancellation objects are rejected before process startup, preventing forged event methods from throwing after a child has spawned and bypassing cleanup.
+
+Phase 324 canonicalizes trailing dots and spaces plus executable extensions before applying the shell denylist, closing Win32 aliases such as `cmd.exe.` and `powershell.exe ` in both process allowlists and task-specific command grants. Phase 325 adds `npm run test:security`, which runs Phase 091 and requires all 50 security-phase fixtures (276–325) to exist before invoking Vitest; missing fixtures fail closed.
+
+Phase 326 adds a scheduler adapter that derives the employee id from the scheduled task's persisted assignee and requires the authorized runtime response to correlate to that same employee and task before returning a validated task result to orchestration. The adapter does not itself provide a provider or workspace tool implementation.
+
+Phase 327 provides the scheduler's synchronous start hook: an assigned task enters `STARTED` then `IN_PROGRESS` inside one transaction with matching audit records and domain events. Already in-progress rework does not emit duplicate start events. An audit failure rolls both status transitions and event inserts back.
+
+Phase 328 composes that lifecycle hook with the authorized scheduler/runtime bridge and verifies the actual persisted task status before adapter execution. The extension has no configured code-capable employee provider/tool implementation yet, so this composition remains an application port and is not an extension-host execution feature.
+
+Phase 329 returns only a validated stable error code from scheduler failures. Adapter error messages and stack data are excluded from scheduler results, and objective reports retain the safe code for diagnosis.
+
+Phase 330 maps the authorized task's remaining retry count, time limit, and aggregate token ceiling onto bounded provider generation. The budget policy charges at least the exact input-token count to each attempt even if a failed provider response reports zero usage, limits fallback output to the remaining aggregate allowance, and converts an over-budget fallback response into a stable failure without exposing its output. Provider usage records continue to represent provider-reported usage; the additional conservative reservation is used to prevent further calls.
+
+Phases 331–332 add irreversible, owner-scoped memory invalidation. SQLite validates invalidation timestamps and forbids clearing or changing an existing invalidation; all active memory reads filter tombstones. Privacy invalidation and its metadata-only audit entry share a transaction, so an audit failure restores the still-visible memory. Phase 333 includes invalidated records in the existing bounded retention purge, allowing the text to be physically removed without an unbounded cleanup operation.
+
+Phase 334 adds partial composite indexes per memory owner type so active owner queries can narrow on scope and owner while retaining expiration and stable-order columns. The focused SQLite query-plan fixture checks the organization-owner path and verifies each owner index exists.
+
+### Memory provenance and recall
+
+Schema migration 25 records each memory source kind/reference and verification actor/time/note. New verified rows require a non-AI evidence source and attribution. Source identity is immutable; verification attribution freezes once verified. Existing records migrate as LEGACY and are not treated as verified evidence during retrieval or agent-context assembly. Memory source references and review notes are redacted before persistence. The user-note use case always creates USER_NOTE rows with verified=false and records actor attribution in the audit log. Decision recall enforces organization scope through the persisted task/project/objective relationship and a separate fail-closed authorization port.
+
+The database triggers prevent accidental invalid verified writes and attribution edits. They are not an authentication boundary against an attacker who can directly alter the SQLite schema or drop triggers; application write access remains a trusted process boundary.
+
+Memory retrieval can filter by a bounded set of source kinds. The filter is applied after owner-scoped reads and before context assembly; it does not replace authorization, verification provenance, or response bounds.
+
+Memory verification uses a separate application workflow. It rejects legacy and AI-generated notes, checks reviewer authorization, prevents the audited user-note author from self-verifying, then updates verification metadata and appends MEMORY_VERIFIED in one transaction. This is an application-level workflow; service callers still need to compose a trustworthy authorization adapter.
+
+### Controlled debugging records
+
+Debugging sessions persist their authorized task/agent identity, ordered stage, remaining attempt count, cumulative distinct files/commands/tokens, and absolute deadline. Each recorded step is bounded and redacted; low-confidence hypotheses, blockers, repeated failed tests, and exhausted resource budgets stop or escalate the session. Expired sessions are eligible for the bounded debugging retention category. A session record does not itself run shell commands or edit workspace files; such actions must be supplied by the existing permission-checked execution adapters.
+
+On debugging escalation, the workflow marks the task BLOCKED and publishes the existing TASK_ESCALATED event with the next hierarchy role and stable reason; successful VERIFY returns it to IN_PROGRESS. Escalation-event or audit failure rolls the transition back. The session API still records steps reported by an authorized caller rather than independently observing all shell/file operations.
+
+Phase 387's action adapter resolves workspace and process operations only through the persisted task permission provider. Reads and commands are stage-limited, command execution is capped by the session deadline and runner timeout, and patches require an explicit per-change confirmation in addition to a persisted task write grant. A session actor must still be the current task assignee. The adapter returns only bounded redacted output and records a bounded summary. Phase 388 exposes the workflow through VS Code commands, with focused integration tests for starting sessions and executing a granted inspection.
+
+Phase 389 persists the debugging action kind, canonical file references, and a bounded secret-redacted exact command/argument summary in each immutable step; the matching audit event receives the same attribution so command and file actions remain reviewable after the session.
+
+Phase 392 routes VS Code progress cancellation to the bounded command runner through a native `AbortSignal`. A user cancellation ends the session with `user-cancelled`, records a session-stop audit, and does not increment failed-test attempts or store cancelled output as a test result. Session deadline expiration remains separately reported as `time-budget-exceeded`.
+
+Phase 397 makes ordinary session stop status workflow-owned (`STOPPED`). Callers cannot set `ESCALATED` through the stop request; escalation remains reachable only through the bounded step state machine, which blocks the task and publishes its hierarchy event and Director question transactionally.
+
+Phase 398 task cancellation, task result submission into review, and terminal execution failure close any active debugging session and append its stop attribution within the same SQLite unit of work as the task transition. A session audit failure rolls the task transition back as well; optional composition ports preserve compatibility for non-debugging task workflows.
+
+Review-finding memory records include a per-finding creation audit with source reference, evidence IDs, and SHA-256 content hash. Verification rechecks this attribution and rejects content substituted after persistence. Once verified, source text, title, category, importance, verifier, timestamp, and review note are immutable; verified state cannot be downgraded.
+
+Task execution reports require an application authorization policy and a current persisted actor. Reports join task and assignee identity with bounded AI usage, debugging steps, and a recent audit window; they omit arbitrary audit payloads and redact model, provider, command, result, and summary text before rendering. Provider attribution is a separate optional usage field so older usage rows migrate without fabricated provenance.
