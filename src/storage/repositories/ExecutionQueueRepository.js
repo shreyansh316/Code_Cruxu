@@ -1,9 +1,9 @@
 import { assertEntityId } from '../../shared/identifiers';
 
-const QUEUE_STATES = new Set(['QUEUED', 'CLAIMED', 'COMPLETED', 'CANCELLED']);
+const QUEUE_STATES = new Set(['QUEUED', 'CLAIMED', 'COMPLETED', 'FAILED', 'CANCELLED']);
 const QUEUE_TRANSITIONS = {
-    QUEUED: new Set(['CLAIMED', 'CANCELLED']),
-    CLAIMED: new Set(['QUEUED', 'COMPLETED', 'CANCELLED']),
+    QUEUED: new Set(['CLAIMED', 'FAILED', 'CANCELLED']),
+    CLAIMED: new Set(['QUEUED', 'COMPLETED', 'FAILED', 'CANCELLED']),
     COMPLETED: new Set(),
     CANCELLED: new Set(),
 };

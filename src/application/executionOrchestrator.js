@@ -5,12 +5,13 @@ import { ApplicationError, createUseCase } from './useCase';
 
 /** Coordinate an approved objective through durable execution, review, and deterministic reporting. */
 export function createExecutionOrchestrator({
-    taskCreationUseCase, scheduler, resultSubmissionUseCase, reviewUseCase,
+    taskCreationUseCase, scheduler, resultSubmissionUseCase, reviewUseCase, executionFailureRecovery,
     objectiveRepository, taskRepository, auditRepository, eventPublisher, unitOfWork, clock, idFactory,
 } = {}) {
     if (typeof taskCreationUseCase?.run !== 'function' || typeof scheduler?.run !== 'function'
         || typeof resultSubmissionUseCase?.run !== 'function'
-        || typeof reviewUseCase?.run !== 'function' || typeof objectiveRepository?.getById !== 'function'
+        || typeof reviewUseCase?.run !== 'function' || typeof executionFailureRecovery?.run !== 'function'
+        || typeof objectiveRepository?.getById !== 'function'
         || typeof objectiveRepository?.update !== 'function' || typeof taskRepository?.getById !== 'function'
         || typeof taskRepository?.update !== 'function' || typeof taskRepository?.list !== 'function'
         || typeof auditRepository?.append !== 'function' || typeof eventPublisher?.append !== 'function'
@@ -20,7 +21,7 @@ export function createExecutionOrchestrator({
     }
     return createUseCase({
         name: 'execution-orchestrator',
-        dependencies: { taskCreationUseCase, scheduler, resultSubmissionUseCase, reviewUseCase,
+        dependencies: { taskCreationUseCase, scheduler, resultSubmissionUseCase, reviewUseCase, executionFailureRecovery,
             objectiveRepository, taskRepository, auditRepository, eventPublisher, unitOfWork, clock, idFactory },
         execute: async ({ input, dependencies }) => {
             const plan = input?.plan;
@@ -69,8 +70,22 @@ export function createExecutionOrchestrator({
                 const started = scheduled.value.started;
                 if (!started.length) break;
                 for (const attempt of started) {
+                    if (attempt.status === 'CANCELLED') {
+                        markTaskCancelled(dependencies, attempt.taskId);
+                        executionFailures.push({ taskId: attempt.taskId, code: 'task-execution-cancelled' });
+                        continue;
+                    }
                     if (attempt.status !== 'SUCCEEDED') {
-                        executionFailures.push({ taskId: attempt.taskId, code: 'task-execution-failed' });
+                        const code = typeof attempt.errorCode === 'string' && /^[a-z][a-z0-9.-]{0,63}$/.test(attempt.errorCode)
+                            ? attempt.errorCode : 'task-execution-failed';
+                        if (attempt.phase === 'START') {
+                            recordTaskStartFailure(dependencies, attempt.taskId, code);
+                            executionFailures.push({ taskId: attempt.taskId, code });
+                            continue;
+                        }
+                        const recovered = await dependencies.executionFailureRecovery.run({ taskId: attempt.taskId, errorCode: code });
+                        if (!recovered.ok) throw new ApplicationError('execution-recovery-failed', 'Task execution recovery could not persist a safe retry outcome.');
+                        if (recovered.value.outcome === 'FAILED') executionFailures.push({ taskId: attempt.taskId, code });
                         continue;
                     }
                     const task = dependencies.taskRepository.getById(attempt.taskId);
@@ -138,6 +153,39 @@ function markTaskBlocked(dependencies, taskId, actorId, reasonCode) {
             appendEvent(dependencies, EventType.TASK_BLOCKED, taskId, occurredAt,
                 { taskId, reason: 'result-submission-failed' });
         }
+    });
+}
+
+function recordTaskStartFailure(dependencies, taskId, reasonCode) {
+    dependencies.unitOfWork.run(() => {
+        const task = dependencies.taskRepository.getById(taskId);
+        if (!task || task.status !== TaskStatus.ASSIGNED) {
+            throw new ApplicationError('task-start-state-mismatch', 'A task that failed before start must remain assigned.');
+        }
+        const occurredAt = now(dependencies.clock);
+        dependencies.auditRepository.append({ id: createEntityId(dependencies.idFactory()),
+            action: 'TASK_EXECUTION_START_FAILED', entity: 'task', entityId: taskId,
+            actorId: task.assigneeId, taskId, details: { errorCode: reasonCode, retryCount: task.retryCount } });
+        appendEvent(dependencies, EventType.TASK_START_FAILED, taskId, occurredAt,
+            { taskId, errorCode: reasonCode, status: TaskStatus.ASSIGNED });
+    });
+}
+
+function markTaskCancelled(dependencies, taskId) {
+    dependencies.unitOfWork.run(() => {
+        const task = dependencies.taskRepository.getById(taskId);
+        if (!task || task.status === TaskStatus.CANCELLED) return;
+        if (task.status !== TaskStatus.IN_PROGRESS) {
+            throw new ApplicationError('invalid-task-transition', 'Only an in-progress task can be cancelled after execution starts.');
+        }
+        assertTaskTransition(task.status, TaskStatus.CANCELLED);
+        dependencies.taskRepository.update(taskId, { status: TaskStatus.CANCELLED });
+        const occurredAt = now(dependencies.clock);
+        dependencies.auditRepository.append({ id: createEntityId(dependencies.idFactory()),
+            action: 'TASK_CANCELLED', entity: 'task', entityId: taskId,
+            actorId: task.assigneeId, taskId, details: { reason: 'execution-cancelled' } });
+        appendEvent(dependencies, EventType.TASK_CANCELLED, taskId, occurredAt,
+            { taskId, status: TaskStatus.CANCELLED, reason: 'execution-cancelled' });
     });
 }
 

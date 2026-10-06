@@ -6,6 +6,7 @@ const TABLES = Object.freeze({
     memory: 'memories',
     usage: 'ai_usages',
     audit: 'audit_logs',
+    debugging: 'debugging_sessions',
 });
 
 /** Run one bounded, atomic retention batch and preserve its counts in immutable storage. */
@@ -28,21 +29,33 @@ export function runDataRetention({ database, policy, now = new Date(), idFactory
         const deleted = {};
         for (const [key, table] of Object.entries(TABLES)) {
             const days = cutoffDays[key];
-            if (days === null) {
+            if (days === null && key !== 'memory') {
                 deleted[key] = 0;
                 continue;
             }
-            const cutoff = new Date(now.getTime() - days * 86_400_000).toISOString();
+            const conditions = [];
+            const parameters = [];
+            if (days !== null) {
+                conditions.push('created_at < ?');
+                parameters.push(new Date(now.getTime() - days * 86_400_000).toISOString());
+            }
+            if (key === 'memory') {
+                conditions.push('(expires_at IS NOT NULL AND expires_at <= ?)');
+                parameters.push(cutoffAt);
+                conditions.push('(invalidated_at IS NOT NULL AND invalidated_at <= ?)');
+                parameters.push(cutoffAt);
+            }
+            parameters.push(batchSize);
             deleted[key] = database.prepare(`
               DELETE FROM ${table} WHERE rowid IN (
-                SELECT rowid FROM ${table} WHERE created_at < ? ORDER BY created_at, rowid LIMIT ?
+                SELECT rowid FROM ${table} WHERE ${conditions.join(' OR ')} ORDER BY created_at, rowid LIMIT ?
               )
-            `).run(cutoff, batchSize).changes;
+            `).run(...parameters).changes;
         }
         database.prepare(`
-          INSERT INTO retention_runs (id, cutoff_at, memory_deleted, usage_deleted, audit_deleted)
-          VALUES (?, ?, ?, ?, ?)
-        `).run(runId, cutoffAt, deleted.memory, deleted.usage, deleted.audit);
+          INSERT INTO retention_runs (id, cutoff_at, memory_deleted, usage_deleted, audit_deleted, debugging_deleted)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `).run(runId, cutoffAt, deleted.memory, deleted.usage, deleted.audit, deleted.debugging);
         database.prepare('UPDATE retention_state SET active = 0 WHERE id = 1').run();
         return Object.freeze({ id: runId, cutoffAt, deleted: Object.freeze(deleted) });
     });

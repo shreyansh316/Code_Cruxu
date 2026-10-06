@@ -3,6 +3,7 @@ export { createWorkspaceFileAdapter } from './WorkspaceFileAdapter';
 export { isSensitiveWorkspacePath } from './sensitiveWorkspacePath';
 export { createCommandRunner } from './CommandRunner';
 export { createTaskScopedTools } from './TaskScopedTools';
+export { createPersistedTaskToolsProvider } from './PersistedTaskToolsProvider';
 export { createWorkspaceSnapshot, compareWorkspaceSnapshots } from './WorkspaceSnapshot';
 export { createGitStateAdapter } from './GitStateAdapter';
 export { createGitTaskWorkspaceAdapter } from './GitTaskWorkspaceAdapter';

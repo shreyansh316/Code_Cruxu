@@ -47,7 +47,7 @@ describe('Phase 084 — extension lifecycle hardening', () => {
         const context = new HeadroomContext(extension);
         await Promise.all([context.initialize(), context.initialize()]);
         expect(context.isInitialized).toBe(true);
-        expect(vscode.commands.registerCommand).toHaveBeenCalledTimes(15);
+        expect(vscode.commands.registerCommand).toHaveBeenCalledTimes(26);
         expect(vscode.window.registerTreeDataProvider).toHaveBeenCalledTimes(4);
         expect(extension.subscriptions).toHaveLength(registrations.length + 6);
         context.dispose();

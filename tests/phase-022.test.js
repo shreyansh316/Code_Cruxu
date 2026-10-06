@@ -57,4 +57,17 @@ describe('Phase 022 — workspace file adapter', () => {
         const adapter = await createWorkspaceFileAdapter({ workspaceRoot: root });
         await expect(adapter.writeFile('x.txt', Buffer.from('no'))).rejects.toBeInstanceOf(DomainInvariantError);
     });
+
+    it('rejects workspace reads and writes after their task signal has been aborted', async () => {
+        const root = await temporaryDirectory();
+        await writeFile(join(root, 'existing.txt'), 'unchanged');
+        const adapter = await createWorkspaceFileAdapter({ workspaceRoot: root });
+        const controller = new AbortController();
+        controller.abort();
+        await expect(adapter.readFile('existing.txt', { signal: controller.signal }))
+            .rejects.toMatchObject({ code: 'task-execution-cancelled' });
+        await expect(adapter.writeFile('existing.txt', 'changed', { signal: controller.signal }))
+            .rejects.toMatchObject({ code: 'task-execution-cancelled' });
+        expect(await readFile(join(root, 'existing.txt'), 'utf8')).toBe('unchanged');
+    });
 });

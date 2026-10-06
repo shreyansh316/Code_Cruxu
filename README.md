@@ -46,9 +46,14 @@ The following capabilities are implemented and verified in the current codebase:
 * **Plan Proposal & Approval**: Decompose objectives into projects, milestones, tasks, and dependency DAGs that require explicit developer approval before execution.
 * **Task Queue & Scheduling**: Transactional scheduling with dependency resolution, priority ordering, retry policies, and execution cancellation.
 * **Task-Scoped Tool Permissions**: Restrict worker filesystem access to explicit path allowlists and command execution to approved executables with validated arguments.
+* **Controlled Debugging Sessions**: Advance active task debugging through reproduce, inspect, hypothesis, test, patch, review, and verify stages with saved workspace grants, explicit command/patch confirmation, bounded retries, retained action evidence, and escalation into the Director question queue.
+* **Engineering Decision Lineage**: Preserve immutable decision alternatives and evidence, record same-organization supersession/related links, reject supersession cycles, and use **HEADROOM: Recall Engineering Decisions** to search authorized organization records and inspect their provenance in a bounded Markdown report.
 * **Automated Result Verification**: Execute bounded verification commands (test runners, custom scripts, syntax checkers) to collect concrete machine evidence before work can be marked as complete.
 * **Review Evidence Bundling**: Automatically assemble before-and-after workspace snapshots, Git status diffs, and verification logs for developer review.
+* **Cited Review Memory**: Save findings from an engineering review JSON document to a chosen task only after explicit confirmation by an available CEO in that task's organization. Saved findings retain citations, audit attribution, and unverified status until separately reviewed.
+* **Evidence-Backed Code Explainability**: Select “why,” alternatives, challenge, simplification, security/performance/token-cost review, or fix intents for selected code; each request is confirmed and validated against cited evidence.
 * **Append-Only Audit Logging**: Record every state transition, hierarchy handoff, plan decision, and tool execution in a local SQLite audit ledger.
+* **Execution Evidence Reports**: Review a task's persisted assignee, provider/model usage, estimated-cost coverage, debugging actions, task-linked file and command activity, and recent audit milestones from the task view.
 * **Secure Credential Storage**: Isolate provider credentials using VS Code's native `SecretStorage` API, ensuring API keys never enter prompts, audit logs, or git history.
 * **Secret Redaction**: Automatically redact tokens, passwords, Basic/Bearer auth headers, and private keys from captured command outputs, logs, and activity feeds.
 * **Local-First SQLite Persistence**: Complete offline persistence powered by `better-sqlite3` with transactional, forward-migrating schema management.

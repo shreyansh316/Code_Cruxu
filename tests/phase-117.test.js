@@ -41,7 +41,7 @@ describe('Phase 117 — persisted employee capabilities', () => {
         database.prepare("INSERT INTO agents (id, name, role, status) VALUES ('legacy-117', 'Legacy Agent', 'EMPLOYEE', 'IDLE')").run();
         database.prepare("INSERT INTO tasks (id, task_code, title) VALUES ('legacy-task-117', 'LEGACY-117', 'Legacy task')").run();
 
-        expect(applyMigrations(database)).toBe(12);
+        expect(applyMigrations(database)).toBe(SCHEMA_MIGRATIONS.at(-1).version);
         expect(new AgentRepository(database).getById('legacy-117')).toMatchObject({
             id: 'legacy-117', name: 'Legacy Agent', capabilities: [], lifecycleStatus: 'ACTIVE',
         });

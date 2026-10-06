@@ -52,11 +52,13 @@ describe('Phase 026 — scoped memory repository', () => {
     });
 
     it('isolates scope and owner queries and updates only valid records', () => {
-        const first = memories.create(memory('mem-task-one', 'TASK', { taskId: owners.taskId }));
+        const first = memories.create({ ...memory('mem-task-one', 'TASK', { taskId: owners.taskId }),
+            sourceKind: 'TEST_RESULT', sourceReference: 'test:phase-026' });
         memories.create(memory('mem-project-one', 'PROJECT', { projectId: owners.projectId }));
         expect(memories.listByScope('TASK')).toEqual([first]);
         expect(memories.listByOwner('TASK', owners.taskId)).toEqual([first]);
-        expect(memories.update(first.id, { verified: 1 })?.verified).toBe(1);
+        expect(memories.update(first.id, { verified: 1, sourceKind: 'TEST_RESULT', sourceReference: 'test:phase-026',
+            verifiedByAgentId: 'agent-memory-reviewer', verifiedAt: '2026-10-05T00:00:00.000Z' })?.verified).toBe(1);
         expect(memories.delete(first.id)).toBe(true);
         expect(memories.listByOwner('TASK', owners.taskId)).toEqual([]);
     });

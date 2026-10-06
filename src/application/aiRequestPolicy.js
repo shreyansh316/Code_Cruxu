@@ -70,9 +70,11 @@ export function createBoundedAIProvider({ provider, inputTokenCounter, usageReco
                     await record(zeroUsage(), false);
                     return errorResponse(request, 'provider-token-count-invalid');
                 }
-                if (inputTokens > limits.maxInputTokens) {
+                const inputLimit = Math.min(limits.maxInputTokens, limits.maxTotalTokens ?? limits.maxInputTokens);
+                if (inputTokens > inputLimit) {
                     await record({ inputTokens, outputTokens: 0 }, false);
-                    return errorResponse(request, 'input-token-budget-exceeded');
+                    return errorResponse(request, limits.maxTotalTokens !== undefined
+                        ? 'task-token-budget-exceeded' : 'input-token-budget-exceeded');
                 }
                 if (signal?.aborted) return cancelled(request);
                 if (timedOut) {
@@ -81,18 +83,28 @@ export function createBoundedAIProvider({ provider, inputTokenCounter, usageReco
                 }
 
                 let totalUsage = zeroUsage();
+                let budgetedTokens = 0;
                 let finalResponse;
                 for (let attempt = 0; attempt <= limits.maxRetries; attempt += 1) {
+                    const remainingTotal = limits.maxTotalTokens === undefined ? undefined
+                        : limits.maxTotalTokens - budgetedTokens - inputTokens;
+                    if (remainingTotal !== undefined && remainingTotal < 1) {
+                        finalResponse = errorResponse(request, 'task-token-budget-exceeded');
+                        await record(zeroUsage(), false, attempt + 1);
+                        break;
+                    }
+                    const maxOutputTokens = Math.min(limits.maxOutputTokens, remainingTotal ?? limits.maxOutputTokens);
                     let response;
                     try {
                         const providerResponse = await raceWithAbort(() => provider.generate(request, {
                             signal: controller.signal,
                             budget: { maxInputTokens: limits.maxInputTokens,
-                                maxOutputTokens: limits.maxOutputTokens, timeoutMs: limits.timeoutMs },
+                                maxOutputTokens, timeoutMs: limits.timeoutMs,
+                                ...(limits.maxTotalTokens === undefined ? {} : { maxTotalTokens: limits.maxTotalTokens }) },
                         }), controller.signal);
                         response = validateAIProviderResponse(request, providerResponse);
                         if (response.usage.inputTokens > limits.maxInputTokens
-                            || response.usage.outputTokens > limits.maxOutputTokens) {
+                            || response.usage.outputTokens > maxOutputTokens) {
                             throw new Error('Provider exceeded the declared token budget.');
                         }
                     }
@@ -101,6 +113,16 @@ export function createBoundedAIProvider({ provider, inputTokenCounter, usageReco
                     }
                     if (timedOut) response = errorResponse(request, 'provider-timeout');
                     else if (signal?.aborted) response = cancelled(request);
+
+                    const attemptInputTokens = Math.max(inputTokens, response.usage.inputTokens);
+                    const attemptBudgetedTokens = attemptInputTokens + response.usage.outputTokens;
+                    const overTaskBudget = limits.maxTotalTokens !== undefined && response.finishReason !== 'CANCELLED'
+                        && budgetedTokens + attemptBudgetedTokens > limits.maxTotalTokens;
+                    if (overTaskBudget) {
+                        response = Object.freeze({ requestId: request.requestId, model: request.model,
+                            finishReason: 'ERROR', errorCode: 'task-token-budget-exceeded', usage: response.usage });
+                    }
+                    if (response.finishReason !== 'CANCELLED') budgetedTokens += attemptBudgetedTokens;
 
                     totalUsage = {
                         inputTokens: totalUsage.inputTokens + response.usage.inputTokens,
@@ -134,11 +156,14 @@ function validateBudget(value) {
         || !Number.isSafeInteger(value.maxOutputTokens) || value.maxOutputTokens < 1 || value.maxOutputTokens > 8_192
         || !Number.isSafeInteger(value.timeoutMs) || value.timeoutMs < 1 || value.timeoutMs > 120_000
         || !Number.isSafeInteger(value.maxRetries) || value.maxRetries < 0 || value.maxRetries > 3
-        || !Number.isSafeInteger(value.retryDelayMs) || value.retryDelayMs < 0 || value.retryDelayMs > 5_000) {
+        || !Number.isSafeInteger(value.retryDelayMs) || value.retryDelayMs < 0 || value.retryDelayMs > 5_000
+        || (value.maxTotalTokens !== undefined && (!Number.isSafeInteger(value.maxTotalTokens)
+            || value.maxTotalTokens < 1 || value.maxTotalTokens > 1_000_000))) {
         throw new TypeError('AI request budgets must use bounded input/output tokens, timeout, retry count, and retry delay.');
     }
     return Object.freeze({ maxInputTokens: value.maxInputTokens, maxOutputTokens: value.maxOutputTokens,
-        timeoutMs: value.timeoutMs, maxRetries: value.maxRetries, retryDelayMs: value.retryDelayMs });
+        timeoutMs: value.timeoutMs, maxRetries: value.maxRetries, retryDelayMs: value.retryDelayMs,
+        ...(value.maxTotalTokens === undefined ? {} : { maxTotalTokens: value.maxTotalTokens }) });
 }
 
 function errorResponse(request, errorCode) {

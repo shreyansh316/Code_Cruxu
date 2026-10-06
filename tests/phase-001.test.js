@@ -13,6 +13,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { COMMANDS, VIEWS, AgentRole, TaskStatus, EventType, MemoryScope, ALLOWED_COMMUNICATION, OFFICES, DEPARTMENTS, } from '../src/constants';
+import packageManifest from '../package.json';
 describe('Phase 001 — Constants & Types', () => {
     describe('COMMANDS', () => {
         it('defines all required commands', () => {
@@ -26,6 +27,12 @@ describe('Phase 001 — Constants & Types', () => {
             for (const cmd of Object.values(COMMANDS)) {
                 expect(cmd).toMatch(/^headroom\./);
             }
+        });
+        it('contributes every registered application command', () => {
+            const contributed = new Set(packageManifest.contributes.commands.map(({ command }) => command));
+            expect(Object.values(COMMANDS).filter((command) => !contributed.has(command))).toEqual([]);
+            expect(contributed.has(COMMANDS.CONFIGURE_TASK_TOOL_PERMISSIONS)).toBe(true);
+            expect(contributed.has(COMMANDS.RUN_ASSIGNED_TASK)).toBe(true);
         });
     });
     describe('VIEWS', () => {

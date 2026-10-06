@@ -56,8 +56,10 @@ async function runWorkflow(api) {
         const idFactory = () => `e2e-generated-${++id}`;
         const clock = { now: () => new Date().toISOString() };
 
-        const intake = api.createObjectiveIntakeUseCase({ objectiveRepository, idFactory });
+        const intake = api.createObjectiveIntakeUseCase({ objectiveRepository, organizationRepository: organization,
+            agentRepository: agents, idFactory });
         const objectiveOutcome = await intake.run({ title: 'Deliver a verified file',
+            ceoId: 'e2e-ceo',
             organizationId: 'e2e-org',
             description: 'Create a workspace file and prove its contents with an authorized verification command.' });
         assert.equal(objectiveOutcome.ok, true, errorText(objectiveOutcome));
@@ -191,10 +193,12 @@ async function runWorkflow(api) {
             eventPublisher, unitOfWork, clock, idFactory });
         const review = api.createTaskReviewUseCase({ taskRepository, agentRepository: agents, hierarchyProvider,
             auditRepository, eventPublisher, unitOfWork, clock, idFactory });
+        const executionFailureRecovery = api.createTaskExecutionFailureRecovery({ taskRepository, queueRepository,
+            auditRepository, eventPublisher, unitOfWork, clock, idFactory });
         const taskCreation = api.createTaskCreationUseCase({ objectiveRepository, projectRepository, taskRepository,
             dependencyRepository, hierarchyProvider, auditRepository, eventPublisher, unitOfWork, clock, idFactory });
         const orchestrator = api.createExecutionOrchestrator({ taskCreationUseCase: taskCreation, scheduler,
-            resultSubmissionUseCase: resultSubmission, reviewUseCase: review, objectiveRepository, taskRepository,
+            resultSubmissionUseCase: resultSubmission, reviewUseCase: review, executionFailureRecovery, objectiveRepository, taskRepository,
             auditRepository, eventPublisher, unitOfWork, clock, idFactory });
         const execution = await orchestrator.run({ plan: approvedPlan,
             assignments: [{ taskId: taskPlan.id, creatorId: routedDepartment.departmentManagerId, assigneeId: employeeId }],

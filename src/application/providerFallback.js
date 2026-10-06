@@ -19,19 +19,29 @@ export function createProviderFallbackPolicy({ primary, fallback, primaryId, fal
         async generate(value, { signal, budget } = {}) {
             const request = createAIProviderRequest(value);
             const first = await invoke(primary, request, { signal, budget });
+            const maxTotalTokens = budget?.maxTotalTokens;
+            const firstTotal = first.usage.inputTokens + first.usage.outputTokens;
+            if (Number.isSafeInteger(maxTotalTokens) && maxTotalTokens >= 1 && firstTotal > maxTotalTokens) {
+                return errorResponse(request, 'task-token-budget-exceeded', first.usage);
+            }
             if (!fallback || first.finishReason !== 'ERROR' || !safeFallbackErrors.has(first.errorCode) || signal?.aborted
                 || !Number.isSafeInteger(budget?.maxOutputTokens) || budget.maxOutputTokens <= first.usage.outputTokens) {
                 return first;
             }
-            const remainingOutputTokens = budget.maxOutputTokens - first.usage.outputTokens;
+            const remainingOutputTokens = Math.min(budget.maxOutputTokens - first.usage.outputTokens,
+                Number.isSafeInteger(maxTotalTokens) ? maxTotalTokens - firstTotal - first.usage.inputTokens : Infinity);
+            if (remainingOutputTokens < 1) return errorResponse(request, 'task-token-budget-exceeded', first.usage);
             const second = await invoke(fallback, request, { signal, budget: { ...budget, maxOutputTokens: remainingOutputTokens } });
             const usage = addUsage(first.usage, second.usage);
+            const overTaskBudget = Number.isSafeInteger(maxTotalTokens) && usage.inputTokens + usage.outputTokens > maxTotalTokens;
             try {
                 await fallbackRecorder.recordFallback({ requestId: request.requestId, primaryProviderId: primaryId,
-                    fallbackProviderId: fallbackId, reason: first.errorCode, outcome: second.finishReason });
+                    fallbackProviderId: fallbackId, reason: first.errorCode,
+                    outcome: overTaskBudget ? 'ERROR' : second.finishReason });
             } catch {
                 return errorResponse(request, 'provider-fallback-audit-failed', usage);
             }
+            if (overTaskBudget) return errorResponse(request, 'task-token-budget-exceeded', usage);
             return Object.freeze({ ...second, usage });
         },
     });

@@ -127,13 +127,13 @@ describe('Phase 047 — bounded AI request policy', () => {
         const usageRepository = new AIUsageRepository(database);
         let usageId = 0;
         const usageRecorder = createAIUsageRecorder({ usageRepository, agentId: 'usage-agent-047', taskId: 'usage-task-047',
-            purpose: 'bounded-test', estimateCost: () => 0, idFactory: () => `usage-policy-047-${++usageId}` });
+            provider: 'gemini', purpose: 'bounded-test', estimateCost: () => 0, idFactory: () => `usage-policy-047-${++usageId}` });
         const provider = { generate: vi.fn(async () => response()) };
         const bounded = createBoundedAIProvider({ provider, inputTokenCounter: async () => 12, usageRecorder });
         await bounded.generate(request, { budget });
         expect(usageRepository.getById('usage-policy-047-1')).toMatchObject({
             requestId: request.requestId, attempt: 1, agentId: 'usage-agent-047', taskId: 'usage-task-047',
-            model: request.model, inputTokens: 8, outputTokens: 3, purpose: 'bounded-test', success: true,
+            provider: 'gemini', model: request.model, inputTokens: 8, outputTokens: 3, purpose: 'bounded-test', success: true,
         });
         expect(usageRepository.listByTask('usage-task-047')).toHaveLength(1);
     });
@@ -149,7 +149,7 @@ describe('Phase 047 — bounded AI request policy', () => {
             .run('usage-before-correlation', 'legacy-model', 4, 2, 0, 1);
         applyMigrations(database);
         expect(new AIUsageRepository(database).getById('usage-before-correlation')).toMatchObject({
-            requestId: null, attempt: 1, model: 'legacy-model', inputTokens: 4, outputTokens: 2,
+            requestId: null, attempt: 1, model: 'legacy-model', provider: null, inputTokens: 4, outputTokens: 2,
         });
     });
 

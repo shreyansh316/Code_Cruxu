@@ -29,10 +29,12 @@ export function redactSensitiveText(value) {
 }
 
 /** Provide owner-scoped memory export/deletion controls with minimal audit metadata. */
-export function createMemoryPrivacyControls({ memoryRepository, auditRepository, unitOfWork, actorId, idFactory } = {}) {
+export function createMemoryPrivacyControls({ memoryRepository, auditRepository, unitOfWork, actorId, idFactory,
+    now = () => new Date().toISOString() } = {}) {
     if (typeof memoryRepository?.getByOwner !== 'function' || typeof memoryRepository?.deleteByOwner !== 'function'
+        || typeof memoryRepository?.invalidateByOwner !== 'function'
         || typeof auditRepository?.append !== 'function' || typeof unitOfWork?.run !== 'function'
-        || typeof idFactory !== 'function') throw new TypeError('Memory privacy controls require scoped storage, audit, and transaction ports.');
+        || typeof idFactory !== 'function' || typeof now !== 'function') throw new TypeError('Memory privacy controls require scoped storage, audit, and transaction ports.');
     actorId = assertEntityId(actorId, 'Privacy actor id');
     return Object.freeze({
         exportMemory({ scope, ownerId, ownerType, memoryId } = {}) {
@@ -53,6 +55,18 @@ export function createMemoryPrivacyControls({ memoryRepository, auditRepository,
                 const deleted = memoryRepository.deleteByOwner(scope, ownerId, memoryId, { ownerType });
                 if (!deleted) return false;
                 auditRepository.append({ id: idFactory(), action: 'MEMORY_DELETED_FOR_PRIVACY', entity: 'memory', entityId: memoryId,
+                    actorId, details: { scope } });
+                return true;
+            });
+        },
+        invalidateMemory({ scope, ownerId, ownerType, memoryId } = {}) {
+            ownerId = assertEntityId(ownerId, 'Memory owner id');
+            memoryId = assertEntityId(memoryId, 'Memory id');
+            return unitOfWork.run(() => {
+                const invalidated = memoryRepository.invalidateByOwner(scope, ownerId, memoryId,
+                    { ownerType, invalidatedAt: now() });
+                if (!invalidated) return false;
+                auditRepository.append({ id: idFactory(), action: 'MEMORY_INVALIDATED_FOR_PRIVACY', entity: 'memory', entityId: memoryId,
                     actorId, details: { scope } });
                 return true;
             });

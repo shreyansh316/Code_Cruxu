@@ -6,6 +6,8 @@ describe('Phase 115 — truthful execution status', () => {
         expect(createCommandCenterSnapshot({ objectives: [], tasks: [], executionStatus: 'PAUSED' }).executionStatus).toBe('PAUSED');
         expect(createCommandCenterSnapshot({ objectives: [], tasks: [], executionStatus: 'CANCELLED' }).executionStatus).toBe('CANCELLED');
         expect(createCommandCenterSnapshot({ objectives: [], tasks: [], executionStatus: 'UNKNOWN' }).executionStatus).toBe('RUNNING');
-        expect(renderCommandCenterHtml()).toContain("snapshot.executionStatus === 'CANCELLED' ? 'cancelled'");
+        const html = renderCommandCenterHtml();
+        expect(html).toContain("['PAUSED', 'CANCELLED'].includes(snapshot.executionStatus) ? snapshot.executionStatus : 'RUNNING'");
+        expect(html).toContain("executionStatus === 'CANCELLED' ? 'cancelled' : 'running'");
     });
 });

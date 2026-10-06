@@ -28,33 +28,33 @@ export async function createTaskScopedTools({ workspaceRoot, filesystem, process
     }
     return Object.freeze({
         filesystem: Object.freeze({
-            readFile(path) {
+            readFile(path, options) {
                 const normalized = relativePath(path);
                 if (isSensitiveWorkspacePath(normalized) || !readFiles.has(normalized)) return Promise.reject(denied());
-                return filesystem.readFile(normalized);
+                return filesystem.readFile(normalized, options);
             },
-            writeFile(path, contents) {
+            writeFile(path, contents, options) {
                 const normalized = relativePath(path);
                 if (isSensitiveWorkspacePath(normalized) || !writeFiles.has(normalized)) return Promise.reject(denied());
-                return filesystem.writeFile(normalized, contents);
+                return filesystem.writeFile(normalized, contents, options);
             },
-            createFile(path, contents) {
+            createFile(path, contents, options) {
                 const normalized = relativePath(path);
                 if (isSensitiveWorkspacePath(normalized) || !writeFiles.has(normalized) || typeof filesystem.createFile !== 'function') return Promise.reject(denied());
-                return filesystem.createFile(normalized, contents);
+                return filesystem.createFile(normalized, contents, options);
             },
-            deleteFile(path) {
+            deleteFile(path, options) {
                 const normalized = relativePath(path);
                 if (isSensitiveWorkspacePath(normalized) || !writeFiles.has(normalized) || typeof filesystem.deleteFile !== 'function') return Promise.reject(denied());
-                return filesystem.deleteFile(normalized);
+                return filesystem.deleteFile(normalized, options);
             },
-            renameFile(path, newPath) {
+            renameFile(path, newPath, options) {
                 const normalized = relativePath(path);
                 const normalizedNewPath = relativePath(newPath);
                 if (isSensitiveWorkspacePath(normalized) || isSensitiveWorkspacePath(normalizedNewPath)
                     || !writeFiles.has(normalized) || !writeFiles.has(normalizedNewPath)
                     || typeof filesystem.renameFile !== 'function') return Promise.reject(denied());
-                return filesystem.renameFile(normalized, normalizedNewPath);
+                return filesystem.renameFile(normalized, normalizedNewPath, options);
             },
         }),
         process: Object.freeze({
