@@ -20,7 +20,7 @@ The latest migration is the authoritative schema version (`SCHEMA_MIGRATIONS.at(
 
 ## Release checks
 
-Before a release, run the full unit suite, compile, SQLite compatibility check, JavaScript-only source/test scan, `npm run test:vscode`, `npm run package`, and `npm run test:vscode:vsix`. The package command builds only for the current target. Do not claim another target until its package and host checks pass. Review the VSCE warning about the missing top-level license file before any Marketplace publication.
+Before a release, run the full unit suite, compile, SQLite compatibility check, JavaScript-only source/test scan, `npm run test:vscode`, `npm run package`, and `npm run test:vscode:vsix`. The package command builds only for the current target. Do not claim another target until its package and host checks pass. Confirm the selected license and copyright attribution are accurate, and verify the top-level `LICENSE` file is included in the VSIX before any Marketplace publication.
 
 ## Continuous integration
 
