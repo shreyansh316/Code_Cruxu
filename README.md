@@ -282,7 +282,7 @@ If you encounter bugs, have questions, or want to propose technical improvements
 
 ## License
 
-HEADROOM's licensing terms will be formally established prior to the public v1.0 release. All rights are currently reserved by the project maintainers during the initial development phase.
+HEADROOM is licensed under the MIT License. See [LICENSE](./LICENSE) for the full terms.
 
 ## Acknowledgments
 
