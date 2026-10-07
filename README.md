@@ -328,7 +328,7 @@ AI-generated changes are treated like any other contribution: they must be under
 
 ## License
 
-HEADROOM is open-source software licensed under the **[MIT License](./LICENSE)**.
+HEADROOM is open-source software licensed under the MIT License. See [LICENSE](./LICENSE) for the full terms.
 
 This repository incorporates reference workforce capability blueprints from Agency Agents under `imports/agency-agents/`, which retain their original MIT license and copyright attribution as documented in **[agency-agents-integration.md](./agency-agents-integration.md)**.
 
