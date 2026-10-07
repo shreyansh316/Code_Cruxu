@@ -1,6 +1,7 @@
 /** Phase 221 — communicate terminal output truncation in activity. */
 import { describe, expect, it } from 'vitest';
-import { createCommandCenterSnapshot, renderCommandCenterHtml } from '../src/core/CommandCenterPanel';
+import { createCommandCenterSnapshot } from '../src/core/CommandCenterPanel';
+import { renderCommandCenterHtml } from '../src/core/commandCenterView';
 import { ExecutionActivityFeed } from '../src/core/ExecutionActivityFeed';
 
 describe('Phase 221 — terminal preview truncation', () => {

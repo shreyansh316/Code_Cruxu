@@ -37,3 +37,7 @@ export { assertAgentInvariant, assertCanReportTo, assertDepartmentInvariant, ass
 export { createEntityId, createSlug } from './values';
 export { CODE_EXPLANATION_ACTIONS, CODE_EXPLANATION_SECTIONS, CODE_EXPLANATION_SOURCES, createCodeExplanation } from './codeExplanation';
 export { ENGINEERING_REVIEW_AREAS, ENGINEERING_REVIEW_SEVERITIES, createEngineeringReview } from './engineeringReview';
+export { POSITION_CATALOG, getPositionDepartments, getDepartmentPositions, findPositionsByCapability, findPositionBySpecialization } from './positionCatalog';
+export { auditTaskToolPermissions, assertTaskToolPermissionsWithinPosition } from './positionManifestAudit';
+export { GAME_ENGINE_LEVELS, GAME_ENGINES, MAX_DETECTED_LEVEL, ENGINE_EXECUTION_AVAILABILITY, createEngineCapabilityClaim } from './gameEngines';
+export { pathMatchesScope, assertScopePattern } from './scopeMatch';

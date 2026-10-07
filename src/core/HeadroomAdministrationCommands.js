@@ -10,7 +10,7 @@ import { createEngineeringDecisionUseCase } from '../application/engineeringDeci
 import { createDecisionRecallUseCase } from '../application/decisionRecall';
 import { createTaskToolPermissionManagement } from '../application/taskToolPermissionManagement';
 import { createSqliteUnitOfWork } from '../infrastructure';
-import { createWorkspaceFingerprint } from '../shared/workspaceFingerprint';
+import { requireSingleWorkspaceFingerprint } from './workspaceAccess';
 import { getMessage } from './messages';
 import { redactSecrets } from '../shared/redactSecrets';
 
@@ -108,17 +108,9 @@ export async function recallEngineeringDecisions({ database } = {}) {
 }
 
 export async function configureTaskToolPermissions({ database, refresh = () => {}, refreshStatus = () => {} } = {}) {
-    const folders = vscode.workspace.workspaceFolders ?? [];
-    if (folders.length !== 1 || typeof folders[0]?.uri?.fsPath !== 'string') {
-        vscode.window.showErrorMessage('Open exactly one workspace folder before configuring task permissions.');
-        return;
-    }
-    let workspaceFingerprint;
-    try { workspaceFingerprint = await createWorkspaceFingerprint(folders[0].uri.fsPath); }
-    catch {
-        vscode.window.showErrorMessage('The active workspace could not be identified safely.');
-        return;
-    }
+    const workspace = await requireSingleWorkspaceFingerprint({ purpose: 'configuring task permissions' });
+    if (!workspace) return;
+    const { fingerprint: workspaceFingerprint } = workspace;
     const tasks = new TaskRepository(database).list().filter((task) => [TaskStatus.CREATED, TaskStatus.ASSIGNED].includes(task.status))
         .map((task) => {
             const project = task.projectId ? new ProjectRepository(database).getById(task.projectId) : undefined;
@@ -157,7 +149,7 @@ export async function configureTaskToolPermissions({ database, refresh = () => {
         } });
     if (raw === undefined) return;
     const confirmation = await vscode.window.showWarningMessage(
-        `Save tool permissions for “${selected.task.title}” in workspace “${folders[0].name}”? Grants are immutable after queueing.`,
+        `Save tool permissions for “${selected.task.title}” in workspace “${workspace.name}”? Grants are immutable after queueing.`,
         { modal: true }, 'Save permissions');
     if (confirmation !== 'Save permissions') return;
     const hierarchyProvider = { getSnapshot: () => {

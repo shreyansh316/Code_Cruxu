@@ -343,7 +343,8 @@
     "audit:dead-code": "node scripts/dead-code-audit.js",
     "package": "node ./test/runTest.js --package",
     "test:vscode:vsix": "node ./test/runTest.js --vsix",
-    "vscode:prepublish": "npm run compile"
+    "vscode:prepublish": "npm run compile",
+    "audit:duplicate-logic": "node scripts/duplicate-logic-audit.js"
   },
   "dependencies": {
     "better-sqlite3": "^11.0.0"

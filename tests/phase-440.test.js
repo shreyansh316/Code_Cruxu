@@ -1,6 +1,6 @@
 /** Phase 440 — keep Command Center evidence readable at narrow widths. */
 import { describe, expect, it } from 'vitest';
-import { renderCommandCenterHtml } from '../src/core/CommandCenterPanel';
+import { renderCommandCenterHtml } from '../src/core/commandCenterView';
 
 describe('Phase 440 — resilient Command Center evidence layout', () => {
     it('wraps long task, file, and Director text instead of forcing horizontal overflow', () => {

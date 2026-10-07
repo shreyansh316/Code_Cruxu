@@ -1,0 +1,1275 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "repository": "Agency Agents (agency-agents-main)",
+    "root": "imports/agency-agents",
+    "license": "MIT",
+    "attribution": "Copyright (c) 2025 AgentLand Contributors",
+    "manifest": "imports/agency-agents/manifest.json",
+    "importedFiles": 140,
+    "inspectedUpstreamFiles": 381,
+    "importSelectionCounts": {
+      "A": 93,
+      "B": 47,
+      "CExcluded": 86,
+      "DExcluded": 155
+    }
+  },
+  "headroomAuthority": {
+    "hierarchy": [
+      "CEO",
+      "DIRECTOR",
+      "HEAD_MANAGER",
+      "DEPT_MANAGER",
+      "EMPLOYEE"
+    ],
+    "employeeSlotsPerDepartment": 4,
+    "sharedSkillRegistry": "src/application/workforceSkills.js",
+    "runtimeIntegration": "src/application/structuredEmployeeTaskAdapter.js",
+    "routingSource": "src/application/departmentDecomposition.js",
+    "permissionSource": "src/infrastructure/TaskScopedTools.js",
+    "verificationSource": "src/application/employeeResultVerification.js"
+  },
+  "nativeSkills": [
+    {
+      "slug": "skill:minimal-change-discipline",
+      "adaptationStatus": "REENGINEERED",
+      "blueprintSource": "imports/agency-agents/agency-agents-workforce-map.json#/sharedSkills/0",
+      "source": "imports/agency-agents/engineering/engineering-minimal-change-engineer.md",
+      "mappedCapability": "Cross-office minimal-change practice; selected through exact task requiredCapabilities."
+    },
+    {
+      "slug": "skill:evidence-collection",
+      "adaptationStatus": "REENGINEERED",
+      "blueprintSource": "imports/agency-agents/agency-agents-workforce-map.json#/sharedSkills/1",
+      "source": "imports/agency-agents/testing/testing-evidence-collector.md",
+      "mappedCapability": "Cross-office test and verification evidence; selected through exact task requiredCapabilities."
+    },
+    {
+      "slug": "skill:code-review-critique",
+      "adaptationStatus": "REENGINEERED",
+      "blueprintSource": "imports/agency-agents/agency-agents-workforce-map.json#/sharedSkills/2",
+      "source": "imports/agency-agents/engineering/engineering-code-reviewer.md",
+      "mappedCapability": "Employee and department-manager review tasks; role fit remains defined by current workforce records."
+    },
+    {
+      "slug": "skill:git-pr-workflow",
+      "adaptationStatus": "REENGINEERED",
+      "blueprintSource": "imports/agency-agents/agency-agents-workforce-map.json#/sharedSkills/3",
+      "source": "imports/agency-agents/engineering/engineering-git-workflow-master.md",
+      "mappedCapability": "Git workflow guidance only where existing task permissions allow Git operations."
+    },
+    {
+      "slug": "skill:technical-documentation",
+      "adaptationStatus": "REENGINEERED",
+      "blueprintSource": "imports/agency-agents/agency-agents-workforce-map.json#/sharedSkills/4",
+      "source": "imports/agency-agents/engineering/engineering-technical-writer.md",
+      "mappedCapability": "Cross-office technical documentation and decision records."
+    },
+    {
+      "slug": "skill:secret-redaction-discipline",
+      "adaptationStatus": "REENGINEERED",
+      "blueprintSource": "imports/agency-agents/agency-agents-workforce-map.json#/sharedSkills/5",
+      "source": "imports/agency-agents/security/security-secrets-credential-engineer.md",
+      "mappedCapability": "Cross-office secret handling; current credential, redaction, and permission boundaries remain authoritative."
+    }
+  ],
+  "provenanceDisposition": {
+    "reengineeredSourceFiles": 6,
+    "referenceOnlyImportedFiles": 134,
+    "referenceOnlyStatus": "REFERENCE_ONLY",
+    "inventoryAuthority": "imports/agency-agents/manifest.json lists every imported file and its import-selection classification; an A/B import class does not imply runtime integration."
+  },
+  "toolsAndPermissions": {
+    "newTools": [],
+    "newPermissions": [],
+    "skillRequiredToolsGrantAccess": false,
+    "existingEnforcement": "TaskScopedTools and persisted task permission manifests"
+  },
+  "gameDevelopment": {
+    "mappedOffice": "game-development",
+    "mappedCoverage": [
+      "Unreal",
+      "Unity",
+      "Godot",
+      "Roblox",
+      "Blender",
+      "gameplay",
+      "graphics and shaders",
+      "technical art",
+      "animation",
+      "audio",
+      "multiplayer",
+      "optimization",
+      "testing",
+      "build pipelines",
+      "editor tooling"
+    ],
+    "adaptationStatus": "REFERENCE_ONLY",
+    "engineSpecificCapabilityLevel": "UNVERIFIED",
+    "officialEngineIntegrations": []
+  },
+  "optimization": {
+    "selection": "Exact case-insensitive shared-skill requiredCapabilities labels",
+    "contextLoading": "Only selected skill instructions are appended to the employee system prompt",
+    "maxInstructionBlockBytes": 8192,
+    "measuredTokenReduction": "UNVERIFIED"
+  },
+  "roadmapChanged": false,
+  "importedFileDisposition": [
+    {
+      "source": "LICENSE",
+      "importedPath": "imports/agency-agents/LICENSE",
+      "category": "legal",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Preserved unchanged for license compliance; it is not runtime capability code."
+    },
+    {
+      "source": "divisions.json",
+      "importedPath": "imports/agency-agents/metadata/divisions.json",
+      "category": "metadata",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "tools.json",
+      "importedPath": "imports/agency-agents/metadata/tools.json",
+      "category": "metadata",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "game-development/economy-designer.md",
+      "importedPath": "imports/agency-agents/game-development/economy-designer.md",
+      "category": "game-development",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "game-development/game-audio-engineer.md",
+      "importedPath": "imports/agency-agents/game-development/game-audio-engineer.md",
+      "category": "game-development",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "game-development/game-designer.md",
+      "importedPath": "imports/agency-agents/game-development/game-designer.md",
+      "category": "game-development",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "game-development/level-designer.md",
+      "importedPath": "imports/agency-agents/game-development/level-designer.md",
+      "category": "game-development",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "game-development/narrative-designer.md",
+      "importedPath": "imports/agency-agents/game-development/narrative-designer.md",
+      "category": "game-development",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "game-development/technical-artist.md",
+      "importedPath": "imports/agency-agents/game-development/technical-artist.md",
+      "category": "game-development",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "game-development/blender/blender-addon-engineer.md",
+      "importedPath": "imports/agency-agents/game-development/blender/blender-addon-engineer.md",
+      "category": "game-development",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "game-development/godot/godot-gameplay-scripter.md",
+      "importedPath": "imports/agency-agents/game-development/godot/godot-gameplay-scripter.md",
+      "category": "game-development",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "game-development/godot/godot-multiplayer-engineer.md",
+      "importedPath": "imports/agency-agents/game-development/godot/godot-multiplayer-engineer.md",
+      "category": "game-development",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "game-development/godot/godot-shader-developer.md",
+      "importedPath": "imports/agency-agents/game-development/godot/godot-shader-developer.md",
+      "category": "game-development",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "game-development/roblox-studio/roblox-avatar-creator.md",
+      "importedPath": "imports/agency-agents/game-development/roblox-studio/roblox-avatar-creator.md",
+      "category": "game-development",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "game-development/roblox-studio/roblox-experience-designer.md",
+      "importedPath": "imports/agency-agents/game-development/roblox-studio/roblox-experience-designer.md",
+      "category": "game-development",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "game-development/roblox-studio/roblox-systems-scripter.md",
+      "importedPath": "imports/agency-agents/game-development/roblox-studio/roblox-systems-scripter.md",
+      "category": "game-development",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "game-development/unity/unity-architect.md",
+      "importedPath": "imports/agency-agents/game-development/unity/unity-architect.md",
+      "category": "game-development",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "game-development/unity/unity-editor-tool-developer.md",
+      "importedPath": "imports/agency-agents/game-development/unity/unity-editor-tool-developer.md",
+      "category": "game-development",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "game-development/unity/unity-multiplayer-engineer.md",
+      "importedPath": "imports/agency-agents/game-development/unity/unity-multiplayer-engineer.md",
+      "category": "game-development",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "game-development/unity/unity-shader-graph-artist.md",
+      "importedPath": "imports/agency-agents/game-development/unity/unity-shader-graph-artist.md",
+      "category": "game-development",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "game-development/unreal-engine/unreal-multiplayer-architect.md",
+      "importedPath": "imports/agency-agents/game-development/unreal-engine/unreal-multiplayer-architect.md",
+      "category": "game-development",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "game-development/unreal-engine/unreal-systems-engineer.md",
+      "importedPath": "imports/agency-agents/game-development/unreal-engine/unreal-systems-engineer.md",
+      "category": "game-development",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "game-development/unreal-engine/unreal-technical-artist.md",
+      "importedPath": "imports/agency-agents/game-development/unreal-engine/unreal-technical-artist.md",
+      "category": "game-development",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "game-development/unreal-engine/unreal-world-builder.md",
+      "importedPath": "imports/agency-agents/game-development/unreal-engine/unreal-world-builder.md",
+      "category": "game-development",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "spatial-computing/xr-immersive-developer.md",
+      "importedPath": "imports/agency-agents/spatial-computing/xr-immersive-developer.md",
+      "category": "spatial-computing",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "spatial-computing/xr-interface-architect.md",
+      "importedPath": "imports/agency-agents/spatial-computing/xr-interface-architect.md",
+      "category": "spatial-computing",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "spatial-computing/macos-spatial-metal-engineer.md",
+      "importedPath": "imports/agency-agents/spatial-computing/macos-spatial-metal-engineer.md",
+      "category": "spatial-computing",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "spatial-computing/terminal-integration-specialist.md",
+      "importedPath": "imports/agency-agents/spatial-computing/terminal-integration-specialist.md",
+      "category": "spatial-computing",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "spatial-computing/visionos-spatial-engineer.md",
+      "importedPath": "imports/agency-agents/spatial-computing/visionos-spatial-engineer.md",
+      "category": "spatial-computing",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "spatial-computing/xr-cockpit-interaction-specialist.md",
+      "importedPath": "imports/agency-agents/spatial-computing/xr-cockpit-interaction-specialist.md",
+      "category": "spatial-computing",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-ai-engineer.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-ai-engineer.md",
+      "category": "engineering",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-api-platform-engineer.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-api-platform-engineer.md",
+      "category": "engineering",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-autonomous-optimization-architect.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-autonomous-optimization-architect.md",
+      "category": "engineering",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-backend-architect.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-backend-architect.md",
+      "category": "engineering",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-code-reviewer.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-code-reviewer.md",
+      "category": "engineering",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REENGINEERED",
+      "reason": "Mapped to a compact native HEADROOM shared skill."
+    },
+    {
+      "source": "engineering/engineering-codebase-onboarding-engineer.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-codebase-onboarding-engineer.md",
+      "category": "engineering",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-data-engineer.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-data-engineer.md",
+      "category": "engineering",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-data-visualization-engineer.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-data-visualization-engineer.md",
+      "category": "engineering",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-database-optimizer.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-database-optimizer.md",
+      "category": "engineering",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-database-reliability-engineer.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-database-reliability-engineer.md",
+      "category": "engineering",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-desktop-app-engineer.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-desktop-app-engineer.md",
+      "category": "engineering",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-developer-tooling-engineer.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-developer-tooling-engineer.md",
+      "category": "engineering",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-devops-automator.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-devops-automator.md",
+      "category": "engineering",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-frontend-developer.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-frontend-developer.md",
+      "category": "engineering",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-git-workflow-master.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-git-workflow-master.md",
+      "category": "engineering",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REENGINEERED",
+      "reason": "Mapped to a compact native HEADROOM shared skill."
+    },
+    {
+      "source": "engineering/engineering-i18n-engineer.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-i18n-engineer.md",
+      "category": "engineering",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-identity-access-engineer.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-identity-access-engineer.md",
+      "category": "engineering",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-knowledge-graph-engineer.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-knowledge-graph-engineer.md",
+      "category": "engineering",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-minimal-change-engineer.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-minimal-change-engineer.md",
+      "category": "engineering",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REENGINEERED",
+      "reason": "Mapped to a compact native HEADROOM shared skill."
+    },
+    {
+      "source": "engineering/engineering-mobile-app-builder.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-mobile-app-builder.md",
+      "category": "engineering",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-mobile-release-engineer.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-mobile-release-engineer.md",
+      "category": "engineering",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-multi-agent-systems-architect.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-multi-agent-systems-architect.md",
+      "category": "engineering",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-orgscript-engineer.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-orgscript-engineer.md",
+      "category": "engineering",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-platform-engineer.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-platform-engineer.md",
+      "category": "engineering",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-privacy-engineer.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-privacy-engineer.md",
+      "category": "engineering",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-prompt-engineer.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-prompt-engineer.md",
+      "category": "engineering",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-rag-pipeline-engineer.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-rag-pipeline-engineer.md",
+      "category": "engineering",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-rapid-prototyper.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-rapid-prototyper.md",
+      "category": "engineering",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-realtime-collaboration-engineer.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-realtime-collaboration-engineer.md",
+      "category": "engineering",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-section-508-specialist.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-section-508-specialist.md",
+      "category": "engineering",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-senior-developer.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-senior-developer.md",
+      "category": "engineering",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-software-architect.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-software-architect.md",
+      "category": "engineering",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-sre.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-sre.md",
+      "category": "engineering",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-technical-writer.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-technical-writer.md",
+      "category": "engineering",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REENGINEERED",
+      "reason": "Mapped to a compact native HEADROOM shared skill."
+    },
+    {
+      "source": "engineering/engineering-webassembly-engineer.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-webassembly-engineer.md",
+      "category": "engineering",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-ai-data-remediation-engineer.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-ai-data-remediation-engineer.md",
+      "category": "engineering",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-cms-developer.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-cms-developer.md",
+      "category": "engineering",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-embedded-firmware-engineer.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-embedded-firmware-engineer.md",
+      "category": "engineering",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-incident-response-commander.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-incident-response-commander.md",
+      "category": "engineering",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-iot-fleet-engineer.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-iot-fleet-engineer.md",
+      "category": "engineering",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-llm-post-training-engineer.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-llm-post-training-engineer.md",
+      "category": "engineering",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-network-engineer.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-network-engineer.md",
+      "category": "engineering",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-payments-billing-engineer.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-payments-billing-engineer.md",
+      "category": "engineering",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-rust-refactoring-specialist.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-rust-refactoring-specialist.md",
+      "category": "engineering",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-search-relevance-engineer.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-search-relevance-engineer.md",
+      "category": "engineering",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-universal-document-compiler.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-universal-document-compiler.md",
+      "category": "engineering",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-video-streaming-engineer.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-video-streaming-engineer.md",
+      "category": "engineering",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "engineering/engineering-voice-ai-integration-engineer.md",
+      "importedPath": "imports/agency-agents/engineering/engineering-voice-ai-integration-engineer.md",
+      "category": "engineering",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "testing/testing-accessibility-auditor.md",
+      "importedPath": "imports/agency-agents/testing/testing-accessibility-auditor.md",
+      "category": "testing",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "testing/testing-api-tester.md",
+      "importedPath": "imports/agency-agents/testing/testing-api-tester.md",
+      "category": "testing",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "testing/testing-evidence-collector.md",
+      "importedPath": "imports/agency-agents/testing/testing-evidence-collector.md",
+      "category": "testing",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REENGINEERED",
+      "reason": "Mapped to a compact native HEADROOM shared skill."
+    },
+    {
+      "source": "testing/testing-performance-benchmarker.md",
+      "importedPath": "imports/agency-agents/testing/testing-performance-benchmarker.md",
+      "category": "testing",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "testing/testing-reality-checker.md",
+      "importedPath": "imports/agency-agents/testing/testing-reality-checker.md",
+      "category": "testing",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "testing/testing-test-automation-engineer.md",
+      "importedPath": "imports/agency-agents/testing/testing-test-automation-engineer.md",
+      "category": "testing",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "testing/testing-test-results-analyzer.md",
+      "importedPath": "imports/agency-agents/testing/testing-test-results-analyzer.md",
+      "category": "testing",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "testing/testing-tool-evaluator.md",
+      "importedPath": "imports/agency-agents/testing/testing-tool-evaluator.md",
+      "category": "testing",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "testing/testing-workflow-optimizer.md",
+      "importedPath": "imports/agency-agents/testing/testing-workflow-optimizer.md",
+      "category": "testing",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "security/security-ai-generated-code-auditor.md",
+      "importedPath": "imports/agency-agents/security/security-ai-generated-code-auditor.md",
+      "category": "security",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "security/security-appsec-engineer.md",
+      "importedPath": "imports/agency-agents/security/security-appsec-engineer.md",
+      "category": "security",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "security/security-architect.md",
+      "importedPath": "imports/agency-agents/security/security-architect.md",
+      "category": "security",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "security/security-cloud-security-architect.md",
+      "importedPath": "imports/agency-agents/security/security-cloud-security-architect.md",
+      "category": "security",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "security/security-penetration-tester.md",
+      "importedPath": "imports/agency-agents/security/security-penetration-tester.md",
+      "category": "security",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "security/security-secrets-credential-engineer.md",
+      "importedPath": "imports/agency-agents/security/security-secrets-credential-engineer.md",
+      "category": "security",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REENGINEERED",
+      "reason": "Mapped to a compact native HEADROOM shared skill."
+    },
+    {
+      "source": "security/security-compliance-auditor.md",
+      "importedPath": "imports/agency-agents/security/security-compliance-auditor.md",
+      "category": "security",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "security/security-incident-responder.md",
+      "importedPath": "imports/agency-agents/security/security-incident-responder.md",
+      "category": "security",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "security/security-senior-secops.md",
+      "importedPath": "imports/agency-agents/security/security-senior-secops.md",
+      "category": "security",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "security/security-threat-detection-engineer.md",
+      "importedPath": "imports/agency-agents/security/security-threat-detection-engineer.md",
+      "category": "security",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "design/design-ui-designer.md",
+      "importedPath": "imports/agency-agents/design/design-ui-designer.md",
+      "category": "design",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "design/design-ui-finish-gate-reviewer.md",
+      "importedPath": "imports/agency-agents/design/design-ui-finish-gate-reviewer.md",
+      "category": "design",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "design/design-ux-architect.md",
+      "importedPath": "imports/agency-agents/design/design-ux-architect.md",
+      "category": "design",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "design/design-ux-researcher.md",
+      "importedPath": "imports/agency-agents/design/design-ux-researcher.md",
+      "category": "design",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "design/design-image-prompt-engineer.md",
+      "importedPath": "imports/agency-agents/design/design-image-prompt-engineer.md",
+      "category": "design",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "design/design-persona-walkthrough.md",
+      "importedPath": "imports/agency-agents/design/design-persona-walkthrough.md",
+      "category": "design",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "product/product-dx-engineer.md",
+      "importedPath": "imports/agency-agents/product/product-dx-engineer.md",
+      "category": "product",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "product/product-manager.md",
+      "importedPath": "imports/agency-agents/product/product-manager.md",
+      "category": "product",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "product/product-sprint-prioritizer.md",
+      "importedPath": "imports/agency-agents/product/product-sprint-prioritizer.md",
+      "category": "product",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "product/product-feedback-synthesizer.md",
+      "importedPath": "imports/agency-agents/product/product-feedback-synthesizer.md",
+      "category": "product",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "product/product-trend-researcher.md",
+      "importedPath": "imports/agency-agents/product/product-trend-researcher.md",
+      "category": "product",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "project-management/project-management-project-shepherd.md",
+      "importedPath": "imports/agency-agents/project-management/project-management-project-shepherd.md",
+      "category": "project-management",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "project-management/project-management-studio-producer.md",
+      "importedPath": "imports/agency-agents/project-management/project-management-studio-producer.md",
+      "category": "project-management",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "project-management/project-manager-senior.md",
+      "importedPath": "imports/agency-agents/project-management/project-manager-senior.md",
+      "category": "project-management",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "project-management/project-management-experiment-tracker.md",
+      "importedPath": "imports/agency-agents/project-management/project-management-experiment-tracker.md",
+      "category": "project-management",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "project-management/project-management-studio-operations.md",
+      "importedPath": "imports/agency-agents/project-management/project-management-studio-operations.md",
+      "category": "project-management",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "research/research-synthesist.md",
+      "importedPath": "imports/agency-agents/research/research-synthesist.md",
+      "category": "research",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "specialized/agents-orchestrator.md",
+      "importedPath": "imports/agency-agents/specialized/agents-orchestrator.md",
+      "category": "specialized",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "specialized/automation-governance-architect.md",
+      "importedPath": "imports/agency-agents/specialized/automation-governance-architect.md",
+      "category": "specialized",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "specialized/lsp-index-engineer.md",
+      "importedPath": "imports/agency-agents/specialized/lsp-index-engineer.md",
+      "category": "specialized",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "specialized/specialized-codebase-archaeologist.md",
+      "importedPath": "imports/agency-agents/specialized/specialized-codebase-archaeologist.md",
+      "category": "specialized",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "specialized/specialized-master-plan-architect.md",
+      "importedPath": "imports/agency-agents/specialized/specialized-master-plan-architect.md",
+      "category": "specialized",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "specialized/specialized-mcp-builder.md",
+      "importedPath": "imports/agency-agents/specialized/specialized-mcp-builder.md",
+      "category": "specialized",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "specialized/specialized-model-qa.md",
+      "importedPath": "imports/agency-agents/specialized/specialized-model-qa.md",
+      "category": "specialized",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "specialized/specialized-workflow-architect.md",
+      "importedPath": "imports/agency-agents/specialized/specialized-workflow-architect.md",
+      "category": "specialized",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "specialized/agentic-identity-trust.md",
+      "importedPath": "imports/agency-agents/specialized/agentic-identity-trust.md",
+      "category": "specialized",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "specialized/data-consolidation-agent.md",
+      "importedPath": "imports/agency-agents/specialized/data-consolidation-agent.md",
+      "category": "specialized",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "specialized/data-privacy-officer.md",
+      "importedPath": "imports/agency-agents/specialized/data-privacy-officer.md",
+      "category": "specialized",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "specialized/specialized-developer-advocate.md",
+      "importedPath": "imports/agency-agents/specialized/specialized-developer-advocate.md",
+      "category": "specialized",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "strategy/coordination/agent-activation-prompts.md",
+      "importedPath": "imports/agency-agents/strategy/coordination/agent-activation-prompts.md",
+      "category": "strategy-coordination",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "strategy/coordination/handoff-templates.md",
+      "importedPath": "imports/agency-agents/strategy/coordination/handoff-templates.md",
+      "category": "strategy-coordination",
+      "importSelectionClass": "A",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "strategy/playbooks/phase-0-discovery.md",
+      "importedPath": "imports/agency-agents/strategy/playbooks/phase-0-discovery.md",
+      "category": "strategy-coordination",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "strategy/playbooks/phase-1-strategy.md",
+      "importedPath": "imports/agency-agents/strategy/playbooks/phase-1-strategy.md",
+      "category": "strategy-coordination",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "strategy/playbooks/phase-2-foundation.md",
+      "importedPath": "imports/agency-agents/strategy/playbooks/phase-2-foundation.md",
+      "category": "strategy-coordination",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "strategy/playbooks/phase-3-build.md",
+      "importedPath": "imports/agency-agents/strategy/playbooks/phase-3-build.md",
+      "category": "strategy-coordination",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "strategy/playbooks/phase-4-hardening.md",
+      "importedPath": "imports/agency-agents/strategy/playbooks/phase-4-hardening.md",
+      "category": "strategy-coordination",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "strategy/playbooks/phase-5-launch.md",
+      "importedPath": "imports/agency-agents/strategy/playbooks/phase-5-launch.md",
+      "category": "strategy-coordination",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "strategy/playbooks/phase-6-operate.md",
+      "importedPath": "imports/agency-agents/strategy/playbooks/phase-6-operate.md",
+      "category": "strategy-coordination",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "strategy/runbooks/scenario-enterprise-feature.md",
+      "importedPath": "imports/agency-agents/strategy/runbooks/scenario-enterprise-feature.md",
+      "category": "strategy-coordination",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "strategy/runbooks/scenario-incident-response.md",
+      "importedPath": "imports/agency-agents/strategy/runbooks/scenario-incident-response.md",
+      "category": "strategy-coordination",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "strategy/runbooks/scenario-startup-mvp.md",
+      "importedPath": "imports/agency-agents/strategy/runbooks/scenario-startup-mvp.md",
+      "category": "strategy-coordination",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "strategy/runbooks.json",
+      "importedPath": "imports/agency-agents/strategy/runbooks.json",
+      "category": "strategy-coordination",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    },
+    {
+      "source": "support/support-infrastructure-maintainer.md",
+      "importedPath": "imports/agency-agents/support/support-infrastructure-maintainer.md",
+      "category": "support",
+      "importSelectionClass": "B",
+      "adaptationStatus": "REFERENCE_ONLY",
+      "reason": "Retained for reference; not loaded into the runtime."
+    }
+  ],
+  "nativeWorkforce": {
+    "positionCatalog": "src/domain/positionCatalog.js",
+    "configurationBridge": "src/application/positionWorkforceInput.js",
+    "offices": 4,
+    "departments": 20,
+    "positions": 80,
+    "employeeSlotsPerDepartment": 4,
+    "source": "imports/agency-agents/agency-agents-workforce-map.json",
+    "adaptationStatus": "REENGINEERED",
+    "verification": "tests/phase-454.test.js",
+    "positionPermissionTemplates": true
+  },
+  "nativeEngineDetection": {
+    "adapter": "src/infrastructure/gameEngineDetection.js",
+    "domainContract": "src/domain/gameEngines.js",
+    "scale": "L0-L7",
+    "maxDetectedLevel": "L2",
+    "engines": {
+      "unity": "L1/L2 via ProjectVersion.txt and Assets markers",
+      "unreal-engine": "L1/L2 via .uproject EngineAssociation",
+      "godot": "L1/L2 via project.godot config_version",
+      "roblox-studio": "L1 place files / L2 Rojo project trees",
+      "blender": "L1 via .blend documents"
+    },
+    "executionAvailability": "UNAVAILABLE for all engines until verified execution adapters exist",
+    "verification": "tests/phase-455.test.js"
+  },
+  "nativePermissionAudit": {
+    "module": "src/application/positionManifestAudit.js",
+    "scopeGrammar": "src/domain/scopeMatch.js",
+    "purpose": "Flags task tool-permission manifests exceeding the assigned position's declared read/write/command scope; a review aid, not a grant source",
+    "enforcement": "Task-scoped tools and persisted manifests remain the only grant enforcement",
+    "verification": "tests/phase-456.test.js"
+  }
+}

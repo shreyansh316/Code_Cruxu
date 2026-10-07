@@ -67,6 +67,18 @@ describe('Phase 453 — skill resolution follows requiredCapabilities routing se
         expect(() => resolveWorkforceSkills('skill:minimal-change-discipline')).toThrow();
     });
 
+    it('applies the execution-plan capability contract without coercing malformed labels', () => {
+        for (const malformed of [
+            [null], [42], [{}], ['   '], ['x'.repeat(101)], Array.from({ length: 33 }, (_, index) => `cap-${index}`),
+        ]) {
+            expect(() => resolveWorkforceSkills(malformed)).toThrowError(
+                expect.objectContaining({ code: 'invalid-required-capabilities' }),
+            );
+        }
+        expect(resolveWorkforceSkills([' skill:minimal-change-discipline '])).toHaveLength(1);
+        expect(resolveWorkforceSkills(['skill:git-pr-workflow', 'SKILL:GIT-PR-WORKFLOW'])).toHaveLength(1);
+    });
+
     it('exposes lookup by exact slug and null for non-shared labels', () => {
         expect(getWorkforceSkill('skill:evidence-collection').name).toBe('Verifiable Evidence Collection');
         expect(getWorkforceSkill('SKILL:EVIDENCE-COLLECTION').slug).toBe('skill:evidence-collection');
@@ -94,5 +106,13 @@ describe('Phase 453 — bounded instruction block for task packets', () => {
     it('refuses to produce a block beyond the supplied byte budget', () => {
         const allSlugs = WORKFORCE_SKILLS.map((skill) => skill.slug);
         expect(() => buildSkillInstructionBlock(allSlugs, 64)).toThrow();
+    });
+
+    it('rejects invalid or unbounded caller-supplied byte budgets', () => {
+        for (const budget of [0, -1, 1.5, Number.NaN, Infinity, 8 * 1024 + 1, '8192']) {
+            expect(() => buildSkillInstructionBlock([], budget)).toThrowError(
+                expect.objectContaining({ code: 'invalid-skill-instruction-budget' }),
+            );
+        }
     });
 });

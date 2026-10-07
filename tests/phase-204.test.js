@@ -1,6 +1,7 @@
 /** Phase 204 — bounded execution activity feed and Command Center visibility. */
 import { describe, expect, it } from 'vitest';
-import { createCommandCenterSnapshot, renderCommandCenterHtml } from '../src/core/CommandCenterPanel';
+import { createCommandCenterSnapshot } from '../src/core/CommandCenterPanel';
+import { renderCommandCenterHtml } from '../src/core/commandCenterView';
 import { ExecutionActivityFeed } from '../src/core/ExecutionActivityFeed';
 
 describe('Phase 204 — execution activity feed', () => {

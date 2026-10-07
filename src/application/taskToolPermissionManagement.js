@@ -1,5 +1,5 @@
 import { AgentRole, TaskStatus } from '../constants';
-import { createEntityId, DomainInvariantError, isAgentAvailable } from '../domain';
+import { assertTaskToolPermissionsWithinPosition, createEntityId, DomainInvariantError, findPositionBySpecialization, isAgentAvailable } from '../domain';
 import { normalizeTaskToolPermissions } from '../shared/taskToolPermissions';
 import { ApplicationError, createUseCase } from './useCase';
 
@@ -33,6 +33,11 @@ export function createTaskToolPermissionManagement({ taskRepository, projectRepo
         const objective = project?.objectiveId ? dependencies.objectiveRepository.getById(project.objectiveId) : undefined;
         if (!objective || objective.organizationId !== actor.organizationId) {
             throw new DomainInvariantError('task-tool-permission-scope-mismatch', 'Task tool grants must stay within the CEO organization.');
+        }
+        if (permissions) {
+            const assignee = task.assigneeId ? dependencies.agentRepository.getById(task.assigneeId) : null;
+            const position = findPositionBySpecialization(assignee?.specialization);
+            if (position) assertTaskToolPermissionsWithinPosition(position, permissions);
         }
         assertPermissionsMutable(task, dependencies.queueRepository);
         return dependencies.unitOfWork.run(() => {

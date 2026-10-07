@@ -1,6 +1,6 @@
 /** Phase 431 — guard native keyboard and theme-aware accessibility in the Command Center. */
 import { describe, expect, it } from 'vitest';
-import { renderCommandCenterHtml } from '../src/core/CommandCenterPanel';
+import { renderCommandCenterHtml } from '../src/core/commandCenterView';
 
 describe('Phase 431 — Command Center keyboard and visual accessibility contract', () => {
     it('keeps controls in native keyboard order and makes every button non-submitting', () => {

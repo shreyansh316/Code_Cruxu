@@ -2,7 +2,8 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { createTaskExecutionReport } from '../src/application/taskExecutionReport';
 import { ExecutionActivityFeed } from '../src/core/ExecutionActivityFeed';
-import { createCommandCenterSnapshot, renderCommandCenterHtml } from '../src/core/CommandCenterPanel';
+import { createCommandCenterSnapshot } from '../src/core/CommandCenterPanel';
+import { renderCommandCenterHtml } from '../src/core/commandCenterView';
 import { AgentRepository, AIUsageRepository, AuditLogRepository, DebuggingSessionRepository,
     OrganizationRepository, SqliteConnection, TaskRepository, applyMigrations } from '../src/storage';
 

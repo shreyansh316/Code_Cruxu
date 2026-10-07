@@ -1,3 +1,4 @@
+import { requireAssignedInProgressTask } from './authorizedTaskAccess';
 import { TaskStatus } from '../constants';
 import { DomainInvariantError, validateTaskResult } from '../domain';
 import { ApplicationError, createUseCase } from './useCase';
@@ -13,14 +14,10 @@ export function createEmployeeResultVerificationUseCase({ taskRepository, verifi
                 || !input.signal || typeof input.signal.aborted !== 'boolean') {
                 throw new DomainInvariantError('invalid-employee-verification', 'Verification requires task, employee, and cancellation identifiers.');
             }
-            const task = dependencies.taskRepository.getById(input.taskId);
-            if (!task) throw new ApplicationError('task-not-found', 'The task does not exist.');
-            if (task.assigneeId !== input.agentId) {
-                throw new DomainInvariantError('unauthorized-task-result', 'Only the assigned employee may request result verification.');
-            }
-            if (task.status !== TaskStatus.IN_PROGRESS) {
-                throw new DomainInvariantError('invalid-task-transition', 'Only an in-progress task can be verified.');
-            }
+            const task = requireAssignedInProgressTask({ taskRepository: dependencies.taskRepository,
+                taskId: input.taskId, agentId: input.agentId,
+                assigneeMessage: 'Only the assigned employee may request result verification.',
+                statusMessage: 'Only an in-progress task can be verified.' });
             const result = validateTaskResult(input.result, task.acceptanceCriteria).result;
             const verification = await dependencies.verificationPipeline.run({ signal: input.signal });
             if (!verification || !Array.isArray(verification.results)) {

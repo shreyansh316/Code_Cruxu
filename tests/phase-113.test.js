@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { createCommandCenterSnapshot, renderCommandCenterHtml } from '../src/core/CommandCenterPanel';
+import { createCommandCenterSnapshot } from '../src/core/CommandCenterPanel';
+import { renderCommandCenterHtml } from '../src/core/commandCenterView';
 
 describe('Phase 113 — completed task visibility', () => {
     it('shows bounded completion labels separately from active work and excludes task result payloads', () => {

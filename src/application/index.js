@@ -61,5 +61,7 @@ export { assembleBoundedAgentContext } from './contextAssembly';
 export { validateStructuredAIOutput } from './structuredOutput';
 export { createProviderFallbackPolicy } from './providerFallback';
 export { classifyStoredData, createMemoryPrivacyControls, redactSensitiveText } from './privacyControls';
+export { WORKFORCE_SKILLS, getWorkforceSkill, resolveWorkforceSkills, buildSkillInstructionBlock } from './workforceSkills';
 export { createTaskUsageSummary } from './taskUsageSummary';
 export { createTaskExecutionReport } from './taskExecutionReport';
+export { buildDepartmentWorkforceConfig } from './positionWorkforceInput';

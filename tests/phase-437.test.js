@@ -1,6 +1,6 @@
 /** Phase 437 — avoid repetitive screen-reader announcements during live refresh. */
 import { describe, expect, it } from 'vitest';
-import { renderCommandCenterHtml } from '../src/core/CommandCenterPanel';
+import { renderCommandCenterHtml } from '../src/core/commandCenterView';
 
 describe('Phase 437 — concise live execution announcements', () => {
     it('keeps changing count summaries outside the live region and announces state changes only', () => {

@@ -1,5 +1,5 @@
 import { TaskStatus } from '../constants';
-import { DomainInvariantError } from '../domain/errors';
+import { assertTaskToolPermissionsWithinPosition, DomainInvariantError, findPositionBySpecialization } from '../domain';
 import { normalizeTaskToolPermissions } from '../shared/taskToolPermissions';
 import { createWorkspaceFingerprint } from '../shared/workspaceFingerprint';
 import { createTaskScopedTools } from './TaskScopedTools';
@@ -20,6 +20,8 @@ export function createPersistedTaskToolsProvider({ workspaceRoot, filesystem, pr
             const permissions = normalizeTaskToolPermissions(task.toolPermissions)
                 ?? Object.freeze({ readFiles: Object.freeze([]), writeFiles: Object.freeze([]), commands: Object.freeze([]),
                     workspaceFingerprint });
+            const position = findPositionBySpecialization(actor.specialization);
+            if (position) assertTaskToolPermissionsWithinPosition(position, permissions);
             if (!permissions.workspaceFingerprint || permissions.workspaceFingerprint !== workspaceFingerprint) {
                 throw new DomainInvariantError('task-tool-workspace-mismatch', 'Task tool permissions are not bound to the active workspace.');
             }

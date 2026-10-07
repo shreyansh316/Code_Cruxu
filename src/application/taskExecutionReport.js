@@ -1,3 +1,4 @@
+import { assertTaskReadAuthorized } from './authorizedTaskAccess';
 import { AgentRole } from '../constants';
 import { createEntityId, DomainInvariantError, isAgentAvailable } from '../domain';
 import { redactSecrets } from '../shared/redactSecrets';
@@ -41,16 +42,10 @@ export function createTaskExecutionReport({ taskRepository, agentRepository, usa
             return agentCache.get(id);
         };
         const actor = getAgent(actorId);
-        if (!task || !actor || !Object.values(AgentRole).includes(actor.role) || !isAgentAvailable(actor)) {
-            throw new DomainInvariantError('task-report-forbidden', 'Execution reports require a current persisted organization member.');
-        }
-        let allowed = false;
-        try { allowed = d.authorize(Object.freeze({ action: 'READ_TASK_EXECUTION_REPORT',
-            actor: Object.freeze({ id: actor.id, role: actor.role }),
-            task: Object.freeze({ id: task.id, status: task.status, projectId: task.projectId ?? null,
-                assigneeId: task.assigneeId ?? null }) })) === true; }
-        catch { allowed = false; }
-        if (!allowed) throw new DomainInvariantError('task-report-forbidden', 'The actor is not authorized to read this task report.');
+        assertTaskReadAuthorized({ task, actor, authorize: d.authorize, action: 'READ_TASK_EXECUTION_REPORT',
+            memberErrorCode: 'task-report-forbidden',
+            memberMessage: 'Execution reports require a current persisted organization member.',
+            deniedMessage: 'The actor is not authorized to read this task report.' });
 
         const assignee = getAgent(task.assigneeId);
         const creator = getAgent(task.creatorId);

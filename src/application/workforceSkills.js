@@ -17,6 +17,9 @@ const SKILL_SLUG_PATTERN = /^skill:[a-z0-9]+(-[a-z0-9]+)*$/;
 const MAX_INSTRUCTION_CHARS = 1600;
 const MAX_DESCRIPTION_CHARS = 300;
 const MAX_SKILLS = 24;
+const MAX_REQUIRED_CAPABILITIES = 32;
+const MAX_CAPABILITY_LABEL_CHARS = 100;
+const MAX_INSTRUCTION_BYTES = 8 * 1024;
 const TOOL_VOCABULARY = Object.freeze([
     'filesystem:read', 'filesystem:write', 'process:execute:git',
 ]);
@@ -158,19 +161,26 @@ export function getWorkforceSkill(slug) {
  * results follow catalog order regardless of label order; duplicates collapse. */
 export function resolveWorkforceSkills(requiredCapabilities) {
     if (requiredCapabilities === undefined || requiredCapabilities === null) return [];
-    if (!Array.isArray(requiredCapabilities)) {
-        throw new DomainInvariantError('invalid-required-capabilities', 'requiredCapabilities must be an array of labels.');
+    if (!Array.isArray(requiredCapabilities) || requiredCapabilities.length > MAX_REQUIRED_CAPABILITIES
+        || requiredCapabilities.some((label) => typeof label !== 'string'
+            || !label.trim() || label.trim().length > MAX_CAPABILITY_LABEL_CHARS)) {
+        throw new DomainInvariantError('invalid-required-capabilities',
+            'requiredCapabilities must contain at most 32 non-empty string labels of at most 100 characters.');
     }
-    const wanted = new Set(requiredCapabilities.map((label) => String(label).trim().toLocaleLowerCase('en-US')));
+    const wanted = new Set(requiredCapabilities.map((label) => label.trim().toLocaleLowerCase('en-US')));
     return WORKFORCE_SKILLS.filter((skill) => wanted.has(skill.slug));
 }
 
 /** Build a bounded, traceable instruction block for the resolved skills.
  * Returns null when no shared skill applies, so packets stay minimal. */
 export function buildSkillInstructionBlock(requiredCapabilities, maxSizeBytes = 8 * 1024) {
+    if (!Number.isSafeInteger(maxSizeBytes) || maxSizeBytes < 1 || maxSizeBytes > MAX_INSTRUCTION_BYTES) {
+        throw new DomainInvariantError('invalid-skill-instruction-budget',
+            `Skill instruction budget must be an integer between 1 and ${MAX_INSTRUCTION_BYTES} bytes.`);
+    }
     const skills = resolveWorkforceSkills(requiredCapabilities);
     if (skills.length === 0) return null;
-    const block = skills.map((skill) => `[${skill.slug}] ${skill.instruction}`).join('\n');
+    const block = skills.map((skill) => `[${skill.slug}] ${skill.instruction}\nVerification: ${skill.verification}`).join('\n');
     if (Buffer.byteLength(block, 'utf8') > maxSizeBytes) {
         throw new DomainInvariantError('skill-instruction-block-too-large', 'Resolved skill instructions exceed the packet budget.');
     }
