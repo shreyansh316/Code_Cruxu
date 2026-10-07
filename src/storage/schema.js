@@ -1,4 +1,4 @@
-export const CORE_SCHEMA_SQL = `
+const CORE_SCHEMA_SQL = `
   CREATE TABLE IF NOT EXISTS organizations (
     id TEXT PRIMARY KEY NOT NULL,
     name TEXT NOT NULL,

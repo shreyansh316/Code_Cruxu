@@ -269,6 +269,7 @@ npm run typecheck
 npm run lint
 npm run check:sqlite
 npm run audit:complexity
+npm run audit:dead-code
 
 # Run Extension Host tests
 npm run test:vscode

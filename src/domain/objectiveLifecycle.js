@@ -12,7 +12,7 @@ import { assertObjectiveInvariant } from './invariants';
  * ACTIVE -> PAUSED, COMPLETED, FAILED
  * PAUSED -> ACTIVE, FAILED
  */
-export const OBJECTIVE_TRANSITIONS = {
+const OBJECTIVE_TRANSITIONS = {
     [ObjectiveStatus.NEW]: [ObjectiveStatus.ANALYZING, ObjectiveStatus.FAILED],
     [ObjectiveStatus.ANALYZING]: [ObjectiveStatus.QUESTIONING, ObjectiveStatus.PLANNING, ObjectiveStatus.FAILED],
     [ObjectiveStatus.QUESTIONING]: [ObjectiveStatus.ANALYZING, ObjectiveStatus.PLANNING, ObjectiveStatus.FAILED],
