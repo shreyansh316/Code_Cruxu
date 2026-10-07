@@ -1,0 +1,4 @@
+{
+  "description": "Dead exports recorded at Phase 452. The dead-code audit fails when a finding is not recorded here. Recorded entries are verified-dead candidates awaiting per-item removal in a later phase; as of Phase 452 the tree has zero dead exports, so growth is blocked immediately.",
+  "deadExports": []
+}

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { createCommandCenterSnapshot, renderCommandCenterHtml } from '../src/core/CommandCenterPanel';
+import { createCommandCenterSnapshot } from '../src/core/CommandCenterPanel';
+import { renderCommandCenterHtml } from '../src/core/commandCenterView';
 
 describe('Phase 114 — current workspace summary', () => {
     it('limits folder labels and exposes only the active filename and language, never its absolute path', () => {

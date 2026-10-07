@@ -55,6 +55,36 @@ describe('Phase 348 — persisted task tool permissions', () => {
         expect(audits.listByEntity('task', 'task-348')).toEqual([]);
     });
 
+    it('rejects CEO grants outside a catalog-mapped employee position scope', async () => {
+        agents.create({ id: 'unreal-employee-348', name: 'Unreal Employee', role: AgentRole.EMPLOYEE,
+            organizationId: 'organization-348', specialization: 'Unreal Systems Engineer' });
+        tasks.create({ id: 'positioned-task-348', taskCode: 'PH348-002', title: 'Position-scoped work',
+            projectId: 'project-348', creatorId: 'other-348', assigneeId: 'unreal-employee-348', status: TaskStatus.ASSIGNED });
+
+        const result = await workflow.run({ taskId: 'positioned-task-348', actorId: 'ceo-348', permissions: {
+            readFiles: ['README.md'], writeFiles: [], commands: [],
+        } });
+
+        expect(result.error.code).toBe('task-tool-position-scope-forbidden');
+        expect(tasks.getById('positioned-task-348').toolPermissions).toBeNull();
+        expect(audits.listByEntity('task', 'positioned-task-348')).toEqual([]);
+    });
+
+    it('accepts in-scope grants for a catalog-mapped employee', async () => {
+        agents.create({ id: 'unreal-employee-348', name: 'Unreal Employee', role: AgentRole.EMPLOYEE,
+            organizationId: 'organization-348', specialization: 'Unreal Systems Engineer' });
+        tasks.create({ id: 'positioned-task-348', taskCode: 'PH348-002', title: 'Position-scoped work',
+            projectId: 'project-348', creatorId: 'other-348', assigneeId: 'unreal-employee-348', status: TaskStatus.ASSIGNED });
+
+        const result = await workflow.run({ taskId: 'positioned-task-348', actorId: 'ceo-348', permissions: {
+            readFiles: ['Source/Game/Main.cpp'], writeFiles: ['Config/DefaultEngine.ini'],
+            commands: [{ command: 'msbuild', args: ['/m'] }],
+        } });
+
+        expect(result.ok).toBe(true);
+        expect(tasks.getById('positioned-task-348').toolPermissions.readFiles).toEqual(['Source/Game/Main.cpp']);
+    });
+
     it('freezes grants once an execution queue entry exists', async () => {
         expect((await workflow.run({ taskId: 'task-348', actorId: 'ceo-348', permissions })).ok).toBe(true);
         queue.enqueue({ id: 'queue-348', taskId: 'task-348' });

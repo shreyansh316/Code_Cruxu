@@ -1,12 +1,10 @@
 /**
  * HEADROOM — Core Constants
- * Phase 001: Extension identifiers, command IDs, and enums
+ * Phase 001: command IDs and enums
  *
  * All string constants that are referenced in package.json
  * contributes must exactly match their package.json counterparts.
  */
-export const EXTENSION_NAME = 'HEADROOM';
-export const EXTENSION_ID = 'headroom';
 // ============================================================
 // COMMANDS — must match package.json contributes.commands
 // ============================================================
@@ -50,14 +48,6 @@ export const VIEWS = {
 // ============================================================
 // CONFIGURATION KEYS — must match package.json contributes.configuration
 // ============================================================
-export const CONFIG = {
-    AI_PROVIDER: 'headroom.ai.provider',
-    DEFAULT_MODEL: 'headroom.ai.defaultModel',
-    REASONING_MODEL: 'headroom.ai.reasoningModel',
-    MAX_RETRIES: 'headroom.execution.maxRetries',
-    PARALLEL_LIMIT: 'headroom.execution.parallelLimit',
-    DEBUG_VERBOSE: 'headroom.debug.verbose',
-};
 // ============================================================
 // AGENT ROLES — organizational hierarchy
 // ============================================================

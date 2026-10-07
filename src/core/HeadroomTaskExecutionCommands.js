@@ -9,7 +9,7 @@ import { createAIUsageRecorder, createCommandRunner, createGeminiAIProviderAdapt
     createSqliteUnitOfWork, createWorkspaceFileAdapter, SqliteEventBus } from '../infrastructure';
 import { createSecretStorageAdapter } from '../infrastructure/SecretStorageAdapter';
 import { normalizeTaskToolPermissions } from '../shared/taskToolPermissions';
-import { createWorkspaceFingerprint } from '../shared/workspaceFingerprint';
+import { requireSingleWorkspaceFingerprint } from './workspaceAccess';
 import { AgentRepository, AIUsageRepository, AuditLogRepository, DepartmentRepository, ExecutionQueueRepository,
     DebuggingSessionRepository, MemoryRepository, ObjectiveRepository, OfficeRepository, OrganizationRepository, ProjectRepository,
     TaskDependencyRepository, TaskRepository } from '../storage';
@@ -21,17 +21,9 @@ export async function executeAssignedTask({ database, context, configuration, ex
         vscode.window.showInformationMessage('Configure Gemini before running AI employee tasks.');
         return;
     }
-    const folders = vscode.workspace.workspaceFolders ?? [];
-    if (folders.length !== 1 || typeof folders[0]?.uri?.fsPath !== 'string') {
-        vscode.window.showErrorMessage('Open exactly one workspace folder before running a task.');
-        return;
-    }
-    let workspaceFingerprint;
-    try { workspaceFingerprint = await createWorkspaceFingerprint(folders[0].uri.fsPath); }
-    catch {
-        vscode.window.showErrorMessage('The active workspace could not be identified safely.');
-        return;
-    }
+    const workspace = await requireSingleWorkspaceFingerprint({ purpose: 'running a task' });
+    if (!workspace) return;
+    const { fingerprint: workspaceFingerprint } = workspace;
     const taskRepository = new TaskRepository(database);
     const queueRepository = new ExecutionQueueRepository(database);
     const eligibleTasks = taskRepository.list().filter((task) => [TaskStatus.ASSIGNED, TaskStatus.IN_PROGRESS].includes(task.status)

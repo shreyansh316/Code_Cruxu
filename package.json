@@ -340,9 +340,11 @@
     "benchmark": "vitest run --config vitest.benchmark.config.js --reporter=verbose",
     "check:sqlite": "node scripts/check-sqlite.js",
     "audit:complexity": "node scripts/complexity-audit.js",
+    "audit:dead-code": "node scripts/dead-code-audit.js",
     "package": "node ./test/runTest.js --package",
     "test:vscode:vsix": "node ./test/runTest.js --vsix",
-    "vscode:prepublish": "npm run compile"
+    "vscode:prepublish": "npm run compile",
+    "audit:duplicate-logic": "node scripts/duplicate-logic-audit.js"
   },
   "dependencies": {
     "better-sqlite3": "^11.0.0"

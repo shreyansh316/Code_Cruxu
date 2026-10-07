@@ -16,7 +16,7 @@ import { basename, join } from 'path';
 import { randomUUID } from 'node:crypto';
 import { AgentRole, COMMANDS } from '../constants';
 import { ExecutionControl, isAgentAvailable } from '../domain';
-import { AgentRepository, AIUsageRepository, applyMigrations, assertUpgradeCompatible, AuditLogRepository, diagnoseDatabaseIntegrity,
+import { AgentRepository, applyMigrations, assertUpgradeCompatible, AuditLogRepository, diagnoseDatabaseIntegrity,
     DepartmentRepository, DirectorQuestionRepository, ExecutionQueueRepository, ObjectiveRepository, OfficeRepository, OrganizationRepository,
     ProjectRepository, SqliteConnection, TaskDependencyRepository, TaskRepository } from '../storage';
 import { CONFIGURATION_DEFAULTS, validateHeadroomConfiguration, } from './Configuration';
@@ -44,37 +44,9 @@ import { chooseCodeExplanationAction } from './CodeExplanationCommands';
 import { saveReviewFindingsFromEditor } from './ReviewFindingCommands';
 import { getMessage } from './messages';
 import { redactSecrets } from '../shared/redactSecrets';
-const HEALTH_CHECKS = Object.freeze([
-    { id: 'database', label: 'Database' }, { id: 'queue', label: 'Queue' },
-    { id: 'provider', label: 'AI provider' }, { id: 'verification', label: 'Verification' },
-]);
-
-/** Read each health source independently so an unavailable service does not hide the rest. */
-export async function readOperationalHealth(sources) {
-    const values = await Promise.all(HEALTH_CHECKS.map(async ({ id, label }) => {
-        try {
-            const source = sources?.[id];
-            if (typeof source !== 'function') throw new Error('unavailable');
-            const value = await source();
-            if (!value || typeof value !== 'object') throw new Error('unavailable');
-            if (id === 'database') return { id, label, status: value.status,
-                detail: value.status === 'HEALTHY' ? `SQLite healthy; schema ${value.schemaVersion ?? 'unknown'}.`
-                    : `SQLite ${value.status?.toLowerCase() ?? 'unavailable'}; ${value.issues?.length ?? 0} issue(s).` };
-            if (id === 'queue') {
-                if (!Number.isSafeInteger(value.queued) || value.queued < 0 || !Number.isSafeInteger(value.claimed) || value.claimed < 0) {
-                    throw new Error('unavailable');
-                }
-                return { id, label, status: 'HEALTHY', detail: `${value.queued} queued; ${value.claimed} claimed.` };
-            }
-            if (id === 'provider') return { id, label, status: value.status, detail: value.detail };
-            return { id, label, status: value.status, detail: value.detail };
-        } catch {
-            return { id, label, status: 'UNAVAILABLE', detail: `${label} status unavailable.` };
-        }
-    }));
-    return values;
-}
-
+import { directorProviderMissing, directorRequestBlock, createDirectorProvider } from './directorRequestFlow';
+import { analyzeObjective, proposePlan, explainSelection, reviewSelection } from './HeadroomDirectorCommands';
+export { readOperationalHealth } from './operationalHealth';
 export class HeadroomContext {
     _context;
     _disposables = [];
@@ -136,11 +108,16 @@ export class HeadroomContext {
                 provider: async () => this._providerHealth(),
                 verification: () => ({ status: 'NOT_RUN', detail: 'No verification result is currently recorded.' }),
             }));
-            this._refreshStatusViews = statusViews.refresh;
+            this._stateChangeEmitter = new vscode.EventEmitter();
+            this._refreshStatusViews = () => {
+                statusViews.refresh();
+                this._stateChangeEmitter.fire(undefined);
+            };
             for (const disposable of statusViews.disposables) this._addDisposable(disposable);
             this._commandCenter = new CommandCenterPanel(async () => createCommandCenterSnapshot({
                 objectives: objectiveRepository.list(),
                 tasks: taskRepository.list(),
+                projects: projectRepository.list(),
                 directorQuestions: directorQuestionRepository.list(),
                 activity: auditLogRepository.listRecent({ limit: 20 }),
                 executionActivity: this._executionActivity.listRecent({ limit: 20 }),
@@ -149,6 +126,8 @@ export class HeadroomContext {
                 offices: officeRepository.list(),
                 departments: departmentRepository.list(),
                 organizations: organizationRepository.list(),
+                operationalHealth: await this._readOperationalHealth(),
+                currentWork: this._readCurrentWork(),
                 collapsedSections: this._getCollapsedCommandCenterSections(),
                 workspace: {
                     folders: (vscode.workspace.workspaceFolders ?? []).map((folder) => folder.name),
@@ -158,7 +137,14 @@ export class HeadroomContext {
                 },
                 executionStatus: this._executionControl.status,
             }), (section, collapsed) => this._setCollapsedCommandCenterSection(section, collapsed),
-            () => this._answerDirectorQuestion());
+            () => this._answerDirectorQuestion(),
+            {
+                onOpenObjective: (title) => this._openObjectiveAction(title),
+                onOpenTask: (title) => this._openTaskAction(title),
+                onInspectHealth: () => this._inspectHealthAction(),
+                onRunTask: () => vscode.commands.executeCommand(COMMANDS.RUN_ASSIGNED_TASK),
+                onStateChange: this._stateChangeEmitter,
+            });
             this._addDisposable(this._commandCenter);
             // 1. Register commands
             this._registerCommands();
@@ -414,398 +400,50 @@ export class HeadroomContext {
         this._commandCenter?.refresh();
         vscode.window.showInformationMessage(getMessage('objective.created'));
     }
-    async _pickObjectiveForOrganization(database, objectiveRepository) {
-        const organizations = new OrganizationRepository(database).list()
-            .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
-        if (!organizations.length) {
-            vscode.window.showInformationMessage(getMessage('objective.organization.missing'));
-            return undefined;
-        }
-        let organization = organizations[0];
-        if (organizations.length > 1) {
-            const selectedOrganization = await vscode.window.showQuickPick(organizations.map((entry) => ({
-                label: entry.name, description: entry.id, organization: entry,
-            })), { title: getMessage('objective.organization.pick'), ignoreFocusOut: true });
-            organization = selectedOrganization?.organization;
-        }
-        if (!organization) return undefined;
-        const objectives = [...objectiveRepository.listByOrganization(organization.id), ...objectiveRepository.listUnassigned()]
-            .sort((a, b) => a.title.localeCompare(b.title) || a.id.localeCompare(b.id)).slice(0, 1000);
-        if (!objectives.length) {
-            vscode.window.showInformationMessage(getMessage('director.analysis.noObjectives'));
-            return undefined;
-        }
-        const selected = await vscode.window.showQuickPick(objectives.map((objective) => ({
-            label: objective.title.slice(0, 200),
-            description: objective.organizationId ? objective.status : `Unassigned · ${objective.status}`,
-            objectiveId: objective.id, requiresOrganizationAssignment: !objective.organizationId,
-        })), { title: getMessage('director.analysis.pickObjective'), ignoreFocusOut: true });
-        if (!selected) return undefined;
-        return { selected, organization };
+    _directorCommandDeps() {
+        const context = this;
+        return {
+            get database() { return context._databaseConnection.database; },
+            get configuration() { return context._configuration; },
+            executionControl: this._executionControl,
+            createProvider: (purpose) => context._createDirectorProvider(context._databaseConnection.database, purpose),
+            beginRequest: () => this._beginDirectorRequest(),
+            endRequest: (controller) => {
+                if (this._directorRequestController === controller) this._directorRequestController = undefined;
+            },
+            refresh: () => {
+                this._refreshStatusViews();
+                this._commandCenter?.refresh();
+            },
+            reviewPlan: (plan) => this._reviewPlan(plan),
+        };
     }
     async _analyzeObjective() {
-        if (this._executionControl.status === 'PAUSED') {
-            vscode.window.showInformationMessage(getMessage('director.request.paused'));
-            return;
-        }
-        if (this._executionControl.status === 'CANCELLED') {
-            vscode.window.showInformationMessage(getMessage('director.request.cancelled'));
-            return;
-        }
-        if (this._configuration.aiProvider !== 'gemini') {
-            vscode.window.showInformationMessage(getMessage('director.analysis.providerRequired'));
-            return;
-        }
-        const database = this._databaseConnection.database;
-        const objectiveRepository = new ObjectiveRepository(database);
-        const picked = await this._pickObjectiveForOrganization(database, objectiveRepository);
-        if (!picked) return;
-        const { selected: selectedObjective, organization } = picked;
-        const confirmation = await vscode.window.showWarningMessage(
-            getMessage('director.analysis.confirmSend'), { modal: true }, getMessage('director.analysis.confirm'));
-        if (confirmation !== getMessage('director.analysis.confirm')) return;
-        if (selectedObjective.requiresOrganizationAssignment) {
-            objectiveRepository.update(selectedObjective.objectiveId, { organizationId: organization.id });
-        }
-
-        const analysis = createDirectorObjectiveAnalysis({
-            objectiveRepository,
-            questionRepository: new DirectorQuestionRepository(database),
-            provider: this._createDirectorProvider(database, 'director-objective-analysis'),
-            idFactory: () => randomUUID(),
-        });
-        const controller = this._beginDirectorRequest();
-        if (!controller) return;
-        let result;
-        try {
-            result = await analysis.run({ objectiveId: selectedObjective.objectiveId,
-                model: this._configuration.reasoningModel, signal: controller.signal });
-        } finally {
-            if (this._directorRequestController === controller) this._directorRequestController = undefined;
-        }
-        if (controller.signal.aborted) {
-            vscode.window.showInformationMessage(getMessage('director.request.cancelled'));
-            return;
-        }
-        if (!result.ok) {
-            vscode.window.showErrorMessage(getMessage('director.analysis.failed', { error: result.error.message }));
-            return;
-        }
-        if (!result.value.questions.length) {
-            vscode.window.showInformationMessage(getMessage('director.analysis.noQuestions'));
-            return;
-        }
-        const selected = await vscode.window.showQuickPick(result.value.questions.map((proposal) => ({
-            label: proposal.question,
-            description: `${proposal.category} · ${proposal.rationale}`,
-            proposal,
-        })), { title: getMessage('director.analysis.pickProposals'), canPickMany: true, ignoreFocusOut: true });
-        if (!selected?.length) return;
-
-        const questionRepository = new DirectorQuestionRepository(database);
-        const eventBus = new SqliteEventBus(database);
-        const auditRepository = new AuditLogRepository(database);
-        const workflow = createObjectiveQuestionWorkflow({ questionRepository, objectiveRepository,
-            idFactory: () => randomUUID(),
-            eventPublisher: { append: (event) => {
-                eventBus.append(event);
-                return auditRepository.append({ id: event.eventId, action: event.type,
-                    entity: 'objective', entityId: event.aggregateId, details: { occurredAt: event.occurredAt, ...event.payload } });
-            } }, unitOfWork: createSqliteUnitOfWork(database), clock: { now: () => new Date() } });
-        let saved = 0;
-        for (const item of selected) {
-            const created = await workflow.create.run({ objectiveId: selectedObjective.objectiveId,
-                question: item.proposal.question, category: item.proposal.category });
-            if (created.ok) saved += 1;
-        }
-        this._refreshStatusViews();
-        this._commandCenter?.refresh();
-        vscode.window.showInformationMessage(saved === selected.length
-            ? getMessage('director.analysis.saved', { count: saved })
-            : getMessage('director.analysis.savePartial', { saved, failed: selected.length - saved }));
-    }
-    _createDirectorProvider(database, purpose) {
-        const gemini = createGeminiAIProviderAdapter({ credentialStore: createSecretStorageAdapter(this._context.secrets) });
-        return createBoundedAIProvider({ provider: gemini,
-            inputTokenCounter: (request, options) => gemini.countInputTokens(request, options),
-            usageRecorder: createAIUsageRecorder({ usageRepository: new AIUsageRepository(database),
-                provider: this._configuration?.aiProvider ?? null, purpose }),
-            defaultBudget: DEFAULT_AI_REQUEST_BUDGET });
+        return analyzeObjective(this._directorCommandDeps());
     }
     async _explainSelection() {
-        const editor = vscode.window.activeTextEditor;
-        const selection = editor?.selection;
-        const selectedCode = selection ? editor.document.getText(selection) : '';
-        if (!selectedCode.trim()) {
-            vscode.window.showInformationMessage('Select code first, then run HEADROOM: Explain Selected Code.');
-            return;
-        }
-        if (this._configuration.aiProvider !== 'gemini') {
-            vscode.window.showInformationMessage(getMessage('director.analysis.providerRequired'));
-            return;
-        }
-        const action = await chooseCodeExplanationAction();
-        if (!action) return;
-        const fileName = redactSecrets(basename(editor.document.fileName ?? 'selected code'), 160);
-        const sentCharacters = Math.min(selectedCode.length, 8000);
-        const confirmation = await vscode.window.showWarningMessage(
-            `Send up to ${sentCharacters} selected characters from ${fileName} to the configured AI provider for “${action}”? Common credential patterns are redacted first.`,
-            { modal: true }, 'Send selection');
-        if (confirmation !== 'Send selection') return;
-
-        const controller = this._beginDirectorRequest();
-        if (!controller) return;
-        const useCase = createCodeExplanationUseCase({
-            provider: this._createDirectorProvider(this._databaseConnection.database, 'code-explanation'),
-            idFactory: () => randomUUID(),
-        });
-        let result;
-        try {
-            result = await useCase.run({ action, selected: fileName,
-                context: { selectedCode: selectedCode.slice(0, 8000) },
-                evidence: [{ id: 'active-selection', type: 'source', label: `${fileName} selected code` }],
-                model: this._configuration.reasoningModel, signal: controller.signal });
-        }
-        finally {
-            if (this._directorRequestController === controller) this._directorRequestController = undefined;
-        }
-        if (controller.signal.aborted) {
-            vscode.window.showInformationMessage(getMessage('director.request.cancelled'));
-            return;
-        }
-        if (!result.ok) {
-            vscode.window.showErrorMessage(`Code explanation failed: ${result.error.message}`);
-            return;
-        }
-        const document = await vscode.workspace.openTextDocument({ language: 'json',
-            content: JSON.stringify(result.value.explanation, null, 2) });
-        await vscode.window.showTextDocument(document, { preview: false });
+        return explainSelection(this._directorCommandDeps());
     }
     async _reviewSelection(area = 'FULL') {
-        const editor = vscode.window.activeTextEditor;
-        const selection = editor?.selection;
-        const selectedCode = selection ? editor.document.getText(selection) : '';
-        if (!selectedCode.trim()) {
-            vscode.window.showInformationMessage('Select code first, then run HEADROOM: Review Selected Code.');
-            return;
-        }
-        if (this._configuration.aiProvider !== 'gemini') {
-            vscode.window.showInformationMessage(getMessage('director.analysis.providerRequired'));
-            return;
-        }
-        const fileName = redactSecrets(basename(editor.document.fileName ?? 'selected code'), 160);
-        const sentCharacters = Math.min(selectedCode.length, 8000);
-        const startLine = (Number.isInteger(selection.start?.line) ? selection.start.line : 0) + 1;
-        const endLine = (Number.isInteger(selection.end?.line) ? selection.end.line : startLine - 1) + 1;
-        const confirmation = await vscode.window.showWarningMessage(
-            `Send up to ${sentCharacters} selected characters from ${fileName} to the configured AI provider for an evidence-backed engineering review? Common credential patterns are redacted first.`,
-            { modal: true }, 'Send selection');
-        if (confirmation !== 'Send selection') return;
-
-        const controller = this._beginDirectorRequest();
-        if (!controller) return;
-        const useCase = createEngineeringReviewUseCase({
-            provider: this._createDirectorProvider(this._databaseConnection.database, 'engineering-review'),
-            idFactory: () => randomUUID(),
-        });
-        let result;
-        try {
-            result = await useCase.run({ area, selected: fileName, context: { selectedCode: selectedCode.slice(0, 8000) },
-                evidence: [{ id: 'active-selection', type: 'source', label: `${fileName}:${startLine}-${endLine}`,
-                    excerpt: selectedCode.slice(0, 8000) }],
-                model: this._configuration.reasoningModel, signal: controller.signal });
-        }
-        finally {
-            if (this._directorRequestController === controller) this._directorRequestController = undefined;
-        }
-        if (controller.signal.aborted) {
-            vscode.window.showInformationMessage(getMessage('director.request.cancelled'));
-            return;
-        }
-        if (!result.ok) {
-            vscode.window.showErrorMessage(`Engineering review failed: ${result.error.message}`);
-            return;
-        }
-        const document = await vscode.workspace.openTextDocument({ language: 'json', content: JSON.stringify(result.value.review, null, 2) });
-        await vscode.window.showTextDocument(document, { preview: false });
+        return reviewSelection(this._directorCommandDeps(), area);
+    }
+    async _proposePlan() {
+        return proposePlan(this._directorCommandDeps());
+    }
+    _createDirectorProvider(database, purpose) {
+        return createDirectorProvider({ secrets: this._context.secrets, database,
+            providerName: this._configuration?.aiProvider ?? null, purpose });
     }
     _beginDirectorRequest() {
-        if (this._executionControl.status === 'PAUSED') {
-            vscode.window.showInformationMessage(getMessage('director.request.paused'));
-            return undefined;
-        }
-        if (this._executionControl.status === 'CANCELLED') {
-            vscode.window.showInformationMessage(getMessage('director.request.cancelled'));
-            return undefined;
-        }
-        if (this._directorRequestController) {
-            vscode.window.showInformationMessage(getMessage('director.request.alreadyRunning'));
+        const blocked = directorRequestBlock(this._executionControl.status,
+            { alreadyRunning: Boolean(this._directorRequestController) });
+        if (blocked) {
+            vscode.window.showInformationMessage(getMessage(blocked));
             return undefined;
         }
         const controller = new AbortController();
         this._directorRequestController = controller;
         return controller;
-    }
-    async _proposePlan() {
-        if (this._executionControl.status === 'PAUSED') {
-            vscode.window.showInformationMessage(getMessage('director.request.paused'));
-            return;
-        }
-        if (this._executionControl.status === 'CANCELLED') {
-            vscode.window.showInformationMessage(getMessage('director.request.cancelled'));
-            return;
-        }
-        if (this._configuration.aiProvider !== 'gemini') {
-            vscode.window.showInformationMessage(getMessage('director.analysis.providerRequired'));
-            return;
-        }
-        const database = this._databaseConnection.database;
-        const objectiveRepository = new ObjectiveRepository(database);
-        const picked = await this._pickObjectiveForOrganization(database, objectiveRepository);
-        if (!picked) return;
-        const { selected: selectedObjective, organization } = picked;
-        const questionRepository = new DirectorQuestionRepository(database);
-        if (questionRepository.listByObjective(selectedObjective.objectiveId).some(({ status }) => status === 'PENDING')) {
-            vscode.window.showInformationMessage(getMessage('director.plan.questionsPending'));
-            return;
-        }
-        const confirmation = await vscode.window.showWarningMessage(
-            getMessage('director.plan.confirmSend'), { modal: true }, getMessage('director.plan.confirm'));
-        if (confirmation !== getMessage('director.plan.confirm')) return;
-        if (selectedObjective.requiresOrganizationAssignment) {
-            objectiveRepository.update(selectedObjective.objectiveId, { organizationId: organization.id });
-        }
-        const proposal = createDirectorPlanProposal({ objectiveRepository, questionRepository,
-            provider: this._createDirectorProvider(database, 'director-plan-proposal'), idFactory: () => randomUUID() });
-        const controller = this._beginDirectorRequest();
-        if (!controller) return;
-        let result;
-        try {
-            result = await proposal.run({ objectiveId: selectedObjective.objectiveId,
-                model: this._configuration.reasoningModel, signal: controller.signal });
-        } finally {
-            if (this._directorRequestController === controller) this._directorRequestController = undefined;
-        }
-        if (controller.signal.aborted) {
-            vscode.window.showInformationMessage(getMessage('director.request.cancelled'));
-            return;
-        }
-        if (!result.ok) {
-            vscode.window.showErrorMessage(getMessage('director.plan.failed', { error: result.error.message }));
-            return;
-        }
-        // A proposal is shown as JSON and explicitly approved or rejected by the CEO.
-        const decidedPlan = await this._reviewPlan(result.value);
-        if (decidedPlan?.approval?.decision === 'APPROVED') await this._createApprovedPlanTasks(decidedPlan);
-    }
-    async _createApprovedPlanTasks(plan) {
-        const database = this._databaseConnection.database;
-        const objectiveRepository = new ObjectiveRepository(database);
-        const objective = objectiveRepository.getById(plan.objectiveId);
-        if (!objective) {
-            vscode.window.showErrorMessage(getMessage('plan.tasks.objectiveMissing'));
-            return;
-        }
-        const organizationRepository = new OrganizationRepository(database);
-        const organizations = organizationRepository.list().sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
-        let organization = objective.organizationId ? organizationRepository.getById(objective.organizationId) : undefined;
-        if (!organization && !objective.organizationId && organizations.length === 1) organization = organizations[0];
-        if (!organization && !objective.organizationId && organizations.length > 1) {
-            const selected = await vscode.window.showQuickPick(organizations.map((entry) => ({ label: entry.name, organization: entry })),
-                { title: getMessage('plan.tasks.pickOrganization'), ignoreFocusOut: true });
-            organization = selected?.organization;
-        }
-        if (!organization) {
-            vscode.window.showErrorMessage(getMessage('plan.tasks.organizationMissing'));
-            return;
-        }
-
-        const officeRepository = new OfficeRepository(database);
-        const departmentRepository = new DepartmentRepository(database);
-        const officeIds = new Set(officeRepository.listByOrganization(organization.id)
-            .filter((office) => office.status === 'ACTIVE').map((office) => office.id));
-        const offices = officeRepository.listByOrganization(organization.id).filter((office) => officeIds.has(office.id));
-        const departments = offices.flatMap((office) => departmentRepository.listByOffice(office.id)
-            .filter((department) => department.status === 'ACTIVE'));
-        const departmentIds = new Set(departments.map((department) => department.id));
-        const allAgents = new AgentRepository(database).listByOrganization(organization.id);
-        const hierarchyAgents = allAgents.filter((agent) =>
-            ((agent.role === AgentRole.CEO || agent.role === AgentRole.DIRECTOR) && agent.organizationId === organization.id)
-            || (agent.role === AgentRole.HEAD_MANAGER && officeIds.has(agent.managedOfficeId))
-            || (agent.role === AgentRole.DEPT_MANAGER && departmentIds.has(agent.managedDepartmentId))
-            || (agent.role === AgentRole.EMPLOYEE && departmentIds.has(agent.departmentId)));
-        const directors = hierarchyAgents.filter((agent) => agent.role === AgentRole.DIRECTOR && isAgentAvailable(agent));
-        if (directors.length !== 1) {
-            vscode.window.showErrorMessage(getMessage('plan.tasks.directorUnavailable'));
-            return;
-        }
-        const managerByOffice = new Map(hierarchyAgents.filter((agent) =>
-            agent.role === AgentRole.HEAD_MANAGER && isAgentAvailable(agent)).map((agent) => [agent.managedOfficeId, agent]));
-        const routes = offices.flatMap((office) => {
-            const head = managerByOffice.get(office.id);
-            return head ? plan.tasks.map((task) => ({
-                label: `${task.taskCode} · ${task.title.slice(0, 120)}`,
-                description: `${office.name} · ${head.name}`,
-                taskId: task.id, creatorId: directors[0].id, assigneeId: head.id,
-            })) : [];
-        }).slice(0, 8_000);
-        if (!routes.length) {
-            vscode.window.showErrorMessage(getMessage('plan.tasks.noOfficeHeads'));
-            return;
-        }
-        const selectedRoutes = await vscode.window.showQuickPick(routes,
-            { title: getMessage('plan.tasks.assign'), canPickMany: true, ignoreFocusOut: true });
-        if (!selectedRoutes) return;
-        const routesByTask = new Map();
-        for (const route of selectedRoutes) {
-            if (routesByTask.has(route.taskId)) {
-                vscode.window.showErrorMessage(getMessage('plan.tasks.assignmentInvalid'));
-                return;
-            }
-            routesByTask.set(route.taskId, route);
-        }
-        if (routesByTask.size !== plan.tasks.length || plan.tasks.some((task) => !routesByTask.has(task.id))) {
-            vscode.window.showErrorMessage(getMessage('plan.tasks.assignmentRequired', { count: plan.tasks.length }));
-            return;
-        }
-        const confirmation = await vscode.window.showWarningMessage(getMessage('plan.tasks.confirm', { count: plan.tasks.length }),
-            { modal: true }, getMessage('plan.tasks.create'));
-        if (confirmation !== getMessage('plan.tasks.create')) return;
-
-        // Legacy objectives may not have an organization owner. Persist the explicit
-        // routing choice so future Director actions stay within the same tenant.
-        const currentObjective = objectiveRepository.getById(objective.id);
-        if (!currentObjective || (currentObjective.organizationId && currentObjective.organizationId !== organization.id)) {
-            vscode.window.showErrorMessage(getMessage('plan.tasks.organizationMissing'));
-            return;
-        }
-        if (!currentObjective.organizationId) {
-            const scopedObjective = objectiveRepository.update(objective.id, { organizationId: organization.id });
-            if (!scopedObjective || scopedObjective.organizationId !== organization.id) {
-                vscode.window.showErrorMessage(getMessage('plan.tasks.organizationMissing'));
-                return;
-            }
-        }
-
-        const hierarchy = { organization, offices, departments, agents: hierarchyAgents };
-        const eventBus = new SqliteEventBus(database);
-        const useCase = createTaskCreationUseCase({ objectiveRepository,
-            projectRepository: new ProjectRepository(database), taskRepository: new TaskRepository(database),
-            dependencyRepository: new TaskDependencyRepository(database), hierarchyProvider: { getSnapshot: () => hierarchy },
-            auditRepository: new AuditLogRepository(database), eventPublisher: eventBus,
-            unitOfWork: createSqliteUnitOfWork(database), clock: { now: () => new Date() }, idFactory: () => randomUUID() });
-        const created = await useCase.run({ plan, maxRetries: this._configuration.maxRetries,
-            assignments: plan.tasks.map((task) => {
-                const route = routesByTask.get(task.id);
-                return { taskId: task.id, creatorId: route.creatorId, assigneeId: route.assigneeId };
-            }) });
-        if (!created.ok) {
-            vscode.window.showErrorMessage(getMessage('plan.tasks.failed', { error: created.error.message }));
-            return;
-        }
-        this._refreshStatusViews();
-        this._commandCenter?.refresh();
-        vscode.window.showInformationMessage(getMessage('plan.tasks.created', { count: created.value.tasks.length }));
     }
     async _configureProviderCredential() {
         const provider = await this._pickCredentialProvider();
@@ -992,6 +630,11 @@ export class HeadroomContext {
     dispose() {
         let disposalError;
         this._initialized = false;
+        try {
+            this._stateChangeEmitter?.dispose?.();
+        } catch (error) {
+            disposalError ??= error;
+        }
         for (const disposable of this._disposables.splice(0).reverse()) {
             try {
                 disposable.dispose();
@@ -1015,13 +658,11 @@ export class HeadroomContext {
             throw disposalError;
         }
     }
-
     _getCollapsedCommandCenterSections() {
         const saved = this._context.globalState.get('headroom.commandCenter.collapsedSections', []);
         if (!Array.isArray(saved)) return [];
         return saved.filter((section) => ['objectives', 'tasks', 'completed-tasks', 'task-errors', 'director-questions', 'activity', 'execution-activity'].includes(section));
     }
-
     _setCollapsedCommandCenterSection(section, collapsed) {
         const allowed = ['objectives', 'tasks', 'completed-tasks', 'task-errors', 'director-questions', 'activity', 'execution-activity'];
         if (!allowed.includes(section) || typeof collapsed !== 'boolean') return Promise.resolve(false);
@@ -1030,7 +671,6 @@ export class HeadroomContext {
         else sections.delete(section);
         return this._context.globalState.update('headroom.commandCenter.collapsedSections', [...sections]);
     }
-
     async _answerDirectorQuestion() {
         const database = this._databaseConnection.database;
         const questionRepository = new DirectorQuestionRepository(database);
@@ -1133,6 +773,50 @@ export class HeadroomContext {
     async _manageAgentLifecycle() {
         await manageAgentLifecycle({ database: this._databaseConnection.database,
             refresh: () => this._commandCenter?.refresh(), refreshStatus: this._refreshStatusViews });
+    }
+    async _readOperationalHealth() {
+        const database = this._databaseConnection.database;
+        const queueRepository = new ExecutionQueueRepository(database);
+        return readOperationalHealth({
+            database: () => diagnoseDatabaseIntegrity(database),
+            queue: () => ({ queued: queueRepository.listByState('QUEUED').length,
+                claimed: queueRepository.listByState('CLAIMED').length }),
+            provider: async () => this._providerHealth(),
+            verification: () => ({ status: 'NOT_RUN', detail: 'No verification result is currently recorded.' }),
+        });
+    }
+    _readCurrentWork() {
+        return {
+            activePhase: '',
+            detail: this._executionControl.status === 'PAUSED' ? 'Execution is currently paused.' : '',
+        };
+    }
+    async _openObjectiveAction(title) {
+        const objectiveRepository = new ObjectiveRepository(this._databaseConnection.database);
+        const objective = typeof title === 'string'
+            ? objectiveRepository.list().find((item) => item.title === title)
+            : undefined;
+        if (objective) {
+            await this._analyzeObjective();
+        } else {
+            await vscode.commands.executeCommand(COMMANDS.ANALYZE_OBJECTIVE);
+        }
+    }
+    async _openTaskAction(title) {
+        const taskRepository = new TaskRepository(this._databaseConnection.database);
+        const task = typeof title === 'string'
+            ? taskRepository.list().find((item) => item.title === title)
+            : undefined;
+        if (task?.id) {
+            await vscode.commands.executeCommand(COMMANDS.SHOW_TASK_EXECUTION_REPORT, { taskId: task.id });
+        } else {
+            await vscode.commands.executeCommand(COMMANDS.SHOW_TASK_EXECUTION_REPORT);
+        }
+    }
+    async _inspectHealthAction() {
+        const health = await this._readOperationalHealth();
+        const summary = health.map((item) => `${item.label}: ${item.status}`).join(', ');
+        vscode.window.showInformationMessage(`HEADROOM Operational Health: ${summary}`);
     }
     get extensionContext() {
         return this._context;

@@ -22,7 +22,7 @@
  * Connection lifecycle is implemented in Phase 006 and versioned migrations
  * in Phase 007; typed core repositories are implemented in Phase 009.
  */
-export { CORE_SCHEMA_SQL, initializeCoreSchema } from './schema';
+export { initializeCoreSchema } from './schema';
 export { SqliteConnection, SqliteConnectionError } from './SqliteConnection';
 export { createDatabaseBackupService } from './DatabaseBackup';
 export { diagnoseDatabaseIntegrity } from './DatabaseIntegrity';

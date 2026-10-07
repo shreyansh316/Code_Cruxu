@@ -13,6 +13,26 @@ const TRANSIENT_ERRORS = new Set([
 ]);
 const ABORTED_GENERATION = Symbol('aborted-generation');
 
+/** Snapshot and bound one task AI base budget (single source shared with the
+ * task-budgeted provider wrapper). */
+export function snapshotAIRequestBudget(value) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)
+        || Object.keys(value).some((key) => !['maxInputTokens', 'maxOutputTokens', 'timeoutMs',
+            'maxRetries', 'retryDelayMs', 'maxTotalTokens'].includes(key))
+        || !Number.isSafeInteger(value.maxInputTokens) || value.maxInputTokens < 1 || value.maxInputTokens > 1_000_000
+        || !Number.isSafeInteger(value.maxOutputTokens) || value.maxOutputTokens < 1 || value.maxOutputTokens > 8_192
+        || !Number.isSafeInteger(value.timeoutMs) || value.timeoutMs < 1 || value.timeoutMs > 120_000
+        || !Number.isSafeInteger(value.maxRetries) || value.maxRetries < 0 || value.maxRetries > 3
+        || !Number.isSafeInteger(value.retryDelayMs) || value.retryDelayMs < 0 || value.retryDelayMs > 5_000
+        || (value.maxTotalTokens !== undefined && (!Number.isSafeInteger(value.maxTotalTokens)
+            || value.maxTotalTokens < 1 || value.maxTotalTokens > 1_000_000))) {
+        throw new TypeError('Task AI base budgets must use bounded token, timeout, retry, and retry-delay limits.');
+    }
+    return Object.freeze({ maxInputTokens: value.maxInputTokens, maxOutputTokens: value.maxOutputTokens,
+        timeoutMs: value.timeoutMs, maxRetries: value.maxRetries, retryDelayMs: value.retryDelayMs,
+        ...(value.maxTotalTokens === undefined ? {} : { maxTotalTokens: value.maxTotalTokens }) });
+}
+
 /** Bound model work and persist the actual usage for every generation attempt. */
 export function createBoundedAIProvider({ provider, inputTokenCounter, usageRecorder,
     defaultBudget = DEFAULT_AI_REQUEST_BUDGET } = {}) {

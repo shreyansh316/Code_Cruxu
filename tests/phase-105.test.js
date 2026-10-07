@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
-import { CommandCenterPanel, createCommandCenterSnapshot, renderCommandCenterHtml } from '../src/core/CommandCenterPanel';
+import { CommandCenterPanel, createCommandCenterSnapshot } from '../src/core/CommandCenterPanel';
+import { renderCommandCenterHtml } from '../src/core/commandCenterView';
 
 describe('Phase 105 — persisted command-center section preferences', () => {
     it('accepts only known section identifiers and removes duplicate preferences', () => {

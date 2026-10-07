@@ -1,6 +1,6 @@
 /** Phase 336 — command center accessibility landmarks and toggle state. */
 import { describe, expect, it } from 'vitest';
-import { renderCommandCenterHtml } from '../src/core/CommandCenterPanel';
+import { renderCommandCenterHtml } from '../src/core/commandCenterView';
 
 describe('Phase 336 — command center accessibility', () => {
     it('provides keyboard bypass, labeled navigation, and a main content landmark', () => {

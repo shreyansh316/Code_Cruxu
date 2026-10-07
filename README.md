@@ -151,6 +151,8 @@ The codebase follows a clean, layered architecture where dependencies point stri
 * **Application Layer (`src/application/`)**: Coordinates business workflows and encapsulates use cases such as objective intake, task decomposition, queue orchestration, and evidence generation.
 * **Domain Layer (`src/domain/`)**: Pure domain entities, state transition machines, assignment rules, and structural invariants without external dependencies.
 * **Infrastructure Layer (`src/infrastructure/`)**: Concrete adapters for the workspace filesystem, process execution, Git status, secret redaction, and verification check pipelines.
+
+See [Agency Agents capability integration](./agency-agents-integration.md) for the provenance, runtime skill-loading behavior, and domain-support limitations of the imported workforce material.
 * **Storage Layer (`src/storage/`)**: Local persistence layer managing SQLite connections, transactional migrations, and strongly typed repository ports.
 
 ## Verification & Reliability
@@ -269,6 +271,7 @@ npm run typecheck
 npm run lint
 npm run check:sqlite
 npm run audit:complexity
+npm run audit:dead-code
 
 # Run Extension Host tests
 npm run test:vscode

@@ -1,0 +1,4 @@
+{
+  "description": "Duplicate 10-statement logic-window signatures. The audit fails on any signature not recorded here; the Phase 458-462 burn-down removed every known group, so the baseline is empty and all duplication is blocked.",
+  "groups": []
+}

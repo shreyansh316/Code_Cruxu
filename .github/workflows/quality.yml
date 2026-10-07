@@ -50,6 +50,9 @@ jobs:
       - name: Verify runner target
         run: node scripts/check-platform.js ${{ matrix.target }}
 
+      - name: Git diff and whitespace hygiene
+        run: git diff --check
+
       - name: JavaScript static checks
         run: npm run typecheck
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { createCommandCenterSnapshot, renderCommandCenterHtml } from '../src/core/CommandCenterPanel';
+import { createCommandCenterSnapshot } from '../src/core/CommandCenterPanel';
+import { renderCommandCenterHtml } from '../src/core/commandCenterView';
 
 describe('Phase 106 — task failure and blocker visibility', () => {
     it('shows bounded persisted failure and blocker summaries without task identifiers or results', () => {

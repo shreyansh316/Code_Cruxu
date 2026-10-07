@@ -1,3 +1,4 @@
+import { requireAssignedInProgressTask } from './authorizedTaskAccess';
 import { EventType, TaskStatus } from '../constants';
 import { createDomainEvent, createEntityId, DomainInvariantError, validateTaskResult } from '../domain';
 import { ApplicationError, createUseCase } from './useCase';
@@ -20,14 +21,10 @@ export function createTaskResultSubmissionUseCase({
             if (!input || typeof input.taskId !== 'string' || typeof input.agentId !== 'string') {
                 throw new DomainInvariantError('invalid-task-result', 'A task id and submitting agent id are required.');
             }
-            const task = dependencies.taskRepository.getById(input.taskId);
-            if (!task) throw new ApplicationError('task-not-found', 'The task does not exist.');
-            if (task.assigneeId !== input.agentId) {
-                throw new DomainInvariantError('unauthorized-task-result', 'Only the assigned agent may submit this task result.');
-            }
-            if (task.status !== TaskStatus.IN_PROGRESS) {
-                throw new DomainInvariantError('invalid-task-transition', 'Task results can be submitted only while the task is in progress.');
-            }
+            const task = requireAssignedInProgressTask({ taskRepository: dependencies.taskRepository,
+                taskId: input.taskId, agentId: input.agentId,
+                assigneeMessage: 'Only the assigned agent may submit this task result.',
+                statusMessage: 'Task results can be submitted only while the task is in progress.' });
             const validated = validateTaskResult(input.result, task.acceptanceCriteria);
             return dependencies.unitOfWork.run(() => {
                 const timestamp = dependencies.clock.now();

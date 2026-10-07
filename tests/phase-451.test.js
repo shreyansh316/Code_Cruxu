@@ -98,7 +98,7 @@ describe('Phase 451 — shipped baseline holds the real source tree', () => {
         expect(audit.fileCount).toBeGreaterThan(100);
         expect(audit.violations).toEqual([]);
         expect(audit.worst.lines.file).toBe('core/HeadroomContext.js');
-        expect(DEFAULT_COMPLEXITY_THRESHOLDS).toEqual({ maxLines: 1185, maxFunctions: 115, maxBranches: 251 });
+        expect(DEFAULT_COMPLEXITY_THRESHOLDS).toEqual({ maxLines: 962, maxFunctions: 132, maxBranches: 203 });
         expect(METRICS.map((metric) => metric.key)).toEqual(['lines', 'functions', 'branches']);
     });
 });

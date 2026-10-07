@@ -67,6 +67,20 @@ describe('Phase 349 — persisted task tools and async authorization recheck', (
         await expect(tools.filesystem.readFile('src/readme.txt')).rejects.toMatchObject({ code: 'task-tool-not-authorized' });
     });
 
+    it('rechecks the mapped position scope before exposing persisted tools', async () => {
+        const filesystem = await createWorkspaceFileAdapter({ workspaceRoot: workspace });
+        const provider = createPersistedTaskToolsProvider({ workspaceRoot: workspace, filesystem,
+            processRunner: { execute: vi.fn() } });
+        const positionedEmployee = { ...employee, specialization: 'Unreal Systems Engineer' };
+
+        await expect(provider.forTask({ actor: positionedEmployee, task }))
+            .rejects.toMatchObject({ code: 'task-tool-position-scope-forbidden' });
+        expect(await provider.forTask({ actor: positionedEmployee, task: { ...task, toolPermissions: {
+            readFiles: ['Source/Game/Main.cpp'], writeFiles: ['Config/DefaultEngine.ini'], commands: [],
+            workspaceFingerprint: permissions.workspaceFingerprint,
+        } } })).toMatchObject({ filesystem: expect.any(Object), process: expect.any(Object) });
+    });
+
     it('refuses to apply a saved grant manifest to a different workspace folder', async () => {
         const otherWorkspace = await mkdtemp(join(tmpdir(), 'headroom-phase349-other-'));
         try {

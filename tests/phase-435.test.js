@@ -1,6 +1,7 @@
 /** Phase 435 — make performer attribution explicit in Command Center activity. */
 import { describe, expect, it } from 'vitest';
-import { createCommandCenterSnapshot, renderCommandCenterHtml } from '../src/core/CommandCenterPanel';
+import { createCommandCenterSnapshot } from '../src/core/CommandCenterPanel';
+import { renderCommandCenterHtml } from '../src/core/commandCenterView';
 
 describe('Phase 435 — explicit activity performer labels', () => {
     it('renders an Actor label so the live feed never presents activity anonymously', () => {

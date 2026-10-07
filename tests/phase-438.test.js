@@ -1,6 +1,6 @@
 /** Phase 438 — make workspace refresh recovery clear to assistive technology. */
 import { describe, expect, it } from 'vitest';
-import { renderCommandCenterHtml } from '../src/core/CommandCenterPanel';
+import { renderCommandCenterHtml } from '../src/core/commandCenterView';
 
 describe('Phase 438 — live workspace load recovery', () => {
     it('announces recovery and synchronizes the last announced execution state', () => {

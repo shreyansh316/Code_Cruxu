@@ -1,6 +1,7 @@
 /** Phase 208 — persisted task execution duration. */
 import { describe, expect, it } from 'vitest';
-import { createCommandCenterSnapshot, renderCommandCenterHtml } from '../src/core/CommandCenterPanel';
+import { createCommandCenterSnapshot } from '../src/core/CommandCenterPanel';
+import { renderCommandCenterHtml } from '../src/core/commandCenterView';
 
 describe('Phase 208 — task duration visibility', () => {
     it('calculates active and completed duration from valid task timestamps', () => {

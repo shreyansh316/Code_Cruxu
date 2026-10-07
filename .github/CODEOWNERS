@@ -1,0 +1,23 @@
+# HEADROOM Code Owners
+# Defines individuals or teams responsible for code in this repository.
+# These owners will be automatically requested for review when someone opens a pull request.
+# Only existing paths are listed per repository rules.
+
+# Default owner for entire repository
+*                     @shreyansh316
+
+# CI/CD and repository metadata
+/.github/             @shreyansh316
+/package.json         @shreyansh316
+/package-lock.json    @shreyansh316
+/esbuild.js           @shreyansh316
+/scripts/             @shreyansh316
+
+# Core application architecture paths
+/src/core/            @shreyansh316
+/src/application/     @shreyansh316
+/src/domain/          @shreyansh316
+/src/infrastructure/  @shreyansh316
+/src/storage/         @shreyansh316
+/src/shared/          @shreyansh316
+/src/agents/          @shreyansh316
