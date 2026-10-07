@@ -38,10 +38,15 @@
   ],
   "keywords": [
     "ai",
-    "ceo",
-    "organization",
-    "agent",
-    "automation"
+    "vscode-extension",
+    "ai-agents",
+    "coding-assistant",
+    "developer-tools",
+    "developer-productivity",
+    "automation",
+    "sqlite",
+    "task-management",
+    "organization"
   ],
   "activationEvents": [
     "onStartupFinished"

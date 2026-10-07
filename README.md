@@ -16,7 +16,8 @@
   <a href="https://github.com/shreyansh316/Code_Cruxu/issues">Issues</a> ·
   <a href="https://github.com/shreyansh316/Code_Cruxu/releases">Releases</a> ·
   <a href="./CONTRIBUTING.md">Contributing</a> ·
-  <a href="./docs/ai-github-collaboration.md">Multi-AI Guide</a>
+  <a href="./docs/ai-github-collaboration.md">Multi-AI Guide</a> ·
+  <a href="./SECURITY.md">Security</a>
 </p>
 
 ---
@@ -28,9 +29,9 @@
 
 ## What is HEADROOM?
 
-HEADROOM is a local-first development system that transforms how developers work with AI coding models inside Visual Studio Code.
+HEADROOM is an open-source developer tool and VS Code extension designed to elevate developer productivity during AI-assisted software development. It transforms how software engineers work with AI coding assistants and AI agents inside the editor.
 
-Rather than relying on unstructured chat streams or granting unrestricted access to run raw commands across a repository, HEADROOM structures software engineering into disciplined, verifiable workflows:
+Rather than relying on unstructured chat streams or granting unrestricted access to run raw commands across a repository, HEADROOM structures the software development workflow into disciplined, verifiable stages:
 
 * **Objectives replace ad-hoc prompts**: Define overarching engineering goals that are analyzed and broken into structured plans.
 * **Plans decompose into dependency-aware tasks**: Work is split into discrete units with explicit dependencies and defined scopes.
@@ -113,7 +114,7 @@ Every capability listed below is backed by the current implementation in the rep
 
 ---
 
-## Architecture Overview
+## Architecture
 
 HEADROOM follows a clean layered architecture with dependencies pointing strictly downward:
 
