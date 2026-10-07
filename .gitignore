@@ -16,6 +16,16 @@
 .env
 .env.local
 .env.*.local
+*.pem
+*.key
+*.cert
+*.crt
+*.pfx
+*.p12
+*.token
+*.secret
+credentials.json
+gh-token*
 
 # Database files — contain runtime data
 *.db
