@@ -1,0 +1,4644 @@
+{
+  "title": "HEADROOM Workforce Blueprint — Agency Agents Arrangement",
+  "version": "1.0.0",
+  "generatedAt": "2026-10-07T09:39:52.002Z",
+  "status": "PROPOSED_FOR_REVIEW",
+  "principles": {
+    "hierarchy": "CEO -> AI Director -> Office Head Manager -> Department Manager -> 4 AI Employees",
+    "employeeSlotsInvariant": 4,
+    "sourceOfTruth": "HEADROOM Architecture and Invariants",
+    "implementationStatus": "PLANNING_ONLY_NO_RUNTIME_MODIFICATIONS"
+  },
+  "summary": {
+    "totalOffices": 4,
+    "totalDepartments": 20,
+    "totalEmployeePositions": 80,
+    "totalSharedSkills": 6
+  },
+  "offices": [
+    {
+      "key": "GAME",
+      "name": "Game Development",
+      "slug": "game-development",
+      "purpose": "Real-time interactive entertainment, engine systems, game design, tech art, and multiplayer architecture.",
+      "departments": [
+        {
+          "name": "Game Engine Systems",
+          "slug": "game-engine-systems",
+          "purpose": "Core game engine programming, gameplay mechanics, systems logic, and network simulation.",
+          "managerResponsibility": "Coordinates engine architecture alignment, runtime stability, and tick/frame performance budgets.",
+          "employees": [
+            {
+              "slot": 1,
+              "name": "Unreal Systems Engineer",
+              "position": "Senior Unreal Engine Systems Specialist",
+              "primary": "Unreal C++ architecture, Gameplay Ability System (GAS), and engine subsystems.",
+              "secondary": [
+                "Actor replication",
+                "Memory management",
+                "Subsystem lifecycles"
+              ],
+              "technologies": [
+                "Unreal Engine 5 / 4.27",
+                "C++",
+                "GAS",
+                "Unreal Build Tool"
+              ],
+              "taskTypes": [
+                "gameplay-systems",
+                "ability-system",
+                "unreal-architecture",
+                "actor-lifecycle"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write",
+                "process:execute:unreal-cli",
+                "process:execute:cmake"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "Source/**",
+                  "Config/**",
+                  "*.uproject"
+                ],
+                "writePaths": [
+                  "Source/**",
+                  "Config/**"
+                ],
+                "commands": [
+                  "dotnet",
+                  "build",
+                  "msbuild"
+                ]
+              },
+              "verification": "Compile check with Unreal Build Tool; unit tests in Unreal Test Automation harness.",
+              "provenance": [
+                "imports/agency-agents/game-development/unreal-engine/unreal-systems-engineer.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 4,
+                "toolRequirements": 4,
+                "permissionComplexity": 3,
+                "verificationDifficulty": 3,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 2,
+              "name": "Unity Systems Architect",
+              "position": "Senior Unity Data-Driven Systems Architect",
+              "primary": "ScriptableObject modular architecture, decoupled event channels, and component composition.",
+              "secondary": [
+                "Custom Editor inspectors",
+                "Prefab serialization hygiene",
+                "Memory leak prevention"
+              ],
+              "technologies": [
+                "Unity 2022/6",
+                "C#",
+                "ScriptableObjects",
+                "Unity Package Manager"
+              ],
+              "taskTypes": [
+                "unity-systems",
+                "scriptable-objects",
+                "component-refactoring",
+                "editor-tools"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write",
+                "process:execute:dotnet"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "Assets/**",
+                  "Packages/**",
+                  "ProjectSettings/**"
+                ],
+                "writePaths": [
+                  "Assets/**",
+                  "ProjectSettings/**"
+                ],
+                "commands": [
+                  "dotnet",
+                  "unity-cmd"
+                ]
+              },
+              "verification": "Unity Test Runner batch execution; zero missing reference checks; assembly definition validation.",
+              "provenance": [
+                "imports/agency-agents/game-development/unity/unity-architect.md",
+                "imports/agency-agents/game-development/unity/unity-editor-tool-developer.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 4,
+                "toolRequirements": 4,
+                "permissionComplexity": 3,
+                "verificationDifficulty": 3,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 3,
+              "name": "Godot & Multiplatform Gameplay Scripter",
+              "position": "Godot & Multiplatform Gameplay Specialist",
+              "primary": "Godot GDScript/C# node hierarchies, scene state machines, and Roblox Luau gameplay scripting.",
+              "secondary": [
+                "Roblox client-server boundaries",
+                "Cross-engine 2D/3D prototypes",
+                "Input mapping"
+              ],
+              "technologies": [
+                "Godot 4.x",
+                "GDScript",
+                "C#",
+                "Luau / Roblox Studio"
+              ],
+              "taskTypes": [
+                "godot-gameplay",
+                "roblox-scripting",
+                "node-architecture",
+                "scene-tree"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write",
+                "process:execute:godot-cli"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "scenes/**",
+                  "scripts/**",
+                  "project.godot",
+                  "*.rbxl"
+                ],
+                "writePaths": [
+                  "scenes/**",
+                  "scripts/**"
+                ],
+                "commands": [
+                  "godot",
+                  "rojo"
+                ]
+              },
+              "verification": "Godot headless GUT test execution; Luau type check and linter.",
+              "provenance": [
+                "imports/agency-agents/game-development/godot/godot-gameplay-scripter.md",
+                "imports/agency-agents/game-development/roblox-studio/roblox-systems-scripter.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 4,
+                "tokenEfficiency": 4,
+                "toolRequirements": 3,
+                "permissionComplexity": 3,
+                "verificationDifficulty": 3,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 4,
+              "name": "Multiplayer Network Engineer",
+              "position": "Game Networking & Multiplayer Architect",
+              "primary": "Network replication, client-side prediction, server reconciliation, and tick simulations.",
+              "secondary": [
+                "RPC optimization",
+                "Bandwidth profiling",
+                "Lag compensation",
+                "Session matchmaking"
+              ],
+              "technologies": [
+                "Unreal Replication",
+                "Unity Netcode for GameObjects",
+                "Godot High-Level Multiplayer",
+                "WebSockets"
+              ],
+              "taskTypes": [
+                "network-replication",
+                "multiplayer-sync",
+                "tick-simulation",
+                "bandwidth-optimization"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write",
+                "process:execute:network-test"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "Source/**",
+                  "Assets/**",
+                  "scripts/**"
+                ],
+                "writePaths": [
+                  "Source/**",
+                  "Assets/**",
+                  "scripts/**"
+                ],
+                "commands": [
+                  "dotnet",
+                  "pytest"
+                ]
+              },
+              "verification": "Multi-client loopback tests, latency simulation verification, packet inspection logs.",
+              "provenance": [
+                "imports/agency-agents/game-development/unreal-engine/unreal-multiplayer-architect.md",
+                "imports/agency-agents/game-development/unity/unity-multiplayer-engineer.md",
+                "imports/agency-agents/game-development/godot/godot-multiplayer-engineer.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 4,
+                "toolRequirements": 4,
+                "permissionComplexity": 3,
+                "verificationDifficulty": 4,
+                "overallValue": 5
+              }
+            }
+          ]
+        },
+        {
+          "name": "Game Design & Creative Systems",
+          "slug": "game-design-creative",
+          "purpose": "Core gameplay mechanics, level architecture, narrative integration, and game economies.",
+          "managerResponsibility": "Ensures gameplay loops, level flow, narrative beats, and economy curves form a balanced experience.",
+          "employees": [
+            {
+              "slot": 1,
+              "name": "Core Mechanics & Experience Designer",
+              "position": "Lead Gameplay Mechanics & Experience Designer",
+              "primary": "Core gameplay loop definition, control feel, player mechanics, and moment-to-moment engagement.",
+              "secondary": [
+                "FTUE (First-Time User Experience)",
+                "Player onboarding",
+                "Input curve tuning"
+              ],
+              "technologies": [
+                "Game Design Documents (GDD)",
+                "Machinations",
+                "Roblox Experience Design"
+              ],
+              "taskTypes": [
+                "gdd-creation",
+                "mechanics-design",
+                "onboarding-flow",
+                "gameplay-tuning"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "docs/design/**",
+                  "Configs/**",
+                  "Data/**"
+                ],
+                "writePaths": [
+                  "docs/design/**",
+                  "Configs/**",
+                  "Data/**"
+                ],
+                "commands": []
+              },
+              "verification": "Design spec review, configuration table consistency, mathematical balance checks.",
+              "provenance": [
+                "imports/agency-agents/game-development/game-designer.md",
+                "imports/agency-agents/game-development/roblox-studio/roblox-experience-designer.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 4,
+                "tokenEfficiency": 5,
+                "toolRequirements": 2,
+                "permissionComplexity": 1,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 2,
+              "name": "Level & World Designer",
+              "position": "Level Architecture & World Building Specialist",
+              "primary": "Spatial layouts, encounter pacing, player guiding, sightlines, and streaming world partitions.",
+              "secondary": [
+                "PCG (Procedural Content Generation)",
+                "Blockouts / greyboxing",
+                "Collision validation"
+              ],
+              "technologies": [
+                "Unreal World Partition",
+                "PCG Framework",
+                "Unity ProBuilder",
+                "Godot GridMap"
+              ],
+              "taskTypes": [
+                "level-blockout",
+                "world-partitioning",
+                "pacing-layout",
+                "pcg-rules"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "Content/Maps/**",
+                  "Assets/Scenes/**",
+                  "docs/levels/**"
+                ],
+                "writePaths": [
+                  "Content/Maps/**",
+                  "Assets/Scenes/**",
+                  "docs/levels/**"
+                ],
+                "commands": []
+              },
+              "verification": "Map collision checks, streaming partition bounds validation, traversal timing tests.",
+              "provenance": [
+                "imports/agency-agents/game-development/level-designer.md",
+                "imports/agency-agents/game-development/unreal-engine/unreal-world-builder.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 4,
+                "toolRequirements": 3,
+                "permissionComplexity": 2,
+                "verificationDifficulty": 3,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 3,
+              "name": "Game Economy & Progression Balancer",
+              "position": "In-Game Economy & Progression Balancer",
+              "primary": "Currency sinks and faucets, progression curves, itemization tiers, and reward balancing.",
+              "secondary": [
+                "Loot tables",
+                "Monetization ethics checking",
+                "Drop rate math",
+                "Inflation models"
+              ],
+              "technologies": [
+                "Spreadsheet modeling",
+                "JSON/CSV balancing data",
+                "Monte Carlo simulation"
+              ],
+              "taskTypes": [
+                "economy-balancing",
+                "progression-curves",
+                "loot-tables",
+                "drop-rates"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write",
+                "process:execute:node"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "Data/Economy/**",
+                  "Data/Progression/**"
+                ],
+                "writePaths": [
+                  "Data/Economy/**",
+                  "Data/Progression/**"
+                ],
+                "commands": [
+                  "node"
+                ]
+              },
+              "verification": "Monte Carlo simulation runs (10,000 player journeys); inflation threshold checks.",
+              "provenance": [
+                "imports/agency-agents/game-development/economy-designer.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 3,
+                "permissionComplexity": 2,
+                "verificationDifficulty": 3,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 4,
+              "name": "Narrative & Quest Designer",
+              "position": "Narrative Systems & Branching Dialogue Designer",
+              "primary": "Branching dialogue trees, quest state graphs, environmental storytelling, and lore consistency.",
+              "secondary": [
+                "Localization key tagging",
+                "NPC state machines",
+                "Cutscene script timing"
+              ],
+              "technologies": [
+                "Yarn Spinner",
+                "Ink",
+                "Twine",
+                "Custom Dialogue JSON"
+              ],
+              "taskTypes": [
+                "dialogue-trees",
+                "quest-design",
+                "narrative-scripting",
+                "lore-spec"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "Data/Dialogues/**",
+                  "Data/Quests/**",
+                  "docs/narrative/**"
+                ],
+                "writePaths": [
+                  "Data/Dialogues/**",
+                  "Data/Quests/**",
+                  "docs/narrative/**"
+                ],
+                "commands": []
+              },
+              "verification": "Dialogue acyclic graph validation, dead-end state checks, quest condition unit tests.",
+              "provenance": [
+                "imports/agency-agents/game-development/narrative-designer.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 2,
+                "permissionComplexity": 1,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            }
+          ]
+        },
+        {
+          "name": "Technical Art & Audio Pipeline",
+          "slug": "tech-art-audio",
+          "purpose": "3D asset integration, real-time shaders, visual effects, spatial audio, and XR immersion.",
+          "managerResponsibility": "Controls visual performance budgets (draw calls, vertex counts, shader complexity) and audio fidelity.",
+          "employees": [
+            {
+              "slot": 1,
+              "name": "Real-Time Technical Artist",
+              "position": "DCC-to-Engine Technical Artist & Asset Automator",
+              "primary": "DCC asset export/import pipelines, skeletal rigging, skinning validation, and Blender automation.",
+              "secondary": [
+                "Avatar systems",
+                "LOD generation",
+                "Texture atlas packing",
+                "Mesh optimization"
+              ],
+              "technologies": [
+                "Blender Python API",
+                "FBX/glTF pipelines",
+                "Roblox Avatar Rigging"
+              ],
+              "taskTypes": [
+                "asset-pipeline",
+                "blender-automation",
+                "rigging-validation",
+                "lod-optimization"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write",
+                "process:execute:blender"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "Art/**",
+                  "Assets/Models/**",
+                  "scripts/blender/**"
+                ],
+                "writePaths": [
+                  "Assets/Models/**",
+                  "scripts/blender/**"
+                ],
+                "commands": [
+                  "blender",
+                  "python"
+                ]
+              },
+              "verification": "Asset polycount/bone count automated audit; vertex normal and UV validation scripts.",
+              "provenance": [
+                "imports/agency-agents/game-development/technical-artist.md",
+                "imports/agency-agents/game-development/blender/blender-addon-engineer.md",
+                "imports/agency-agents/game-development/roblox-studio/roblox-avatar-creator.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 4,
+                "toolRequirements": 4,
+                "permissionComplexity": 3,
+                "verificationDifficulty": 3,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 2,
+              "name": "Shader & Graphics Developer",
+              "position": "Real-Time Shader & GPU Performance Engineer",
+              "primary": "Custom HLSL/GLSL shaders, Unity Shader Graph, Unreal Materials/Niagara, and GPU profiling.",
+              "secondary": [
+                "Post-processing effects",
+                "Overdraw minimization",
+                "Compute shaders",
+                "Metal/Vulkan"
+              ],
+              "technologies": [
+                "HLSL",
+                "GLSL",
+                "Shader Graph",
+                "Niagara VFX",
+                "Apple Metal"
+              ],
+              "taskTypes": [
+                "shader-creation",
+                "vfx-pipeline",
+                "gpu-profiling",
+                "render-feature"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "Shaders/**",
+                  "Materials/**",
+                  "VFX/**"
+                ],
+                "writePaths": [
+                  "Shaders/**",
+                  "Materials/**",
+                  "VFX/**"
+                ],
+                "commands": []
+              },
+              "verification": "Shader compilation check on target graphics APIs; instruction count and texture sample benchmarks.",
+              "provenance": [
+                "imports/agency-agents/game-development/unity/unity-shader-graph-artist.md",
+                "imports/agency-agents/game-development/unreal-engine/unreal-technical-artist.md",
+                "imports/agency-agents/game-development/godot/godot-shader-developer.md",
+                "imports/agency-agents/spatial-computing/macos-spatial-metal-engineer.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 4,
+                "toolRequirements": 3,
+                "permissionComplexity": 2,
+                "verificationDifficulty": 4,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 3,
+              "name": "Spatial & XR Interaction Developer",
+              "position": "Immersive VR/AR & Spatial Interface Engineer",
+              "primary": "Spatial UI ergonomics, 6DoF controller/hand tracking, gaze-pinch gestures, and XR comfort.",
+              "secondary": [
+                "Simulated cockpit interactions",
+                "Stereoscopic optimization",
+                "Foveated rendering"
+              ],
+              "technologies": [
+                "OpenXR",
+                "visionOS RealityKit",
+                "Unity XR Interaction Toolkit",
+                "Unreal OpenXR"
+              ],
+              "taskTypes": [
+                "xr-interactions",
+                "spatial-ui",
+                "hand-tracking",
+                "vr-comfort"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "XR/**",
+                  "SpatialUI/**"
+                ],
+                "writePaths": [
+                  "XR/**",
+                  "SpatialUI/**"
+                ],
+                "commands": []
+              },
+              "verification": "Simulated 6DoF interaction unit tests; frame rate stability audit (target 90/120 Hz).",
+              "provenance": [
+                "imports/agency-agents/spatial-computing/xr-immersive-developer.md",
+                "imports/agency-agents/spatial-computing/xr-interface-architect.md",
+                "imports/agency-agents/spatial-computing/visionos-spatial-engineer.md",
+                "imports/agency-agents/spatial-computing/xr-cockpit-interaction-specialist.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 4,
+                "toolRequirements": 3,
+                "permissionComplexity": 2,
+                "verificationDifficulty": 4,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 4,
+              "name": "Game Audio & Acoustic Engineer",
+              "position": "Dynamic Game Audio & Soundscapes Engineer",
+              "primary": "Dynamic sound design, middleware sound banks (FMOD/Wwise), audio mixing, and spatial audio.",
+              "secondary": [
+                "Adaptive music transitions",
+                "Voice-over mastering",
+                "Reverb zones",
+                "DSP filters"
+              ],
+              "technologies": [
+                "FMOD Studio",
+                "Wwise",
+                "Unity AudioSource",
+                "Unreal MetaSounds"
+              ],
+              "taskTypes": [
+                "audio-implementation",
+                "soundbank-setup",
+                "spatial-acoustics",
+                "voice-pipeline"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "Audio/**",
+                  "Content/Audio/**",
+                  "Assets/Audio/**"
+                ],
+                "writePaths": [
+                  "Audio/**",
+                  "Content/Audio/**",
+                  "Assets/Audio/**"
+                ],
+                "commands": []
+              },
+              "verification": "Audio bank build verification; voice concurrency and memory footprint budget audit.",
+              "provenance": [
+                "imports/agency-agents/game-development/game-audio-engineer.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 3,
+                "permissionComplexity": 2,
+                "verificationDifficulty": 3,
+                "overallValue": 5
+              }
+            }
+          ]
+        },
+        {
+          "name": "Game Production & QA Optimization",
+          "slug": "game-production-qa",
+          "purpose": "Studio scheduling, frame performance profiling, automated gameplay testing, and build packaging.",
+          "managerResponsibility": "Oversees build gates, regression stability across target platforms, and delivery milestones.",
+          "employees": [
+            {
+              "slot": 1,
+              "name": "Studio Production Coordinator",
+              "position": "Game Studio Delivery & Pipeline Coordinator",
+              "primary": "Cross-discipline milestone tracking, asset handoff schedules, and dependency blocker resolution.",
+              "secondary": [
+                "Sprint backlog grooming",
+                "Build distribution schedules",
+                "Risk registries"
+              ],
+              "technologies": [
+                "Milestone tracking",
+                "Dependency matrices",
+                "Release checksheets"
+              ],
+              "taskTypes": [
+                "production-scheduling",
+                "dependency-tracking",
+                "milestone-coordination"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "docs/production/**",
+                  "milestones/**"
+                ],
+                "writePaths": [
+                  "docs/production/**",
+                  "milestones/**"
+                ],
+                "commands": []
+              },
+              "verification": "Dependency graph cycle detection; delivery checklist signoff verification.",
+              "provenance": [
+                "imports/agency-agents/project-management/project-management-studio-producer.md",
+                "imports/agency-agents/project-management/project-management-studio-operations.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 4,
+                "tokenEfficiency": 5,
+                "toolRequirements": 2,
+                "permissionComplexity": 1,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 2,
+              "name": "Game Performance & Profiling Engineer",
+              "position": "Frame-Time & Runtime Memory Optimization Engineer",
+              "primary": "Frame-time diagnostics, CPU/GPU profiling, memory leak detection, and draw call batching.",
+              "secondary": [
+                "Garbage collection optimization",
+                "Asset streaming bottlenecks",
+                "Thermal throttling"
+              ],
+              "technologies": [
+                "Unreal Unreal Insights",
+                "Unity Profiler",
+                "RenderDoc",
+                "PIX"
+              ],
+              "taskTypes": [
+                "frame-profiling",
+                "memory-budget-audit",
+                "draw-call-optimization",
+                "bottleneck-analysis"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write",
+                "process:execute:profiler"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "Source/**",
+                  "Assets/**",
+                  "benchmarks/**"
+                ],
+                "writePaths": [
+                  "benchmarks/**"
+                ],
+                "commands": [
+                  "node",
+                  "pytest"
+                ]
+              },
+              "verification": "Automated benchmark runs with frame time percentiles (<16.6ms for 60fps; <11.1ms for 90fps).",
+              "provenance": [
+                "imports/agency-agents/engineering/engineering-autonomous-optimization-architect.md",
+                "imports/agency-agents/testing/testing-performance-benchmarker.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 4,
+                "toolRequirements": 4,
+                "permissionComplexity": 3,
+                "verificationDifficulty": 4,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 3,
+              "name": "Game QA & Automated Playtester",
+              "position": "Automated Gameplay Test & Regression Specialist",
+              "primary": "Headless gameplay smoke tests, deterministic input replay, and regression test harnesses.",
+              "secondary": [
+                "Save/load state fuzzing",
+                "Physics glitch detection",
+                "Boundary clipping tests"
+              ],
+              "technologies": [
+                "Gauntlet (Unreal)",
+                "Unity Test Framework",
+                "GUT (Godot)",
+                "Custom replay bots"
+              ],
+              "taskTypes": [
+                "automated-playtest",
+                "input-replay",
+                "regression-test",
+                "save-state-fuzzing"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write",
+                "process:execute:game-test"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "tests/**",
+                  "Assets/Tests/**",
+                  "Source/**"
+                ],
+                "writePaths": [
+                  "tests/**",
+                  "test-results/**"
+                ],
+                "commands": [
+                  "node",
+                  "pytest",
+                  "dotnet"
+                ]
+              },
+              "verification": "Zero crash exits on 100-loop smoke pass; complete test evidence bundle capture.",
+              "provenance": [
+                "imports/agency-agents/testing/testing-test-automation-engineer.md",
+                "imports/agency-agents/testing/testing-evidence-collector.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 4,
+                "toolRequirements": 4,
+                "permissionComplexity": 3,
+                "verificationDifficulty": 3,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 4,
+              "name": "Game Build & Distribution Engineer",
+              "position": "Game Build Pipeline & Platform Packaging Specialist",
+              "primary": "Platform packaging, asset cooking, compiler optimization flags, and distribution artifacts.",
+              "secondary": [
+                "Steamworks / Epic Games SDK packaging",
+                "Symbol upload",
+                "Delta patch generation"
+              ],
+              "technologies": [
+                "Unreal UAT",
+                "Unity Build Pipeline",
+                "SteamCMD",
+                "Fastlane"
+              ],
+              "taskTypes": [
+                "game-packaging",
+                "asset-cooking",
+                "symbol-archiving",
+                "release-build"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write",
+                "process:execute:build-engine"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "Source/**",
+                  "Assets/**",
+                  "Config/**",
+                  "build/**"
+                ],
+                "writePaths": [
+                  "build/**",
+                  "dist/**"
+                ],
+                "commands": [
+                  "dotnet",
+                  "msbuild",
+                  "tar",
+                  "zip"
+                ]
+              },
+              "verification": "VSIX / game package binary verification; checksum manifest generation; clean test install.",
+              "provenance": [
+                "imports/agency-agents/engineering/engineering-developer-tooling-engineer.md",
+                "imports/agency-agents/engineering/engineering-devops-automator.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 4,
+                "toolRequirements": 4,
+                "permissionComplexity": 3,
+                "verificationDifficulty": 3,
+                "overallValue": 5
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "WEBSITE",
+      "name": "Website Development",
+      "slug": "website-development",
+      "purpose": "Modern responsive web applications, backend services, API platforms, cloud infrastructure, and security.",
+      "departments": [
+        {
+          "name": "Frontend Department",
+          "slug": "frontend",
+          "purpose": "Client-side web architecture, interactive UI components, accessibility, and localization.",
+          "managerResponsibility": "Maintains frontend architecture consistency, bundle size budgets, and WCAG compliance.",
+          "employees": [
+            {
+              "slot": 1,
+              "name": "Web UI Application Engineer",
+              "position": "Senior Web Application & UI Component Engineer",
+              "primary": "Component architecture, reactive client-side state, modern CSS, and responsive layouts.",
+              "secondary": [
+                "Virtual scrolling",
+                "DOM optimization",
+                "Component unit testing"
+              ],
+              "technologies": [
+                "HTML5",
+                "Vanilla CSS / CSS Modules",
+                "JavaScript / ESM",
+                "Web Components"
+              ],
+              "taskTypes": [
+                "ui-components",
+                "state-management",
+                "responsive-layout",
+                "client-logic"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write",
+                "process:execute:npm"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "src/**",
+                  "public/**",
+                  "package.json"
+                ],
+                "writePaths": [
+                  "src/**",
+                  "public/**"
+                ],
+                "commands": [
+                  "npm",
+                  "node"
+                ]
+              },
+              "verification": "Component render unit tests; zero layout overflow in narrow/wide viewports.",
+              "provenance": [
+                "imports/agency-agents/engineering/engineering-frontend-developer.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 3,
+                "permissionComplexity": 2,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 2,
+              "name": "Frontend Architecture & Wasm Engineer",
+              "position": "Frontend Platform & High-Performance Compute Specialist",
+              "primary": "Client build configurations, bundlers (esbuild/Vite), WebAssembly modules, and client caching.",
+              "secondary": [
+                "Tree-shaking audits",
+                "Service Workers",
+                "Offline PWA caches"
+              ],
+              "technologies": [
+                "esbuild",
+                "WebAssembly",
+                "Service Workers",
+                "Web Workers"
+              ],
+              "taskTypes": [
+                "frontend-build",
+                "wasm-integration",
+                "bundle-optimization",
+                "worker-threads"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write",
+                "process:execute:esbuild"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "src/**",
+                  "esbuild.js",
+                  "package.json"
+                ],
+                "writePaths": [
+                  "src/**",
+                  "out/**",
+                  "esbuild.js"
+                ],
+                "commands": [
+                  "node",
+                  "npm"
+                ]
+              },
+              "verification": "Bundle size metafile analysis; Wasm module memory safety and benchmark checks.",
+              "provenance": [
+                "imports/agency-agents/engineering/engineering-webassembly-engineer.md",
+                "imports/agency-agents/engineering/engineering-developer-tooling-engineer.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 4,
+                "toolRequirements": 3,
+                "permissionComplexity": 2,
+                "verificationDifficulty": 3,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 3,
+              "name": "Accessibility & WCAG Specialist",
+              "position": "Web Accessibility (A11y) & Section 508 Specialist",
+              "primary": "WCAG 2.1 AA/AAA compliance, screen reader live regions, focus management, and keyboard navigation.",
+              "secondary": [
+                "Color contrast auditing",
+                "Touch target sizing",
+                "Aria landmark hierarchy"
+              ],
+              "technologies": [
+                "ARIA 1.2",
+                "axe-core",
+                "Screen Reader APIs",
+                "Section 508"
+              ],
+              "taskTypes": [
+                "a11y-audit",
+                "aria-semantics",
+                "keyboard-navigation",
+                "contrast-check"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write",
+                "process:execute:axe"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "src/**",
+                  "tests/**"
+                ],
+                "writePaths": [
+                  "src/**",
+                  "tests/**"
+                ],
+                "commands": [
+                  "node",
+                  "npm"
+                ]
+              },
+              "verification": "Zero axe-core automated violations; keyboard traversal test pass without mouse traps.",
+              "provenance": [
+                "imports/agency-agents/engineering/engineering-section-508-specialist.md",
+                "imports/agency-agents/testing/testing-accessibility-auditor.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 3,
+                "permissionComplexity": 2,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 4,
+              "name": "Internationalization & Localization Engineer",
+              "position": "Frontend i18n & Localization Specialist",
+              "primary": "Resource bundle isolation, string externalization, RTL bidirectional layout, and formatting.",
+              "secondary": [
+                "Pluralization rules",
+                "Number/currency formatters",
+                "Locale detection"
+              ],
+              "technologies": [
+                "Intl API",
+                "package.nls.json / i18next",
+                "Unicode CLDR"
+              ],
+              "taskTypes": [
+                "i18n-extraction",
+                "rtl-layout",
+                "locale-formatting",
+                "string-bundling"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "src/**",
+                  "package.nls.json",
+                  "locales/**"
+                ],
+                "writePaths": [
+                  "src/**",
+                  "package.nls.json",
+                  "locales/**"
+                ],
+                "commands": []
+              },
+              "verification": "Pseudo-localization test pass; missing key linting; RTL mirroring layout validation.",
+              "provenance": [
+                "imports/agency-agents/engineering/engineering-i18n-engineer.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 2,
+                "permissionComplexity": 1,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            }
+          ]
+        },
+        {
+          "name": "Backend Department",
+          "slug": "backend",
+          "purpose": "Server-side domain architecture, API contracts, real-time message streams, and external services.",
+          "managerResponsibility": "Oversees backend modularity, transactional consistency, and API backwards compatibility.",
+          "employees": [
+            {
+              "slot": 1,
+              "name": "Backend Systems Architect",
+              "position": "Senior Modular Backend Architect",
+              "primary": "Domain logic isolation, use-case factories, repository abstractions, and error boundaries.",
+              "secondary": [
+                "In-memory caching",
+                "Dependency injection",
+                "Unit of work transactions"
+              ],
+              "technologies": [
+                "Node.js",
+                "Clean Architecture / DDD",
+                "ESM modules"
+              ],
+              "taskTypes": [
+                "domain-logic",
+                "use-cases",
+                "architecture-scaffolding",
+                "backend-refactoring"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write",
+                "process:execute:node"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "src/domain/**",
+                  "src/application/**",
+                  "src/infrastructure/**"
+                ],
+                "writePaths": [
+                  "src/domain/**",
+                  "src/application/**",
+                  "src/infrastructure/**"
+                ],
+                "commands": [
+                  "node",
+                  "npm"
+                ]
+              },
+              "verification": "Domain invariant unit tests; dependency rule boundary checks (no outer-layer leakage).",
+              "provenance": [
+                "imports/agency-agents/engineering/engineering-backend-architect.md",
+                "imports/agency-agents/engineering/engineering-software-architect.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 3,
+                "permissionComplexity": 2,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 2,
+              "name": "API Platform & Contract Engineer",
+              "position": "API Gateway & Contract Integration Engineer",
+              "primary": "REST and GraphQL endpoint contracts, request schema validation, versioning, and rate limiting.",
+              "secondary": [
+                "OpenAPI specs",
+                "HTTP caching headers",
+                "Idempotency key enforcement"
+              ],
+              "technologies": [
+                "OpenAPI 3.1",
+                "JSON Schema",
+                "HTTP/2",
+                "REST/GraphQL"
+              ],
+              "taskTypes": [
+                "api-contract",
+                "schema-validation",
+                "endpoint-versioning",
+                "rate-limiting"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write",
+                "process:execute:api-validator"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "src/api/**",
+                  "docs/api/**",
+                  "schemas/**"
+                ],
+                "writePaths": [
+                  "src/api/**",
+                  "docs/api/**",
+                  "schemas/**"
+                ],
+                "commands": [
+                  "node",
+                  "npm"
+                ]
+              },
+              "verification": "Contract validation tests (e.g. Prism/Supertest); schema regression checks against previous versions.",
+              "provenance": [
+                "imports/agency-agents/engineering/engineering-api-platform-engineer.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 3,
+                "permissionComplexity": 2,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 3,
+              "name": "Real-Time & Event Stream Engineer",
+              "position": "Real-Time Collaboration & Event Message Engineer",
+              "primary": "WebSockets, Server-Sent Events, distributed pub/sub event buses, and conflict resolution.",
+              "secondary": [
+                "Heartbeat monitoring",
+                "Connection reconnection logic",
+                "Presence tracking"
+              ],
+              "technologies": [
+                "WebSockets (ws)",
+                "SSE",
+                "EventBus",
+                "CRDT concepts"
+              ],
+              "taskTypes": [
+                "websocket-handling",
+                "event-streaming",
+                "presence-sync",
+                "message-ordering"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "src/infrastructure/**",
+                  "src/application/**"
+                ],
+                "writePaths": [
+                  "src/infrastructure/**",
+                  "src/application/**"
+                ],
+                "commands": [
+                  "node"
+                ]
+              },
+              "verification": "Concurrent connection stress test; message ordering and delivery guarantee tests.",
+              "provenance": [
+                "imports/agency-agents/engineering/engineering-realtime-collaboration-engineer.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 3,
+                "permissionComplexity": 2,
+                "verificationDifficulty": 3,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 4,
+              "name": "Integration & Payments Engineer",
+              "position": "External Services & Billing Integration Specialist",
+              "primary": "Payment provider integration, webhook signature validation, idempotency, and transactional ledger.",
+              "secondary": [
+                "Retry backoff strategy",
+                "External failure recovery",
+                "Invoice data models"
+              ],
+              "technologies": [
+                "Stripe API / Webhooks",
+                "Idempotency keys",
+                "HMAC SHA256"
+              ],
+              "taskTypes": [
+                "webhook-handling",
+                "payment-integration",
+                "billing-lifecycle",
+                "external-adapter"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "src/integrations/**",
+                  "src/infrastructure/**"
+                ],
+                "writePaths": [
+                  "src/integrations/**",
+                  "src/infrastructure/**"
+                ],
+                "commands": [
+                  "node"
+                ]
+              },
+              "verification": "Simulated webhook replay tests; idempotency duplicate submission rejection tests.",
+              "provenance": [
+                "imports/agency-agents/engineering/engineering-payments-billing-engineer.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 3,
+                "permissionComplexity": 2,
+                "verificationDifficulty": 3,
+                "overallValue": 5
+              }
+            }
+          ]
+        },
+        {
+          "name": "UI/UX Department",
+          "slug": "ui-ux",
+          "purpose": "Visual design systems, user journey architectures, usability research, and pixel-quality finish gates.",
+          "managerResponsibility": "Maintains brand consistency, interaction hierarchy, and user-centered design quality across releases.",
+          "employees": [
+            {
+              "slot": 1,
+              "name": "Product UI Designer",
+              "position": "Senior UI & Design Systems Specialist",
+              "primary": "Design system tokens, typography scales, iconography, responsive component states, and dark mode.",
+              "secondary": [
+                "Micro-animations",
+                "Visual feedback cues",
+                "UI consistency reviews"
+              ],
+              "technologies": [
+                "CSS Custom Properties",
+                "Design Tokens",
+                "SVG Optimization"
+              ],
+              "taskTypes": [
+                "design-system",
+                "ui-styling",
+                "theme-tokens",
+                "visual-hierarchy"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "media/**",
+                  "src/ui/**",
+                  "styles/**"
+                ],
+                "writePaths": [
+                  "media/**",
+                  "src/ui/**",
+                  "styles/**"
+                ],
+                "commands": []
+              },
+              "verification": "Visual regression snapshots; design token contrast and theme switching verification.",
+              "provenance": [
+                "imports/agency-agents/design/design-ui-designer.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 2,
+                "permissionComplexity": 1,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 2,
+              "name": "Information & Interaction Architect",
+              "position": "Information Architecture & UX Interaction Architect",
+              "primary": "Navigation structures, workflow diagrams, modal vs inline interaction patterns, and cognitive load.",
+              "secondary": [
+                "Command palette ergonomics",
+                "Empty states",
+                "Breadcrumbs and hierarchy"
+              ],
+              "technologies": [
+                "User flow diagrams",
+                "Wireframe specifications",
+                "Information Architecture"
+              ],
+              "taskTypes": [
+                "ia-mapping",
+                "interaction-wireframes",
+                "workflow-ergonomics",
+                "modal-logic"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "docs/ux/**",
+                  "src/ui/**"
+                ],
+                "writePaths": [
+                  "docs/ux/**",
+                  "src/ui/**"
+                ],
+                "commands": []
+              },
+              "verification": "Task click-depth audits (<3 clicks for critical paths); cognitive walkthrough rubric evaluation.",
+              "provenance": [
+                "imports/agency-agents/design/design-ux-architect.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 2,
+                "permissionComplexity": 1,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 3,
+              "name": "UX Researcher & Usability Analyst",
+              "position": "UX Research & Usability Feedback Analyst",
+              "primary": "Persona-based cognitive walkthroughs, usability friction audits, and user session feedback synthesis.",
+              "secondary": [
+                "Error message clarity checks",
+                "Onboarding friction analysis",
+                "Telemetry analysis"
+              ],
+              "technologies": [
+                "Heuristic evaluation (Nielsen)",
+                "User personas",
+                "Qualitative feedback clusters"
+              ],
+              "taskTypes": [
+                "usability-audit",
+                "persona-walkthrough",
+                "friction-analysis",
+                "feedback-synthesis"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "docs/research/**",
+                  "docs/feedback/**"
+                ],
+                "writePaths": [
+                  "docs/research/**",
+                  "docs/feedback/**"
+                ],
+                "commands": []
+              },
+              "verification": "Heuristic evaluation scorecard; usability gap recommendations mapped to engineering tasks.",
+              "provenance": [
+                "imports/agency-agents/design/design-ux-researcher.md",
+                "imports/agency-agents/design/design-persona-walkthrough.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 4,
+                "tokenEfficiency": 5,
+                "toolRequirements": 2,
+                "permissionComplexity": 1,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 4,
+              "name": "UI Finish & Visual Quality Reviewer",
+              "position": "UI Polish & Visual Quality Gate Reviewer",
+              "primary": "Pre-merge pixel alignment checks, typography line-heights, focus outline states, and border radius consistency.",
+              "secondary": [
+                "Responsive wrapping tests",
+                "Ellipsis truncation review",
+                "Animation jitter audit"
+              ],
+              "technologies": [
+                "Visual inspection checklists",
+                "CSS linting",
+                "DOM inspector tooling"
+              ],
+              "taskTypes": [
+                "visual-quality-gate",
+                "ui-polish-review",
+                "truncation-check",
+                "focus-outline-audit"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "src/**",
+                  "media/**",
+                  "styles/**"
+                ],
+                "writePaths": [
+                  "src/**",
+                  "styles/**"
+                ],
+                "commands": []
+              },
+              "verification": "UI gate checklist signoff; zero horizontal overflow in narrow panels (Phase 440 adherence).",
+              "provenance": [
+                "imports/agency-agents/design/design-ui-finish-gate-reviewer.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 2,
+                "permissionComplexity": 1,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            }
+          ]
+        },
+        {
+          "name": "QA Testing Department",
+          "slug": "qa-testing",
+          "purpose": "Automated testing frameworks, API contract validation, failure analysis, and verifiable evidence collection.",
+          "managerResponsibility": "Enforces zero regression gates, test coverage thresholds, and immutable test evidence artifacts.",
+          "employees": [
+            {
+              "slot": 1,
+              "name": "Test Automation Lead",
+              "position": "Senior Test Automation & E2E Harness Architect",
+              "primary": "Unit and integration test suites, mock providers, deterministic fixtures, and test suite speed.",
+              "secondary": [
+                "Snapshot testing",
+                "Extension Host test runner",
+                "Test isolation"
+              ],
+              "technologies": [
+                "Vitest",
+                "Node.js test runner",
+                "VS Code Test Electron"
+              ],
+              "taskTypes": [
+                "test-suite-creation",
+                "integration-tests",
+                "fixture-setup",
+                "mock-providers"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write",
+                "process:execute:vitest"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "tests/**",
+                  "src/**",
+                  "package.json"
+                ],
+                "writePaths": [
+                  "tests/**",
+                  "test/**"
+                ],
+                "commands": [
+                  "npm",
+                  "node"
+                ]
+              },
+              "verification": "Full test suite execution pass with zero skips/errors; deterministic runtime under 60 seconds.",
+              "provenance": [
+                "imports/agency-agents/testing/testing-test-automation-engineer.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 3,
+                "permissionComplexity": 2,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 2,
+              "name": "API & Contract Testing Specialist",
+              "position": "API Regression & Contract Testing Specialist",
+              "primary": "HTTP endpoint regression testing, JSON Schema contract verification, and fuzz testing.",
+              "secondary": [
+                "Edge case boundary values",
+                "Error code verification",
+                "Payload size limit tests"
+              ],
+              "technologies": [
+                "API Test harnesses",
+                "Supertest",
+                "JSON Schema validators"
+              ],
+              "taskTypes": [
+                "api-testing",
+                "contract-verification",
+                "fuzz-testing",
+                "boundary-testing"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write",
+                "process:execute:npm"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "tests/api/**",
+                  "src/api/**"
+                ],
+                "writePaths": [
+                  "tests/api/**"
+                ],
+                "commands": [
+                  "npm",
+                  "node"
+                ]
+              },
+              "verification": "100% endpoint status code coverage; invalid payload 4xx rejection verification.",
+              "provenance": [
+                "imports/agency-agents/testing/testing-api-tester.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 3,
+                "permissionComplexity": 2,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 3,
+              "name": "Failure Diagnostics & Flake Analyst",
+              "position": "Test Diagnostics & Flaky Test Elimination Specialist",
+              "primary": "Test failure pattern analysis, race condition triage, flaky test isolation, and root cause classification.",
+              "secondary": [
+                "Asynchronous timer cleanup",
+                "Mock reset auditing",
+                "Assertion error clarification"
+              ],
+              "technologies": [
+                "Test logs inspection",
+                "Debuggers",
+                "Vitest reporter outputs"
+              ],
+              "taskTypes": [
+                "flake-triaging",
+                "failure-analysis",
+                "race-condition-fix",
+                "test-stabilization"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write",
+                "process:execute:node"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "tests/**",
+                  "src/**",
+                  "*.log"
+                ],
+                "writePaths": [
+                  "tests/**"
+                ],
+                "commands": [
+                  "npm",
+                  "node"
+                ]
+              },
+              "verification": "Flake-free pass over 50 consecutive test runs in parallel execution mode.",
+              "provenance": [
+                "imports/agency-agents/testing/testing-test-results-analyzer.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 3,
+                "permissionComplexity": 2,
+                "verificationDifficulty": 3,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 4,
+              "name": "Evidence & Reality Verification Specialist",
+              "position": "Task Result Evidence & Reality Verification Specialist",
+              "primary": "Test evidence bundle generation, stdout/stderr capture, artifact hashing, and reality-check validation.",
+              "secondary": [
+                "Pre-flight vs post-flight state diffing",
+                "Proof of execution",
+                "Secret redaction in evidence"
+              ],
+              "technologies": [
+                "HEADROOM Evidence Bundle",
+                "SHA-256 artifact hashing",
+                "RedactSecrets"
+              ],
+              "taskTypes": [
+                "evidence-bundling",
+                "reality-verification",
+                "artifact-hashing",
+                "result-proof"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "tests/**",
+                  "src/**",
+                  "out/**"
+                ],
+                "writePaths": [
+                  "test-results/**",
+                  "evidence/**"
+                ],
+                "commands": []
+              },
+              "verification": "Immutable, non-AI verifiable evidence packets; SHA-256 match between claims and outputs.",
+              "provenance": [
+                "imports/agency-agents/testing/testing-evidence-collector.md",
+                "imports/agency-agents/testing/testing-reality-checker.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 2,
+                "permissionComplexity": 1,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            }
+          ]
+        },
+        {
+          "name": "Security Department",
+          "slug": "security",
+          "purpose": "Application security boundaries, AI-generated code auditing, secret management, and threat modeling.",
+          "managerResponsibility": "Enforces defense-in-depth, zero-hardcode credential policy, and strict permission gating.",
+          "employees": [
+            {
+              "slot": 1,
+              "name": "Application Security (AppSec) Engineer",
+              "position": "Application Security & Vulnerability Remediation Engineer",
+              "primary": "OWASP Top 10 remediation, input sanitization, path traversal defenses, and command injection blockers.",
+              "secondary": [
+                "Content Security Policy (CSP)",
+                "CORS configuration",
+                "Security headers"
+              ],
+              "technologies": [
+                "OWASP Top 10",
+                "SAST tooling",
+                "Path normalization rules"
+              ],
+              "taskTypes": [
+                "appsec-review",
+                "injection-prevention",
+                "path-traversal-defense",
+                "sanitization"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "src/**",
+                  "package.json"
+                ],
+                "writePaths": [
+                  "src/**"
+                ],
+                "commands": []
+              },
+              "verification": "Automated SAST scan pass; negative exploit test cases (injection payloads return rejected/denied).",
+              "provenance": [
+                "imports/agency-agents/security/security-appsec-engineer.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 2,
+                "permissionComplexity": 2,
+                "verificationDifficulty": 3,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 2,
+              "name": "AI Code Security Auditor",
+              "position": "AI-Generated Code Security Auditor",
+              "primary": "Specialized auditing of AI-generated code for security hallucinations, phantom packages, and backdoors.",
+              "secondary": [
+                "Overly permissive scopes audit",
+                "Insecure default settings",
+                "Mock-leakage checks"
+              ],
+              "technologies": [
+                "Static analysis",
+                "Dependency manifest cross-reference",
+                "AST parsing"
+              ],
+              "taskTypes": [
+                "ai-code-audit",
+                "phantom-package-check",
+                "hallucination-defense",
+                "ast-audit"
+              ],
+              "tools": [
+                "filesystem:read"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "src/**",
+                  "package.json",
+                  "package-lock.json"
+                ],
+                "writePaths": [],
+                "commands": []
+              },
+              "verification": "Audit report with zero unvetted third-party package imports and verified call boundaries.",
+              "provenance": [
+                "imports/agency-agents/security/security-ai-generated-code-auditor.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 1,
+                "permissionComplexity": 1,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 3,
+              "name": "Secrets & Credential Protection Specialist",
+              "position": "Secret Storage & Credential Boundary Specialist",
+              "primary": "Secrets scanning, prevention of hardcoded tokens/keys, and VS Code SecretStorage adapter integrity.",
+              "secondary": [
+                "Secret redaction in logs/events",
+                "Credential rotation flows",
+                "Token lifetime limits"
+              ],
+              "technologies": [
+                "SecretStorage API",
+                "Entropy scanners",
+                "Secret regex matchers"
+              ],
+              "taskTypes": [
+                "secret-scan",
+                "credential-adapter",
+                "redaction-verification",
+                "auth-vault"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "src/**",
+                  "*.json",
+                  "*.md"
+                ],
+                "writePaths": [
+                  "src/infrastructure/**",
+                  "src/shared/**"
+                ],
+                "commands": []
+              },
+              "verification": "Zero hardcoded high-entropy tokens across codebase; SecretStorage integration tests pass.",
+              "provenance": [
+                "imports/agency-agents/security/security-secrets-credential-engineer.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 2,
+                "permissionComplexity": 2,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 4,
+              "name": "Threat Modeling & Pen Testing Lead",
+              "position": "Threat Modeling & Security Boundary Validator",
+              "primary": "STRIDE threat modeling, defensive boundary validation, and simulated privilege escalation testing.",
+              "secondary": [
+                "Role boundary verification",
+                "Event bus isolation",
+                "Untrusted input fuzzing"
+              ],
+              "technologies": [
+                "STRIDE methodology",
+                "Attack tree analysis",
+                "Pen-testing harnesses"
+              ],
+              "taskTypes": [
+                "threat-modeling",
+                "boundary-validation",
+                "privilege-escalation-test"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "src/**",
+                  "docs/security/**"
+                ],
+                "writePaths": [
+                  "docs/security/**",
+                  "tests/security/**"
+                ],
+                "commands": [
+                  "node"
+                ]
+              },
+              "verification": "Threat model document signoff; adversarial penetration test cases confirm boundary enforcement.",
+              "provenance": [
+                "imports/agency-agents/security/security-architect.md",
+                "imports/agency-agents/security/security-penetration-tester.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 3,
+                "permissionComplexity": 2,
+                "verificationDifficulty": 3,
+                "overallValue": 5
+              }
+            }
+          ]
+        },
+        {
+          "name": "DevOps Department",
+          "slug": "devops",
+          "purpose": "CI/CD automation, Git workflow governance, site reliability engineering, and cloud platforms.",
+          "managerResponsibility": "Maintains pipeline execution speed, release gate reliability, and production environment health.",
+          "employees": [
+            {
+              "slot": 1,
+              "name": "CI/CD Pipeline Automator",
+              "position": "Continuous Integration & Deployment Specialist",
+              "primary": "GitHub Actions workflow authoring, multi-platform matrix builds, and automated artifact packaging.",
+              "secondary": [
+                "Cache optimization in CI",
+                "Action step timeout tuning",
+                "Job dependency graphs"
+              ],
+              "technologies": [
+                "GitHub Actions",
+                "Matrix builds (Windows/Linux/macOS)",
+                "npm scripts"
+              ],
+              "taskTypes": [
+                "ci-pipeline",
+                "matrix-builds",
+                "action-optimization",
+                "release-workflow"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  ".github/workflows/**",
+                  "package.json"
+                ],
+                "writePaths": [
+                  ".github/workflows/**",
+                  "package.json"
+                ],
+                "commands": []
+              },
+              "verification": "Clean CI runs across Windows, Ubuntu, and macOS runners with zero step timeouts.",
+              "provenance": [
+                "imports/agency-agents/engineering/engineering-devops-automator.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 2,
+                "permissionComplexity": 2,
+                "verificationDifficulty": 3,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 2,
+              "name": "Git Workflow & Branch Governance Specialist",
+              "position": "Git Branching & Release Hygiene Specialist",
+              "primary": "Conventional commit enforcement, branching models, clean PR rebasing, and tag releases.",
+              "secondary": [
+                "Merge conflict resolution rules",
+                "Release changelog automation",
+                "Git hooks"
+              ],
+              "technologies": [
+                "Git CLI",
+                "Conventional Commits",
+                "SemVer 2.0.0"
+              ],
+              "taskTypes": [
+                "git-workflow",
+                "changelog-automation",
+                "branch-protection",
+                "release-tagging"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write",
+                "process:execute:git"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "CHANGELOG.md",
+                  "package.json"
+                ],
+                "writePaths": [
+                  "CHANGELOG.md",
+                  "package.json"
+                ],
+                "commands": [
+                  "git"
+                ]
+              },
+              "verification": "git diff --check returns 0; commit history conforms to conventional commit specification.",
+              "provenance": [
+                "imports/agency-agents/engineering/engineering-git-workflow-master.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 3,
+                "permissionComplexity": 2,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 3,
+              "name": "Site Reliability Engineer (SRE)",
+              "position": "Service Reliability & Telemetry Monitoring Specialist",
+              "primary": "SLO/SLA definitions, error budget tracking, health check endpoints, and incident recovery runbooks.",
+              "secondary": [
+                "Structured telemetry logging",
+                "Alert threshold calibration",
+                "Postmortem authoring"
+              ],
+              "technologies": [
+                "Telemetry metrics",
+                "Health check probes",
+                "Incident runbooks"
+              ],
+              "taskTypes": [
+                "sre-runbooks",
+                "health-probes",
+                "telemetry-logging",
+                "postmortem-analysis"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "src/**",
+                  "docs/runbooks/**"
+                ],
+                "writePaths": [
+                  "src/**",
+                  "docs/runbooks/**"
+                ],
+                "commands": []
+              },
+              "verification": "Health probe endpoint test; incident runbook simulation walk-through passes without human intervention.",
+              "provenance": [
+                "imports/agency-agents/engineering/engineering-sre.md",
+                "imports/agency-agents/support/support-infrastructure-maintainer.md",
+                "imports/agency-agents/engineering/engineering-incident-response-commander.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 2,
+                "permissionComplexity": 2,
+                "verificationDifficulty": 3,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 4,
+              "name": "Cloud & Infrastructure Platform Engineer",
+              "position": "Cloud Infrastructure & Containerization Specialist",
+              "primary": "Infrastructure-as-code, cloud IAM boundaries, container definitions, and serverless runtime setup.",
+              "secondary": [
+                "Resource cost tagging",
+                "Zero-downtime rolling updates",
+                "Network security groups"
+              ],
+              "technologies": [
+                "Docker / Containerfiles",
+                "Terraform / CloudFormation",
+                "AWS / GCP / Azure IAM"
+              ],
+              "taskTypes": [
+                "cloud-infra",
+                "containerization",
+                "iac-configuration",
+                "security-groups"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "infra/**",
+                  "Dockerfile",
+                  "package.json"
+                ],
+                "writePaths": [
+                  "infra/**",
+                  "Dockerfile"
+                ],
+                "commands": []
+              },
+              "verification": "Container image build succeeds with non-root user execution; IaC syntax check passes.",
+              "provenance": [
+                "imports/agency-agents/engineering/engineering-platform-engineer.md",
+                "imports/agency-agents/security/security-cloud-security-architect.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 3,
+                "permissionComplexity": 3,
+                "verificationDifficulty": 3,
+                "overallValue": 5
+              }
+            }
+          ]
+        },
+        {
+          "name": "Database Department",
+          "slug": "database",
+          "purpose": "Relational persistence, query optimization, migration integrity, and semantic data indexing.",
+          "managerResponsibility": "Guarantees schema migration idempotency, database ACID consistency, and index efficiency.",
+          "employees": [
+            {
+              "slot": 1,
+              "name": "Data Systems & Schema Engineer",
+              "position": "Relational Schema Modeling & Migration Specialist",
+              "primary": "Database schema design, foreign key constraints, migration scripts, and backward compatibility.",
+              "secondary": [
+                "Data seeding",
+                "Schema introspection",
+                "Type mapping between DB and application"
+              ],
+              "technologies": [
+                "SQLite (better-sqlite3)",
+                "SQL DDL",
+                "Migration managers"
+              ],
+              "taskTypes": [
+                "schema-migration",
+                "table-modeling",
+                "foreign-keys",
+                "data-seeding"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write",
+                "process:execute:node"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "src/storage/**",
+                  "scripts/**"
+                ],
+                "writePaths": [
+                  "src/storage/**"
+                ],
+                "commands": [
+                  "node",
+                  "npm"
+                ]
+              },
+              "verification": "Sequential migration execution passes from v1 to latest schema; migration rollback verified.",
+              "provenance": [
+                "imports/agency-agents/engineering/engineering-data-engineer.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 3,
+                "permissionComplexity": 2,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 2,
+              "name": "Database Query Optimizer",
+              "position": "SQL Performance Tuning & Index Strategy Engineer",
+              "primary": "Query execution plan analysis (EXPLAIN QUERY PLAN), index design (composite/covering), and slow query elimination.",
+              "secondary": [
+                "PRAGMA tuning",
+                "WAL mode optimization",
+                "Lock contention reduction"
+              ],
+              "technologies": [
+                "SQLite Query Optimizer",
+                "EXPLAIN QUERY PLAN",
+                "B-tree indexing"
+              ],
+              "taskTypes": [
+                "query-optimization",
+                "index-creation",
+                "explain-query-plan",
+                "wal-tuning"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write",
+                "process:execute:sqlite"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "src/storage/**",
+                  "benchmarks/**"
+                ],
+                "writePaths": [
+                  "src/storage/**",
+                  "benchmarks/**"
+                ],
+                "commands": [
+                  "node"
+                ]
+              },
+              "verification": "Query plan confirms SEARCH TABLE USING INDEX for all high-frequency lookups (zero full table scans).",
+              "provenance": [
+                "imports/agency-agents/engineering/engineering-database-optimizer.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 3,
+                "permissionComplexity": 2,
+                "verificationDifficulty": 3,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 3,
+              "name": "Database Reliability & Recovery Specialist",
+              "position": "Database Resilience, Backup & Integrity Specialist",
+              "primary": "Database file integrity checks (PRAGMA integrity_check), online backup procedures, and recovery verification.",
+              "secondary": [
+                "Crash consistency testing",
+                "Corrupt database recovery",
+                "Storage compaction (VACUUM)"
+              ],
+              "technologies": [
+                "SQLite Backup API",
+                "PRAGMA integrity_check",
+                "Atomic transactions"
+              ],
+              "taskTypes": [
+                "db-backup",
+                "integrity-check",
+                "crash-recovery",
+                "vacuum-maintenance"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write",
+                "process:execute:node"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "src/storage/**",
+                  "scripts/check-sqlite.js"
+                ],
+                "writePaths": [
+                  "src/storage/**",
+                  "scripts/check-sqlite.js"
+                ],
+                "commands": [
+                  "node"
+                ]
+              },
+              "verification": "npm run check:sqlite exits 0; backup snapshot restore restores 100% of persisted rows.",
+              "provenance": [
+                "imports/agency-agents/engineering/engineering-database-reliability-engineer.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 3,
+                "permissionComplexity": 2,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 4,
+              "name": "Data Retrieval & Semantic Search Engineer",
+              "position": "Full-Text Search & Semantic Retrieval Specialist",
+              "primary": "SQLite FTS5 full-text indexing, BM25 scoring, vector embedding stores, and semantic chunking.",
+              "secondary": [
+                "Query tokenization",
+                "Fuzzy search fallbacks",
+                "Re-ranking pipelines"
+              ],
+              "technologies": [
+                "SQLite FTS5",
+                "Vector embeddings",
+                "BM25 ranking",
+                "RAG pipelines"
+              ],
+              "taskTypes": [
+                "fts-indexing",
+                "semantic-search",
+                "bm25-tuning",
+                "vector-retrieval"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "src/storage/**",
+                  "src/domain/memoryRetrieval.js"
+                ],
+                "writePaths": [
+                  "src/storage/**",
+                  "src/domain/memoryRetrieval.js"
+                ],
+                "commands": [
+                  "node"
+                ]
+              },
+              "verification": "Search benchmark tests verify recall@10 and precision metrics; query latency <10ms for 100k records.",
+              "provenance": [
+                "imports/agency-agents/engineering/engineering-search-relevance-engineer.md",
+                "imports/agency-agents/engineering/engineering-rag-pipeline-engineer.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 3,
+                "permissionComplexity": 2,
+                "verificationDifficulty": 3,
+                "overallValue": 5
+              }
+            }
+          ]
+        },
+        {
+          "name": "Performance Department",
+          "slug": "performance",
+          "purpose": "Runtime speed, latency minimization, memory profiling, and surgical minimal-change diffing.",
+          "managerResponsibility": "Maintains application responsiveness budgets, benchmarks regressions, and guards code diff size.",
+          "employees": [
+            {
+              "slot": 1,
+              "name": "Autonomous Optimization Architect",
+              "position": "Autonomous Profiling & Bottleneck Optimization Architect",
+              "primary": "Automated CPU flamegraphs, event loop delay monitoring, memory heap analysis, and bottleneck detection.",
+              "secondary": [
+                "Algorithmic complexity reduction",
+                "Micro-benchmark design",
+                "Garbage collection tuning"
+              ],
+              "technologies": [
+                "V8 Profiler",
+                "Node.js perf_hooks",
+                "Flamegraphs"
+              ],
+              "taskTypes": [
+                "cpu-profiling",
+                "event-loop-tuning",
+                "heap-analysis",
+                "bottleneck-removal"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write",
+                "process:execute:node"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "src/**",
+                  "benchmarks/**"
+                ],
+                "writePaths": [
+                  "src/**",
+                  "benchmarks/**"
+                ],
+                "commands": [
+                  "node"
+                ]
+              },
+              "verification": "Benchmark execution confirms >20% throughput improvement with zero degradation under load.",
+              "provenance": [
+                "imports/agency-agents/engineering/engineering-autonomous-optimization-architect.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 3,
+                "permissionComplexity": 2,
+                "verificationDifficulty": 3,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 2,
+              "name": "Performance Benchmarking Specialist",
+              "position": "Continuous Performance Benchmarking Specialist",
+              "primary": "Regression benchmarking harnesses, latency percentile tracking (p50/p95/p99), and throughput stress tests.",
+              "secondary": [
+                "Load generator scripts",
+                "Benchmark report generation",
+                "Hardware baseline calibration"
+              ],
+              "technologies": [
+                "vitest.benchmark.config.js",
+                "Tinybench",
+                "Autocannon"
+              ],
+              "taskTypes": [
+                "benchmark-authoring",
+                "latency-testing",
+                "throughput-stress",
+                "regression-gate"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write",
+                "process:execute:npm"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "benchmarks/**",
+                  "src/**"
+                ],
+                "writePaths": [
+                  "benchmarks/**"
+                ],
+                "commands": [
+                  "npm",
+                  "node"
+                ]
+              },
+              "verification": "npm run benchmark execution passes within defined variance thresholds; no regression alerts.",
+              "provenance": [
+                "imports/agency-agents/testing/testing-performance-benchmarker.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 3,
+                "permissionComplexity": 2,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 3,
+              "name": "Minimal-Change Remediation Specialist",
+              "position": "Surgical Patching & Minimal-Diff Remediation Specialist",
+              "primary": "Surgical bug fixes, zero-side-effect refactoring, and minimal git diff footprint.",
+              "secondary": [
+                "Preserve untouched line formatting",
+                "Targeted test creation",
+                "Collateral damage prevention"
+              ],
+              "technologies": [
+                "Git diff --stat",
+                "AST-aware patching",
+                "Surgical unit testing"
+              ],
+              "taskTypes": [
+                "surgical-bugfix",
+                "minimal-diff-patch",
+                "targeted-hotfix",
+                "regression-avoidance"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "src/**",
+                  "tests/**"
+                ],
+                "writePaths": [
+                  "src/**",
+                  "tests/**"
+                ],
+                "commands": []
+              },
+              "verification": "git diff --stat verifies fewest lines touched to resolve issue; 100% test pass on touched modules.",
+              "provenance": [
+                "imports/agency-agents/engineering/engineering-minimal-change-engineer.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 2,
+                "permissionComplexity": 1,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 4,
+              "name": "Data Visualization & Telemetry Engineer",
+              "position": "Performance Telemetry & Data Visualization Engineer",
+              "primary": "Interactive performance dashboards, charts, real-time activity feeds, and metric visualization.",
+              "secondary": [
+                "Canvas/SVG graph rendering",
+                "Time-series data aggregation",
+                "Status indicator widgets"
+              ],
+              "technologies": [
+                "Canvas API",
+                "SVG Charts",
+                "Webview Telemetry feeds"
+              ],
+              "taskTypes": [
+                "dashboard-widgets",
+                "metric-visualization",
+                "activity-feed",
+                "time-series-charts"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "src/ui/**",
+                  "media/**"
+                ],
+                "writePaths": [
+                  "src/ui/**",
+                  "media/**"
+                ],
+                "commands": []
+              },
+              "verification": "Webview telemetry chart renders at 60fps with 10k data points; memory remains bounded.",
+              "provenance": [
+                "imports/agency-agents/engineering/engineering-data-visualization-engineer.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 2,
+                "permissionComplexity": 1,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "APP",
+      "name": "App Development",
+      "slug": "app-development",
+      "purpose": "Desktop, mobile, native runtime integration, app backend services, and multi-platform app store release engineering.",
+      "departments": [
+        {
+          "name": "Desktop Applications",
+          "slug": "desktop-apps",
+          "purpose": "Desktop client architecture, native OS windowing, IPC mechanisms, and desktop packaging.",
+          "managerResponsibility": "Maintains desktop window responsiveness, multi-process memory isolation, and native OS compliance.",
+          "employees": [
+            {
+              "slot": 1,
+              "name": "Desktop Client Architect",
+              "position": "Desktop Application & Window Lifecycle Architect",
+              "primary": "Desktop app architecture (Electron / Tauri / VS Code Extension), main/renderer process separation.",
+              "secondary": [
+                "Native menus",
+                "Tray notifications",
+                "Keyboard shortcut managers"
+              ],
+              "technologies": [
+                "Electron",
+                "Tauri",
+                "VS Code Extension Host",
+                "IPC protocols"
+              ],
+              "taskTypes": [
+                "desktop-architecture",
+                "ipc-messaging",
+                "window-management",
+                "menu-lifecycle"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write",
+                "process:execute:node"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "src/**",
+                  "package.json"
+                ],
+                "writePaths": [
+                  "src/**"
+                ],
+                "commands": [
+                  "node",
+                  "npm"
+                ]
+              },
+              "verification": "Extension Host / Electron clean activation; process memory boundary tests pass.",
+              "provenance": [
+                "imports/agency-agents/engineering/engineering-desktop-app-engineer.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 3,
+                "permissionComplexity": 2,
+                "verificationDifficulty": 3,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 2,
+              "name": "Native Interop & OS Integration Specialist",
+              "position": "Native OS Bindings & Systems Interop Engineer",
+              "primary": "Native C++/Rust node addons, native file system watchers, OS keychain integration, and low-level syscalls.",
+              "secondary": [
+                "Node-API (N-API)",
+                "Native binary prebuilds",
+                "Cross-compilation"
+              ],
+              "technologies": [
+                "Node-API (N-API)",
+                "better-sqlite3 / bindings",
+                "Rust FFI"
+              ],
+              "taskTypes": [
+                "native-addons",
+                "os-bindings",
+                "node-gyp-build",
+                "keychain-access"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write",
+                "process:execute:node-gyp"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "src/**",
+                  "node_modules/**",
+                  "binding.gyp"
+                ],
+                "writePaths": [
+                  "src/**",
+                  "binding.gyp"
+                ],
+                "commands": [
+                  "node",
+                  "npm"
+                ]
+              },
+              "verification": "Native module compiles cleanly on Windows x64, macOS arm64, and Linux x64.",
+              "provenance": [
+                "imports/agency-agents/engineering/engineering-desktop-app-engineer.md",
+                "imports/agency-agents/engineering/engineering-rust-refactoring-specialist.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 4,
+                "toolRequirements": 4,
+                "permissionComplexity": 3,
+                "verificationDifficulty": 4,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 3,
+              "name": "Desktop Performance & Resource Optimizer",
+              "position": "Desktop Runtime Resource & Memory Specialist",
+              "primary": "Renderer process memory limits, background process throttling, and idle battery power consumption.",
+              "secondary": [
+                "V8 heap snapshots",
+                "Zombie process termination",
+                "Fast launch cold-start tuning"
+              ],
+              "technologies": [
+                "V8 Memory Snapshots",
+                "Process CPU monitoring",
+                "Cold start profilers"
+              ],
+              "taskTypes": [
+                "desktop-memory-tuning",
+                "cold-start-optimization",
+                "process-throttling"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write",
+                "process:execute:node"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "src/**",
+                  "benchmarks/**"
+                ],
+                "writePaths": [
+                  "benchmarks/**"
+                ],
+                "commands": [
+                  "node"
+                ]
+              },
+              "verification": "Cold-start launch <800ms; idle resident memory remains under 120MB threshold.",
+              "provenance": [
+                "imports/agency-agents/engineering/engineering-autonomous-optimization-architect.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 3,
+                "permissionComplexity": 2,
+                "verificationDifficulty": 3,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 4,
+              "name": "Desktop Packaging & Auto-Update Engineer",
+              "position": "Desktop Packaging, Code Signing & Distribution Specialist",
+              "primary": "Installer packaging (VSIX / MSI / DMG / AppImage), code signing certificates, and auto-update feeds.",
+              "secondary": [
+                "Delta package updates",
+                "Notarization (Apple/Microsoft)",
+                "Release channel feeds"
+              ],
+              "technologies": [
+                "@vscode/vsce",
+                "electron-builder",
+                "SignTool / codesign"
+              ],
+              "taskTypes": [
+                "vsix-packaging",
+                "code-signing",
+                "auto-update-setup",
+                "installer-bundle"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write",
+                "process:execute:vsce"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "out/**",
+                  "package.json",
+                  "README.md",
+                  "LICENSE"
+                ],
+                "writePaths": [
+                  "*.vsix",
+                  "dist/**"
+                ],
+                "commands": [
+                  "node",
+                  "npm"
+                ]
+              },
+              "verification": "Package validation passes with zero vsce warnings; test install and activation succeeds.",
+              "provenance": [
+                "imports/agency-agents/engineering/engineering-developer-tooling-engineer.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 3,
+                "permissionComplexity": 2,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mobile Applications",
+          "slug": "mobile-apps",
+          "purpose": "Mobile cross-platform architecture, mobile touch ergonomics, offline synchronization, and app store release.",
+          "managerResponsibility": "Oversees mobile battery efficiency, offline data consistency, and app store review guidelines.",
+          "employees": [
+            {
+              "slot": 1,
+              "name": "Mobile Application Architect",
+              "position": "Cross-Platform Mobile Application Architect",
+              "primary": "Cross-platform mobile architecture (React Native / Flutter), navigation stacks, and bridge lifecycle.",
+              "secondary": [
+                "Native module bridges",
+                "Deep linking schemes",
+                "State persistence across backgrounding"
+              ],
+              "technologies": [
+                "React Native",
+                "Flutter",
+                "TypeScript/JS",
+                "Native Android/iOS bridges"
+              ],
+              "taskTypes": [
+                "mobile-architecture",
+                "navigation-stacks",
+                "deep-linking",
+                "lifecycle-state"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "src/**",
+                  "android/**",
+                  "ios/**"
+                ],
+                "writePaths": [
+                  "src/**"
+                ],
+                "commands": [
+                  "npm",
+                  "node"
+                ]
+              },
+              "verification": "App launches and handles background/foreground transitions without state drop.",
+              "provenance": [
+                "imports/agency-agents/engineering/engineering-mobile-app-builder.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 3,
+                "permissionComplexity": 2,
+                "verificationDifficulty": 3,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 2,
+              "name": "Mobile Touch UI & Gesture Specialist",
+              "position": "Mobile Touch Interaction & Animation Specialist",
+              "primary": "Touch ergonomics, momentum scrolling, gesture recognition, and responsive mobile layouts.",
+              "secondary": [
+                "Haptic feedback triggers",
+                "Keyboard avoidance",
+                "Bottom sheet interactions"
+              ],
+              "technologies": [
+                "Mobile gesture handlers",
+                "Reanimated / Animation APIs",
+                "Haptic APIs"
+              ],
+              "taskTypes": [
+                "mobile-gestures",
+                "touch-layout",
+                "haptics-setup",
+                "keyboard-avoidance"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "src/ui/**",
+                  "src/screens/**"
+                ],
+                "writePaths": [
+                  "src/ui/**",
+                  "src/screens/**"
+                ],
+                "commands": []
+              },
+              "verification": "60fps animation frame rate audit during swipe/gesture drag transitions.",
+              "provenance": [
+                "imports/agency-agents/design/design-ui-designer.md",
+                "imports/agency-agents/engineering/engineering-mobile-app-builder.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 2,
+                "permissionComplexity": 1,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 3,
+              "name": "Mobile Offline Sync & Local Cache Specialist",
+              "position": "Mobile Offline Caching & Sync Protocol Engineer",
+              "primary": "On-device SQLite caching, offline-first mutations, conflict resolution, and background sync queues.",
+              "secondary": [
+                "Network change listeners",
+                "Optimistic UI updates",
+                "Storage quota management"
+              ],
+              "technologies": [
+                "SQLite Mobile / WatermelonDB",
+                "Background Fetch",
+                "Conflict Resolution Rules"
+              ],
+              "taskTypes": [
+                "offline-sync",
+                "local-cache",
+                "mutation-queue",
+                "conflict-resolution"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "src/storage/**",
+                  "src/sync/**"
+                ],
+                "writePaths": [
+                  "src/storage/**",
+                  "src/sync/**"
+                ],
+                "commands": [
+                  "node"
+                ]
+              },
+              "verification": "Offline mutation queue replay test; zero data loss after simulated network drops.",
+              "provenance": [
+                "imports/agency-agents/engineering/engineering-database-reliability-engineer.md",
+                "imports/agency-agents/engineering/engineering-realtime-collaboration-engineer.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 2,
+                "permissionComplexity": 2,
+                "verificationDifficulty": 3,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 4,
+              "name": "Mobile Release & Distribution Engineer",
+              "position": "Mobile App Store Release & Track Automation Specialist",
+              "primary": "Fastlane deployment pipelines, App Store Connect and Google Play Console release tracks, and signing.",
+              "secondary": [
+                "Metadata localization",
+                "TestFlight / Internal Testing tracks",
+                "Crash reporting integration"
+              ],
+              "technologies": [
+                "Fastlane",
+                "Gradle / Xcodebuild",
+                "App Store Connect API"
+              ],
+              "taskTypes": [
+                "mobile-release",
+                "app-signing",
+                "store-metadata",
+                "fastlane-automation"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write",
+                "process:execute:fastlane"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "fastlane/**",
+                  "android/**",
+                  "ios/**"
+                ],
+                "writePaths": [
+                  "fastlane/**"
+                ],
+                "commands": [
+                  "fastlane",
+                  "node"
+                ]
+              },
+              "verification": "Automated test build and signed bundle generation; store metadata validation pass.",
+              "provenance": [
+                "imports/agency-agents/engineering/engineering-mobile-release-engineer.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 3,
+                "permissionComplexity": 3,
+                "verificationDifficulty": 3,
+                "overallValue": 5
+              }
+            }
+          ]
+        },
+        {
+          "name": "App Backend & Cloud APIs",
+          "slug": "app-backend-cloud",
+          "purpose": "Mobile/desktop backend endpoints, push notifications, authentication, and privacy sandboxing.",
+          "managerResponsibility": "Maintains API backwards compatibility across deployed app versions and identity boundaries.",
+          "employees": [
+            {
+              "slot": 1,
+              "name": "App Cloud Backend Architect",
+              "position": "Cloud Backend & Mobile API Architect",
+              "primary": "Serverless and microservice backend architecture tailored for mobile/desktop client apps.",
+              "secondary": [
+                "Push notification dispatch (APNs/FCM)",
+                "Multi-version client routing"
+              ],
+              "technologies": [
+                "Node.js",
+                "Serverless / Express",
+                "APNs / FCM"
+              ],
+              "taskTypes": [
+                "app-backend",
+                "push-notifications",
+                "client-version-routing"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "src/backend/**",
+                  "src/api/**"
+                ],
+                "writePaths": [
+                  "src/backend/**",
+                  "src/api/**"
+                ],
+                "commands": [
+                  "node"
+                ]
+              },
+              "verification": "Integration test for multi-version client payload contracts; push payload schema tests.",
+              "provenance": [
+                "imports/agency-agents/engineering/engineering-backend-architect.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 3,
+                "permissionComplexity": 2,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 2,
+              "name": "App API Gateway & Protocol Engineer",
+              "position": "Mobile Protocol & High-Efficiency Gateway Engineer",
+              "primary": "Compact binary/JSON payload serialization (Protobuf/JSON), delta syncing, and cellular bandwidth economy.",
+              "secondary": [
+                "Payload compression (Brotli/Gzip)",
+                "Batch API requests",
+                "ETag caching"
+              ],
+              "technologies": [
+                "HTTP/3",
+                "Protobuf",
+                "JSON Schema",
+                "ETags"
+              ],
+              "taskTypes": [
+                "payload-optimization",
+                "delta-sync-api",
+                "compression-setup"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "src/api/**",
+                  "schemas/**"
+                ],
+                "writePaths": [
+                  "src/api/**",
+                  "schemas/**"
+                ],
+                "commands": [
+                  "node"
+                ]
+              },
+              "verification": "Payload benchmark confirms <5KB transfer for core client sync queries.",
+              "provenance": [
+                "imports/agency-agents/engineering/engineering-api-platform-engineer.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 2,
+                "permissionComplexity": 2,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 3,
+              "name": "Identity & Authentication Specialist",
+              "position": "Mobile/Desktop Authentication & Session Specialist",
+              "primary": "OAuth2/OIDC token flows, biometric authentication bridges, refresh token rotation, and device trust.",
+              "secondary": [
+                "PKCE flow enforcement",
+                "Session revocation",
+                "Single Sign-On (SSO)"
+              ],
+              "technologies": [
+                "OAuth 2.0 with PKCE",
+                "JWT / JWE",
+                "WebAuthn / Biometrics"
+              ],
+              "taskTypes": [
+                "auth-pkce",
+                "token-rotation",
+                "biometric-auth",
+                "session-revocation"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "src/auth/**"
+                ],
+                "writePaths": [
+                  "src/auth/**"
+                ],
+                "commands": [
+                  "node"
+                ]
+              },
+              "verification": "PKCE auth exchange verification; expired token refresh and replay attack rejection tests.",
+              "provenance": [
+                "imports/agency-agents/engineering/engineering-identity-access-engineer.md",
+                "imports/agency-agents/specialized/agentic-identity-trust.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 2,
+                "permissionComplexity": 2,
+                "verificationDifficulty": 3,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 4,
+              "name": "App Privacy & Sandbox Engineer",
+              "position": "Application Privacy Controls & Sandbox Compliance Specialist",
+              "primary": "Privacy by design, client data minimization, telemetry opt-in controls, and OS sandbox compliance.",
+              "secondary": [
+                "PII scrubbing in crash reports",
+                "App Tracking Transparency (ATT)",
+                "Export compliance"
+              ],
+              "technologies": [
+                "Privacy controls",
+                "Data minimization",
+                "ATT / Privacy Manifests"
+              ],
+              "taskTypes": [
+                "privacy-manifest",
+                "pii-scrubbing",
+                "telemetry-optout",
+                "sandbox-compliance"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "src/**",
+                  "PrivacyInfo.xcprivacy"
+                ],
+                "writePaths": [
+                  "src/**",
+                  "PrivacyInfo.xcprivacy"
+                ],
+                "commands": []
+              },
+              "verification": "Apple Privacy Manifest linting; automated crash report PII leak regex scan passes clean.",
+              "provenance": [
+                "imports/agency-agents/engineering/engineering-privacy-engineer.md",
+                "imports/agency-agents/specialized/data-privacy-officer.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 2,
+                "permissionComplexity": 1,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            }
+          ]
+        },
+        {
+          "name": "App Quality & Platform Testing",
+          "slug": "app-quality-testing",
+          "purpose": "Cross-platform mobile/desktop test automation, resource profiling, and store guidelines validation.",
+          "managerResponsibility": "Maintains platform compliance matrices and verifies zero crashes across simulated devices.",
+          "employees": [
+            {
+              "slot": 1,
+              "name": "Cross-Platform Test Automation Engineer",
+              "position": "Multi-Platform App Test Automation Specialist",
+              "primary": "Automated UI test scripts (Appium/Maestro/Playwright), multi-resolution emulation, and smoke flows.",
+              "secondary": [
+                "Simulated network throttling",
+                "Orientation changes",
+                "Dark/light mode testing"
+              ],
+              "technologies": [
+                "Playwright",
+                "Maestro",
+                "Appium",
+                "Node.js"
+              ],
+              "taskTypes": [
+                "app-e2e-testing",
+                "multi-device-emulation",
+                "smoke-test-flow"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write",
+                "process:execute:test-runner"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "tests/**",
+                  "src/**"
+                ],
+                "writePaths": [
+                  "tests/**",
+                  "test-results/**"
+                ],
+                "commands": [
+                  "npm",
+                  "node"
+                ]
+              },
+              "verification": "100% smoke test pass across simulated phone, tablet, and desktop viewport sizes.",
+              "provenance": [
+                "imports/agency-agents/testing/testing-test-automation-engineer.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 3,
+                "permissionComplexity": 2,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 2,
+              "name": "App Performance & Battery Profiler",
+              "position": "App Battery & Energy Consumption Profiler",
+              "primary": "CPU wake lock auditing, background task duration limits, cellular radio wake-ups, and thermal impact.",
+              "secondary": [
+                "Frame hitch analysis",
+                "App launch time tracing",
+                "Memory leak checks"
+              ],
+              "technologies": [
+                "Android Battery Historian",
+                "Xcode Energy Organizer",
+                "Systrace"
+              ],
+              "taskTypes": [
+                "battery-profiling",
+                "wake-lock-audit",
+                "energy-optimization"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "src/**",
+                  "benchmarks/**"
+                ],
+                "writePaths": [
+                  "benchmarks/**"
+                ],
+                "commands": []
+              },
+              "verification": "Zero unnecessary background wake locks; energy impact rating verified at 'Low'.",
+              "provenance": [
+                "imports/agency-agents/testing/testing-performance-benchmarker.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 2,
+                "permissionComplexity": 1,
+                "verificationDifficulty": 3,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 3,
+              "name": "App Store Compliance & DX Specialist",
+              "position": "Store Policy Compliance & Developer Experience Specialist",
+              "primary": "App Store / Play Store / Marketplace policy compliance audits, permission explanations, and review guidelines.",
+              "secondary": [
+                "Onboarding UX walkthroughs",
+                "SDK API ergonomics",
+                "Rejection risk remediation"
+              ],
+              "technologies": [
+                "App Store Review Guidelines",
+                "Google Play Policy",
+                "Marketplace Policy"
+              ],
+              "taskTypes": [
+                "store-compliance-audit",
+                "permission-justification",
+                "dx-review"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "docs/compliance/**",
+                  "package.json",
+                  "manifest.json"
+                ],
+                "writePaths": [
+                  "docs/compliance/**"
+                ],
+                "commands": []
+              },
+              "verification": "Compliance scorecard confirms 100% compliance with current store review rules.",
+              "provenance": [
+                "imports/agency-agents/product/product-dx-engineer.md",
+                "imports/agency-agents/security/security-compliance-auditor.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 4,
+                "tokenEfficiency": 5,
+                "toolRequirements": 2,
+                "permissionComplexity": 1,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 4,
+              "name": "Crash Analytics & Diagnostics Specialist",
+              "position": "Crash Clustering & Runtime Diagnostics Specialist",
+              "primary": "Crash stack trace symbolication, crash clustering, ANR (Application Not Responding) triage, and regression test cases.",
+              "secondary": [
+                "Source map un-minification",
+                "Error boundary verification",
+                "Crash reproduction scripts"
+              ],
+              "technologies": [
+                "Symbolication (dsym/pdb)",
+                "Source maps",
+                "Crash report parsers"
+              ],
+              "taskTypes": [
+                "crash-triage",
+                "symbolication",
+                "anr-investigation",
+                "crash-regression-test"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "src/**",
+                  "tests/**",
+                  "crash-reports/**"
+                ],
+                "writePaths": [
+                  "tests/**"
+                ],
+                "commands": [
+                  "node"
+                ]
+              },
+              "verification": "Every resolved crash has a reproducible automated regression test case that passes.",
+              "provenance": [
+                "imports/agency-agents/testing/testing-test-results-analyzer.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 2,
+                "permissionComplexity": 1,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "RESEARCH",
+      "name": "Research / Making",
+      "slug": "research-making",
+      "purpose": "Deep technical investigation, rapid spike prototyping, AI systems evaluation, experimental hardware/systems, and technical documentation.",
+      "departments": [
+        {
+          "name": "Research & Technology Synthesis",
+          "slug": "research-synthesis",
+          "purpose": "Academic and technology synthesis, legacy codebase archaeology, and organizational knowledge extraction.",
+          "managerResponsibility": "Guides deep technical research and ensures technological choices are grounded in verifiable evidence.",
+          "employees": [
+            {
+              "slot": 1,
+              "name": "Technical Research Synthesist",
+              "position": "Lead Technical Research & Literature Synthesist",
+              "primary": "Distillation of academic papers, technical documentation, library evaluations, and architectural trade-off analysis.",
+              "secondary": [
+                "Executive research summaries",
+                "Comparative matrix tables",
+                "Benchmark evaluation"
+              ],
+              "technologies": [
+                "Markdown synthesis",
+                "Literature review methodologies",
+                "Comparative trade-off matrices"
+              ],
+              "taskTypes": [
+                "research-synthesis",
+                "tradeoff-analysis",
+                "library-evaluation",
+                "technical-brief"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "docs/research/**",
+                  "README.md"
+                ],
+                "writePaths": [
+                  "docs/research/**"
+                ],
+                "commands": []
+              },
+              "verification": "Evidence-backed research report with citation links and comparative trade-off tables.",
+              "provenance": [
+                "imports/agency-agents/research/research-synthesist.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 2,
+                "permissionComplexity": 1,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 2,
+              "name": "Codebase Archaeologist & Reverse Engineer",
+              "position": "Legacy Code Archaeology & Reverse Engineering Specialist",
+              "primary": "Reverse-engineering undocumented repositories, mapping legacy architecture, and extracting business rules.",
+              "secondary": [
+                "Dead code detection",
+                "Dependency graph extraction",
+                "Migration risk assessments"
+              ],
+              "technologies": [
+                "AST exploration",
+                "Git history archaeology",
+                "Static call graphs"
+              ],
+              "taskTypes": [
+                "codebase-archaeology",
+                "legacy-extraction",
+                "reverse-engineering",
+                "call-graph-mapping"
+              ],
+              "tools": [
+                "filesystem:read",
+                "process:execute:git"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "src/**",
+                  "legacy/**",
+                  "package.json"
+                ],
+                "writePaths": [
+                  "docs/architecture/**"
+                ],
+                "commands": [
+                  "git",
+                  "node"
+                ]
+              },
+              "verification": "Accurate architecture map and dependency graph verified against current codebase symbols.",
+              "provenance": [
+                "imports/agency-agents/specialized/specialized-codebase-archaeologist.md",
+                "imports/agency-agents/engineering/engineering-codebase-onboarding-engineer.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 2,
+                "permissionComplexity": 1,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 3,
+              "name": "Technology Trend & Feasibility Analyst",
+              "position": "Technology Feasibility & Evaluation Analyst",
+              "primary": "Feasibility evaluations for new frameworks, architectural spikes, and technical risk analysis.",
+              "secondary": [
+                "Compatibility checks",
+                "Vendor lock-in assessment",
+                "Migration complexity scoring"
+              ],
+              "technologies": [
+                "Technical spike rubrics",
+                "Compatibility matrix testing"
+              ],
+              "taskTypes": [
+                "feasibility-spike",
+                "technology-evaluation",
+                "risk-assessment"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "docs/research/**",
+                  "package.json"
+                ],
+                "writePaths": [
+                  "docs/research/**"
+                ],
+                "commands": []
+              },
+              "verification": "Feasibility spike report with risk matrix and concrete go/no-go recommendation criteria.",
+              "provenance": [
+                "imports/agency-agents/product/product-trend-researcher.md",
+                "imports/agency-agents/testing/testing-tool-evaluator.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 4,
+                "tokenEfficiency": 5,
+                "toolRequirements": 2,
+                "permissionComplexity": 1,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 4,
+              "name": "Knowledge Graph & Memory Architect",
+              "position": "Organizational Knowledge Graph & Semantic Memory Architect",
+              "primary": "Semantic entity extraction, knowledge schema design, decision recall indexing, and organizational memory.",
+              "secondary": [
+                "Multi-repository data consolidation",
+                "Memory decay and curation rules"
+              ],
+              "technologies": [
+                "Knowledge graphs",
+                "Entity-Relationship modeling",
+                "HEADROOM Scoped Memory"
+              ],
+              "taskTypes": [
+                "knowledge-graph",
+                "memory-modeling",
+                "entity-extraction",
+                "decision-indexing"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "src/domain/memory*.js",
+                  "docs/memory/**"
+                ],
+                "writePaths": [
+                  "src/domain/memory*.js",
+                  "docs/memory/**"
+                ],
+                "commands": []
+              },
+              "verification": "Knowledge schema validation; recall query test returns relevant historical decisions accurately.",
+              "provenance": [
+                "imports/agency-agents/engineering/engineering-knowledge-graph-engineer.md",
+                "imports/agency-agents/specialized/data-consolidation-agent.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 2,
+                "permissionComplexity": 1,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            }
+          ]
+        },
+        {
+          "name": "Prototyping & Experimental Development",
+          "slug": "prototyping-experimental",
+          "purpose": "Fast POC development, embedded firmware, IoT hardware integration, and low-level safe systems refactoring.",
+          "managerResponsibility": "Maintains rapid spike development velocity while ensuring experimental code is isolated from production.",
+          "employees": [
+            {
+              "slot": 1,
+              "name": "Rapid Software Prototyper",
+              "position": "Fast Proof-of-Concept & Interactive Spike Prototyper",
+              "primary": "Fast interactive software prototypes, proof-of-concept implementations, and feasibility validation.",
+              "secondary": [
+                "Mock datasets",
+                "Disposable experimental codebases",
+                "Quick demo scaffolding"
+              ],
+              "technologies": [
+                "Vanilla JS / Node.js",
+                "Quick mock harnesses",
+                "Rapid UI scaffolding"
+              ],
+              "taskTypes": [
+                "rapid-poc",
+                "experimental-spike",
+                "feasibility-demo"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write",
+                "process:execute:node"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "src/**",
+                  "scratch/**"
+                ],
+                "writePaths": [
+                  "scratch/**",
+                  "experiments/**"
+                ],
+                "commands": [
+                  "node",
+                  "npm"
+                ]
+              },
+              "verification": "Working executable prototype demonstration with verified functional smoke test.",
+              "provenance": [
+                "imports/agency-agents/engineering/engineering-rapid-prototyper.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 3,
+                "permissionComplexity": 2,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 2,
+              "name": "Embedded Systems & Firmware Engineer",
+              "position": "Embedded Microcontroller & Hardware Firmware Specialist",
+              "primary": "Bare-metal / RTOS firmware in C/C++, hardware sensor protocols (I2C/SPI/UART), and memory-constrained execution.",
+              "secondary": [
+                "Power consumption profiling",
+                "Hardware debugging via JTAG/SWD",
+                "Bootloaders"
+              ],
+              "technologies": [
+                "Embedded C/C++",
+                "FreeRTOS",
+                "I2C / SPI / UART",
+                "ARM Cortex-M"
+              ],
+              "taskTypes": [
+                "firmware-development",
+                "sensor-driver",
+                "rtos-tasks",
+                "hardware-communication"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write",
+                "process:execute:gcc-arm"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "firmware/**",
+                  "hardware/**"
+                ],
+                "writePaths": [
+                  "firmware/**"
+                ],
+                "commands": [
+                  "make",
+                  "gcc",
+                  "clang"
+                ]
+              },
+              "verification": "Firmware builds without warnings; static memory allocation analysis shows stack/heap within bounds.",
+              "provenance": [
+                "imports/agency-agents/engineering/engineering-embedded-firmware-engineer.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 4,
+                "toolRequirements": 4,
+                "permissionComplexity": 3,
+                "verificationDifficulty": 4,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 3,
+              "name": "IoT & Connected Devices Specialist",
+              "position": "IoT Device Fleet & Telemetry Protocol Specialist",
+              "primary": "IoT device communications (MQTT/CoAP), over-the-air (OTA) updates, and telemetry collection pipelines.",
+              "secondary": [
+                "Device provisioning",
+                "Edge computing data reduction",
+                "Connection retry backoff"
+              ],
+              "technologies": [
+                "MQTT",
+                "CoAP",
+                "TLS for IoT",
+                "OTA Update Managers"
+              ],
+              "taskTypes": [
+                "iot-telemetry",
+                "ota-update",
+                "mqtt-broker",
+                "device-provisioning"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "iot/**",
+                  "config/iot/**"
+                ],
+                "writePaths": [
+                  "iot/**"
+                ],
+                "commands": [
+                  "node"
+                ]
+              },
+              "verification": "MQTT packet delivery verified under simulated 20% packet loss network condition.",
+              "provenance": [
+                "imports/agency-agents/engineering/engineering-iot-fleet-engineer.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 3,
+                "permissionComplexity": 2,
+                "verificationDifficulty": 3,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 4,
+              "name": "Systems Refactoring & Safety Specialist",
+              "position": "Low-Level Systems Refactoring & Memory Safety Specialist",
+              "primary": "Memory safety refactoring, ownership model design, Rust systems components, and concurrency safety.",
+              "secondary": [
+                "Zero-cost abstractions",
+                "Unsafe block auditing",
+                "Foreign function interfaces (FFI)"
+              ],
+              "technologies": [
+                "Rust",
+                "Memory ownership models",
+                "Thread safety invariants"
+              ],
+              "taskTypes": [
+                "systems-refactoring",
+                "memory-safety-audit",
+                "rust-integration",
+                "ffi-bindings"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write",
+                "process:execute:cargo"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "native/**",
+                  "src/**"
+                ],
+                "writePaths": [
+                  "native/**"
+                ],
+                "commands": [
+                  "cargo",
+                  "rustc"
+                ]
+              },
+              "verification": "cargo test passes; cargo clippy and miri verify zero undefined behavior / memory leaks.",
+              "provenance": [
+                "imports/agency-agents/engineering/engineering-rust-refactoring-specialist.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 4,
+                "toolRequirements": 4,
+                "permissionComplexity": 3,
+                "verificationDifficulty": 3,
+                "overallValue": 5
+              }
+            }
+          ]
+        },
+        {
+          "name": "AI Systems & Model Evaluation",
+          "slug": "ai-systems-evaluation",
+          "purpose": "AI agent prompt engineering, model output evaluation, RAG pipeline tuning, and automation governance.",
+          "managerResponsibility": "Guarantees agent safety boundaries, deterministic prompt contracts, and model quality thresholds.",
+          "employees": [
+            {
+              "slot": 1,
+              "name": "AI Agent Prompt & Persona Engineer",
+              "position": "Prompt Architecture & Structured Contract Specialist",
+              "primary": "Prompt template engineering, few-shot calibration, structured output enforcement, and persona consistency.",
+              "secondary": [
+                "System prompt token minimization",
+                "Context pruning",
+                "Chain-of-thought calibration"
+              ],
+              "technologies": [
+                "Prompt engineering",
+                "JSON Schema structured output",
+                "Token optimization"
+              ],
+              "taskTypes": [
+                "prompt-design",
+                "structured-output",
+                "few-shot-tuning",
+                "persona-calibration"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "src/application/promptRegistry.js",
+                  "prompts/**"
+                ],
+                "writePaths": [
+                  "src/application/promptRegistry.js",
+                  "prompts/**"
+                ],
+                "commands": []
+              },
+              "verification": "Structured output validation passes 100/100 test runs; prompt token budget stays within limits.",
+              "provenance": [
+                "imports/agency-agents/engineering/engineering-prompt-engineer.md",
+                "imports/agency-agents/strategy/coordination/agent-activation-prompts.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 2,
+                "permissionComplexity": 1,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 2,
+              "name": "Model Quality & Hallucination Evaluator",
+              "position": "AI Model Evaluation & Quality Benchmark Specialist",
+              "primary": "Automated model evaluation benchmarks, factual accuracy scoring, hallucination detection, and drift tracking.",
+              "secondary": [
+                "Eval dataset curation",
+                "LLM-as-a-judge rubrics",
+                "Toxicity and safety grading"
+              ],
+              "technologies": [
+                "Model eval benchmarks",
+                "Grading rubrics",
+                "Drift detection"
+              ],
+              "taskTypes": [
+                "model-eval",
+                "hallucination-scoring",
+                "accuracy-benchmarking",
+                "drift-monitoring"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write",
+                "process:execute:node"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "evals/**",
+                  "tests/**"
+                ],
+                "writePaths": [
+                  "evals/**"
+                ],
+                "commands": [
+                  "node"
+                ]
+              },
+              "verification": "Automated eval scorecard verifies model output quality meets >95% accuracy rubric.",
+              "provenance": [
+                "imports/agency-agents/specialized/specialized-model-qa.md",
+                "imports/agency-agents/testing/testing-reality-checker.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 3,
+                "permissionComplexity": 2,
+                "verificationDifficulty": 3,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 3,
+              "name": "RAG & Retrieval Systems Specialist",
+              "position": "Retrieval-Augmented Generation & Vector Chunking Specialist",
+              "primary": "Document chunking strategies, embedding distance metrics, hybrid search re-ranking, and retrieval context windows.",
+              "secondary": [
+                "Context window packing",
+                "Citation validation",
+                "Stale document eviction"
+              ],
+              "technologies": [
+                "Vector retrieval",
+                "Chunking algorithms",
+                "Cross-encoders",
+                "RAG evaluation"
+              ],
+              "taskTypes": [
+                "rag-tuning",
+                "chunking-strategy",
+                "retrieval-ranking",
+                "context-packing"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "src/domain/memory*.js",
+                  "src/application/context*.js"
+                ],
+                "writePaths": [
+                  "src/domain/memory*.js",
+                  "src/application/context*.js"
+                ],
+                "commands": [
+                  "node"
+                ]
+              },
+              "verification": "RAG benchmark verifies Mean Reciprocal Rank (MRR@5) > 0.85; zero context window overflows.",
+              "provenance": [
+                "imports/agency-agents/engineering/engineering-rag-pipeline-engineer.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 2,
+                "permissionComplexity": 2,
+                "verificationDifficulty": 3,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 4,
+              "name": "Automation Governance & Ethics Architect",
+              "position": "AI Governance, Safety Boundaries & Human-in-the-Loop Architect",
+              "primary": "Agent safety guardrails, human-in-the-loop approval thresholds, permission boundary enforcement, and audit logs.",
+              "secondary": [
+                "Autonomous action cost caps",
+                "Privilege degradation policies",
+                "Safety policy documentation"
+              ],
+              "technologies": [
+                "Safety policies",
+                "Human review gates",
+                "AuditLogRepository in HEADROOM"
+              ],
+              "taskTypes": [
+                "governance-policy",
+                "safety-guardrails",
+                "human-approval-gate",
+                "audit-enforcement"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "src/domain/invariants.js",
+                  "src/domain/planApproval.js"
+                ],
+                "writePaths": [
+                  "src/domain/invariants.js",
+                  "src/domain/planApproval.js"
+                ],
+                "commands": []
+              },
+              "verification": "Adversarial simulation verifies prohibited tools and unapproved plans are blocked 100% of the time.",
+              "provenance": [
+                "imports/agency-agents/specialized/automation-governance-architect.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 2,
+                "permissionComplexity": 1,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            }
+          ]
+        },
+        {
+          "name": "Technical Documentation & Knowledge Publishing",
+          "slug": "documentation-publishing",
+          "purpose": "Developer documentation, Architecture Decision Records (ADRs), multi-format document compilers, and experiment logs.",
+          "managerResponsibility": "Maintains documentation completeness, API reference accuracy, and publication artifact integrity.",
+          "employees": [
+            {
+              "slot": 1,
+              "name": "Lead Technical Writer",
+              "position": "Senior Technical Writer & Architecture Documentation Specialist",
+              "primary": "Architecture Decision Records (ADRs), engineering guides, API reference docs, and release notes.",
+              "secondary": [
+                "Code docstrings maintenance",
+                "Diagram generation (Mermaid)",
+                "Styleguide adherence"
+              ],
+              "technologies": [
+                "Markdown",
+                "Mermaid diagrams",
+                "ADR templates",
+                "OpenAPI docs"
+              ],
+              "taskTypes": [
+                "adr-authoring",
+                "api-documentation",
+                "architecture-guides",
+                "release-notes"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "docs/**",
+                  "README.md",
+                  "RELEASE_POLICY.md"
+                ],
+                "writePaths": [
+                  "docs/**",
+                  "README.md",
+                  "RELEASE_POLICY.md"
+                ],
+                "commands": []
+              },
+              "verification": "Documentation linter passes; all file links and code block syntax verified valid.",
+              "provenance": [
+                "imports/agency-agents/engineering/engineering-technical-writer.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 2,
+                "permissionComplexity": 1,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 2,
+              "name": "Developer Documentation & DX Specialist",
+              "position": "Developer Experience & Tutorial Authoring Specialist",
+              "primary": "Developer onboarding guides, quickstart walkthroughs, code samples, and CLI usage tutorials.",
+              "secondary": [
+                "Error message remediation documentation",
+                "Sample repo maintenance",
+                "FAQ curating"
+              ],
+              "technologies": [
+                "Quickstart guides",
+                "Sample code sandboxes",
+                "Developer onboarding"
+              ],
+              "taskTypes": [
+                "quickstart-authoring",
+                "developer-guides",
+                "code-samples",
+                "faq-curation"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "docs/dev/**",
+                  "examples/**"
+                ],
+                "writePaths": [
+                  "docs/dev/**",
+                  "examples/**"
+                ],
+                "commands": []
+              },
+              "verification": "New developer walkthrough test: code sample executes cleanly with zero missing prerequisite errors.",
+              "provenance": [
+                "imports/agency-agents/product/product-dx-engineer.md",
+                "imports/agency-agents/specialized/specialized-developer-advocate.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 2,
+                "permissionComplexity": 1,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 3,
+              "name": "Document Compiler & Publishing Engineer",
+              "position": "Multi-Format Documentation Pipeline Specialist",
+              "primary": "Markdown/HTML/PDF compilation pipelines, static documentation site builders, and schema documentation.",
+              "secondary": [
+                "Automated asset bundling",
+                "Dead link checkers",
+                "Search indexing for docs"
+              ],
+              "technologies": [
+                "Markdown compilers",
+                "Static site generators",
+                "Link checkers"
+              ],
+              "taskTypes": [
+                "doc-compilation",
+                "dead-link-check",
+                "static-site-build",
+                "pdf-export"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write",
+                "process:execute:node"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "docs/**",
+                  "scripts/**"
+                ],
+                "writePaths": [
+                  "docs/build/**"
+                ],
+                "commands": [
+                  "node"
+                ]
+              },
+              "verification": "Documentation build generates 100% clean output; dead link checker reports 0 broken links.",
+              "provenance": [
+                "imports/agency-agents/engineering/engineering-universal-document-compiler.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 3,
+                "permissionComplexity": 2,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            },
+            {
+              "slot": 4,
+              "name": "Experimental Spike & Results Steward",
+              "position": "Experiment Hypothesis & Evidence Logging Steward",
+              "primary": "Structured logging of experimental spikes, hypothesis tracking, metrics collection, and durable handoffs.",
+              "secondary": [
+                "Durable research handoff notes",
+                "Negative result documentation",
+                "Experiment archiving"
+              ],
+              "technologies": [
+                "Hypothesis logs",
+                "Durable handoff schemas",
+                "Metric tracking"
+              ],
+              "taskTypes": [
+                "hypothesis-logging",
+                "experiment-archiving",
+                "durable-handoff",
+                "result-stewarding"
+              ],
+              "tools": [
+                "filesystem:read",
+                "filesystem:write"
+              ],
+              "permissions": {
+                "readPaths": [
+                  "experiments/**",
+                  "docs/experiments/**"
+                ],
+                "writePaths": [
+                  "docs/experiments/**"
+                ],
+                "commands": []
+              },
+              "verification": "Hypothesis-evidence pair recorded for every spike; results verified by independent test data.",
+              "provenance": [
+                "imports/agency-agents/project-management/project-management-experiment-tracker.md",
+                "imports/agency-agents/testing/testing-evidence-collector.md"
+              ],
+              "scores": {
+                "coverage": 5,
+                "duplication": 1,
+                "specialization": 5,
+                "tokenEfficiency": 5,
+                "toolRequirements": 2,
+                "permissionComplexity": 1,
+                "verificationDifficulty": 2,
+                "overallValue": 5
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "sharedSkills": [
+    {
+      "name": "Minimal-Change Discipline",
+      "slug": "skill:minimal-change-discipline",
+      "description": "Enforces surgical edits, minimal diff footprint, and preservation of untouched lines, comments, and formatting.",
+      "applicableRoles": [
+        "ALL_EMPLOYEES"
+      ],
+      "toolsRequired": [
+        "filesystem:read",
+        "filesystem:write"
+      ],
+      "provenance": "imports/agency-agents/engineering/engineering-minimal-change-engineer.md"
+    },
+    {
+      "name": "Verifiable Evidence Collection",
+      "slug": "skill:evidence-collection",
+      "description": "Captures deterministic test outputs, artifact hashes, run proofs, and verification logs without fabricated claims.",
+      "applicableRoles": [
+        "ALL_EMPLOYEES"
+      ],
+      "toolsRequired": [
+        "filesystem:read"
+      ],
+      "provenance": "imports/agency-agents/testing/testing-evidence-collector.md"
+    },
+    {
+      "name": "Code Review & Defect Detection",
+      "slug": "skill:code-review-critique",
+      "description": "Systematic code review for architectural violations, edge-case bugs, security pitfalls, and performance regressions.",
+      "applicableRoles": [
+        "SENIOR_EMPLOYEES",
+        "DEPARTMENT_MANAGERS"
+      ],
+      "toolsRequired": [
+        "filesystem:read"
+      ],
+      "provenance": "imports/agency-agents/engineering/engineering-code-reviewer.md"
+    },
+    {
+      "name": "Git Branch & Conventional PR Workflow",
+      "slug": "skill:git-pr-workflow",
+      "description": "Branch isolation, conventional commit messages, clean rebase standards, and PR hygiene.",
+      "applicableRoles": [
+        "ALL_EMPLOYEES"
+      ],
+      "toolsRequired": [
+        "process:execute:git"
+      ],
+      "provenance": "imports/agency-agents/engineering/engineering-git-workflow-master.md"
+    },
+    {
+      "name": "Technical Documentation Integrity",
+      "slug": "skill:technical-documentation",
+      "description": "Accurate markdown documentation, clickable file links, API contract annotations, and ADR recording.",
+      "applicableRoles": [
+        "ALL_EMPLOYEES"
+      ],
+      "toolsRequired": [
+        "filesystem:read",
+        "filesystem:write"
+      ],
+      "provenance": "imports/agency-agents/engineering/engineering-technical-writer.md"
+    },
+    {
+      "name": "Secrets Redaction Discipline",
+      "slug": "skill:secret-redaction-discipline",
+      "description": "Zero hardcoded credentials, token masking in all logs, events, and task packets, and SecretStorage adherence.",
+      "applicableRoles": [
+        "ALL_EMPLOYEES"
+      ],
+      "toolsRequired": [
+        "filesystem:read"
+      ],
+      "provenance": "imports/agency-agents/security/security-secrets-credential-engineer.md"
+    }
+  ],
+  "managerHandoffAbsorptions": [
+    {
+      "upstreamRole": "specialized/agents-orchestrator.md",
+      "headroomPlacement": "AI Director: Objective Decomposition & Office Routing",
+      "rationale": "Orchestration is an executive function in HEADROOM owned by the AI Director."
+    },
+    {
+      "upstreamRole": "specialized/specialized-master-plan-architect.md",
+      "headroomPlacement": "AI Director: Milestone & Multi-Phase Planning",
+      "rationale": "Long-horizon roadmap and milestone sequencing belongs to Director-level plan proposals."
+    },
+    {
+      "upstreamRole": "specialized/specialized-workflow-architect.md",
+      "headroomPlacement": "Office Head Manager: Cross-Department Execution Graphs",
+      "rationale": "Translates director plans into coordinated department dependency schedules."
+    },
+    {
+      "upstreamRole": "project-management/project-management-project-shepherd.md",
+      "headroomPlacement": "Department Manager: Task Queue & Blocker Resolution",
+      "rationale": "Department managers directly track task progress, handle retries, and escalate blockers."
+    },
+    {
+      "upstreamRole": "strategy/coordination/handoff-templates.md",
+      "headroomPlacement": "Bounded Employee Task Packet & Result Packet Contracts",
+      "rationale": "Contract structure already formalized in employeeExecutionContract.js."
+    },
+    {
+      "upstreamRole": "specialized/specialized-mcp-builder.md",
+      "headroomPlacement": "HEADROOM Task-Scoped Tools Provider Extension",
+      "rationale": "MCP server tools should be plugged into TaskScopedTools, not treated as independent agents."
+    }
+  ]
+}
