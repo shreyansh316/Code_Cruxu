@@ -1,27 +1,53 @@
-## Pull Request Summary
+## Summary
 
-<!-- Provide a concise summary of the task, implementation, and problem solved. -->
+<!-- Concise description of what changed and why it was needed. -->
 
-## Contributor / Agent Identity
+## Related Task / Phase
 
-- **Branch Name**: `ai/<agent>/<task>` (or feature branch)
-- **Execution Agent**: (e.g. Codex / Claude Code / Gemini / Copilot / Human)
-- **Authenticated GitHub Identity**: <!-- GitHub username or GitHub App used to push/open PR -->
-- **Task / Issue Reference**: <!-- e.g. Fixes #123, Phase 463 -->
+- **Task / Phase Reference**: <!-- e.g. Phase 463, Issue #12, Task T-042 -->
+- **Branch**: <!-- e.g. ai/codex/phase-463, ai/claude/review-463, ai/gemini/task-name -->
 
-## HEADROOM AI Contribution Checklist
+## Changes
 
-Please verify before requesting review or merge:
+<!-- Clear bullet points of what changed. Explain architectural intent. -->
+<!-- - Feature / fix description -->
 
-- [ ] Branch conforms to `ai/<agent>/<task>` naming (agents must NOT work on `main`).
-- [ ] Changes adhere to HEADROOM architecture and project roadmap.
-- [ ] No unrelated files or directories modified.
-- [ ] No secrets, tokens, API keys, private keys, or `.env` files committed.
-- [ ] Existing licenses and attribution preserved (including imported Agency Agents MIT attribution).
-- [ ] Static typecheck passed (`npm run typecheck`).
-- [ ] Lint hygiene passed (`npm run lint`).
-- [ ] Extension compilation passed (`npm run compile`).
-- [ ] Unit tests and verification executed (`npm test`).
-- [ ] Native SQLite compatibility checked (`npm run check:sqlite`).
-- [ ] Packaging / extension host tests passed where applicable (`npm run package` / `npm run test:vscode`).
-- [ ] Failures, blockers, or partial implementations honestly reported.
+## Tests
+
+<!-- Detail what was tested and what was NOT tested. Include exact command outputs. -->
+- [ ] Unit tests (`npm test`): <!-- passed / failed / not applicable -->
+- [ ] Extension Host tests (`npm run test:vscode`): <!-- passed / not run -->
+- [ ] Native SQLite compatibility (`npm run check:sqlite`): <!-- passed / failed -->
+
+## Verification
+
+<!-- Provide machine evidence. Do not claim tests passed without executing them. -->
+- [ ] Static typecheck (`npm run typecheck`): <!-- passed / failed -->
+- [ ] Linter hygiene (`npm run lint`): <!-- passed / failed -->
+- [ ] Extension compile (`npm run compile`): <!-- passed / failed -->
+- [ ] Git diff and whitespace hygiene (`git diff --check`): <!-- clean / warnings -->
+
+## Security Considerations
+
+- [ ] Zero secrets, tokens, API keys, private keys, or `.env` files staged or committed.
+- [ ] All process spawning uses `shell: false` with explicit argument lists.
+- [ ] Path canonicalization and workspace containment verified.
+- [ ] Automatic secret redaction preserved.
+
+## Files Changed
+
+<!-- List the modified, added, or removed files. Confirm no unrelated files were touched. -->
+
+## AI Assistance
+
+- **AI Coding Agent**: <!-- e.g. OpenAI Codex, Claude Code, Google Gemini, GitHub Copilot, None -->
+- **Authenticated GitHub Identity**: <!-- Actual GitHub username or verified GitHub App used to push/open PR -->
+- **Verification Performed**: <!-- Human review and machine-checked verification steps performed on AI output -->
+
+## Known Limitations
+
+<!-- Disclose any partial implementations, environment limitations, or deferred work. -->
+
+## Blockers
+
+<!-- State any blockers, upstream issues, or 'NONE'. -->

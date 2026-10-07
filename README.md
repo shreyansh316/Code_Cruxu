@@ -323,7 +323,7 @@ HEADROOM is developed with AI-assisted engineering workflows.
 
 Contributions from AI coding tools (OpenAI Codex, Claude Code, Google Gemini, GitHub Copilot, and others) are welcome when they follow the repository's contribution rules, pass verification, and are reviewed before integration.
 
-AI-generated changes are treated like any other contribution: they must be understandable, testable, and verifiable. For specific branch naming (`ai/<agent>/<task>`), permissions, and safety policies, see our **[Multi-AI GitHub Collaboration Guide](./docs/ai-github-collaboration.md)**.
+AI-generated changes are treated like any other contribution: they must be understandable, testable, and verifiable. For specific branch naming (`ai/<agent>/<task>`), lifecycle rules, and permissions models, see our **[AI-Agent Contribution Workflow](./docs/ai-agent-contribution-workflow.md)** and **[Multi-AI GitHub Collaboration Guide](./docs/ai-github-collaboration.md)**.
 
 ---
 

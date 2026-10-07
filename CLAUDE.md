@@ -31,6 +31,7 @@ HEADROOM architecture → HEADROOM roadmap → Current task → Repository evide
 
 ```bash
 # Verification gates
+npm run check:branch  # Ensures working branch is not main
 npm run typecheck     # AST & syntax checks across all JS files
 npm run lint          # Linter
 npm run compile       # Build extension with esbuild
@@ -45,9 +46,17 @@ npm run test:vscode   # Run Extension Host tests
 
 ---
 
-## Constraints
+## Constraints & Result Reporting
 
 - Never commit secrets, API keys, or `.env` files.
 - Never modify unrelated files or rewrite shared commit history.
 - Preserve all MIT licenses and attribution in `LICENSE` and `agency-agents-integration.md`.
 - Report verification outcomes honestly; never fabricate test passes.
+- Provide evidence using standard format:
+  ```text
+  STATUS: COMPLETED
+  RESULT: <summary>
+  FILES: <changed files>
+  TESTS: <test evidence>
+  BLOCKERS: NONE
+  ```

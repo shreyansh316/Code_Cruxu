@@ -344,6 +344,7 @@
     "test:vscode": "node ./test/runTest.js",
     "benchmark": "vitest run --config vitest.benchmark.config.js --reporter=verbose",
     "check:sqlite": "node scripts/check-sqlite.js",
+    "check:branch": "node scripts/verify-branch.js",
     "audit:complexity": "node scripts/complexity-audit.js",
     "audit:dead-code": "node scripts/dead-code-audit.js",
     "package": "node ./test/runTest.js --package",
