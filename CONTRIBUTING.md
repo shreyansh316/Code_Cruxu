@@ -173,6 +173,9 @@ Only report checks as passed if they actually executed and succeeded in your loc
 
 For deeper details on AI GitHub setup, permissions, and identity separation, refer to:
 
+- [docs/ai-agent-contribution-workflow.md](docs/ai-agent-contribution-workflow.md) — Multi-AI Agent Contribution Workflow Specification.
 - [docs/ai-github-collaboration.md](docs/ai-github-collaboration.md) — Comprehensive Multi-AI GitHub Collaboration Guide.
+- [docs/github-achievement-strategy.md](docs/github-achievement-strategy.md) — GitHub Achievement & Community Growth Strategy.
+- [docs/github-branch-protection.md](docs/github-branch-protection.md) — GitHub Branch Protection Configuration Guide.
 - [GITHUB_MANUAL_SETUP.md](GITHUB_MANUAL_SETUP.md) — Repository Owner Branch Protection & GitHub Settings Guide.
 - [SECURITY_MODEL.md](SECURITY_MODEL.md) — HEADROOM Defense-in-Depth Security Specification.
