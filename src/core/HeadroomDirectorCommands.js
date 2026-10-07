@@ -12,6 +12,7 @@ import { createObjectiveQuestionWorkflow } from '../application/objectiveQuestio
 import { createTaskCreationUseCase } from '../application/taskCreation';
 import { createCodeExplanationUseCase } from '../application/codeExplanation';
 import { createEngineeringReviewUseCase } from '../application/engineeringReview';
+import { createPersistedPlanDecision } from '../application/persistedPlanDecision';
 import { directorProviderMissing, directorRequestBlock } from './directorRequestFlow';
 import { chooseCodeExplanationAction } from './CodeExplanationCommands';
 import { getMessage } from './messages';
@@ -233,7 +234,7 @@ export async function reviewSelection({ configuration, createProvider, beginRequ
 }
 
 export async function proposePlan({ configuration, executionControl, createProvider, beginRequest,
-    endRequest, refresh, reviewPlan, ...rest } = {}) {
+    endRequest, refresh, reviewPlan: customReviewPlan, ...rest } = {}) {
     const blocked = directorRequestBlock(executionControl.status);
     if (blocked) {
         vscode.window.showInformationMessage(getMessage(blocked));
@@ -279,10 +280,28 @@ export async function proposePlan({ configuration, executionControl, createProvi
         return;
     }
     // A proposal is shown as JSON and explicitly approved or rejected by the CEO.
-    const decidedPlan = await reviewPlan(result.value);
+    const reviewer = typeof customReviewPlan === 'function'
+        ? customReviewPlan
+        : ((p) => reviewPlan(p, { database, refresh }));
+    const decidedPlan = await reviewer(result.value);
     if (decidedPlan?.approval?.decision === 'APPROVED') {
         await createApprovedPlanTasks(decidedPlan, { database, configuration, refresh });
     }
+}
+
+export async function resolveObjectiveOrganization(objective, { database } = {}) {
+    if (!objective || !database) return undefined;
+    const organizationRepository = new OrganizationRepository(database);
+    const organizations = organizationRepository.list().sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+    let organization = objective.organizationId ? organizationRepository.getById(objective.organizationId) : undefined;
+    if (!organization && !objective.organizationId && organizations.length === 1) organization = organizations[0];
+    if (!organization && !objective.organizationId && organizations.length > 1) {
+        const selected = await vscode.window.showQuickPick(organizations.map((entry) => ({
+            label: entry.name, description: entry.id, organization: entry,
+        })), { title: getMessage('plan.tasks.pickOrganization'), ignoreFocusOut: true });
+        organization = selected?.organization;
+    }
+    return organization;
 }
 
 async function createApprovedPlanTasks(plan, { database, configuration, refresh } = {}) {
@@ -292,15 +311,7 @@ async function createApprovedPlanTasks(plan, { database, configuration, refresh 
         vscode.window.showErrorMessage(getMessage('plan.tasks.objectiveMissing'));
         return;
     }
-    const organizationRepository = new OrganizationRepository(database);
-    const organizations = organizationRepository.list().sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
-    let organization = objective.organizationId ? organizationRepository.getById(objective.organizationId) : undefined;
-    if (!organization && !objective.organizationId && organizations.length === 1) organization = organizations[0];
-    if (!organization && !objective.organizationId && organizations.length > 1) {
-        const selected = await vscode.window.showQuickPick(organizations.map((entry) => ({ label: entry.name, organization: entry })),
-            { title: getMessage('plan.tasks.pickOrganization'), ignoreFocusOut: true });
-        organization = selected?.organization;
-    }
+    const organization = await resolveObjectiveOrganization(objective, { database });
     if (!organization) {
         vscode.window.showErrorMessage(getMessage('plan.tasks.organizationMissing'));
         return;
@@ -391,4 +402,159 @@ async function createApprovedPlanTasks(plan, { database, configuration, refresh 
     }
     refresh();
     vscode.window.showInformationMessage(getMessage('plan.tasks.created', { count: created.value.tasks.length }));
+}
+
+export async function reviewPlan(plan, { database, refresh } = {}) {
+    if (!plan || typeof plan !== 'object') {
+        vscode.window.showWarningMessage(getMessage('plan.missing'));
+        return;
+    }
+    const serialized = JSON.stringify(plan, null, 2);
+    if (Buffer.byteLength(serialized, 'utf8') > 1024 * 1024) {
+        vscode.window.showErrorMessage(getMessage('plan.tooLarge'));
+        return;
+    }
+    const document = await vscode.workspace.openTextDocument({ language: 'json', content: serialized });
+    await vscode.window.showTextDocument(document, { preview: false });
+    const objectiveRepository = new ObjectiveRepository(database);
+    const objective = objectiveRepository.getById(plan.objectiveId);
+    const organization = await resolveObjectiveOrganization(objective, { database });
+    if (!objective || !organization) {
+        vscode.window.showErrorMessage(getMessage('plan.ceo.missing'));
+        return;
+    }
+    const agentRepository = new AgentRepository(database);
+    let approver = agentRepository.listByOrganization(organization.id)
+        .filter((agent) => agent.role === 'CEO' && isAgentAvailable(agent));
+    if (approver.length > 1) {
+        const selectedCEO = await vscode.window.showQuickPick(approver.map((agent) => ({
+            label: agent.name, description: agent.id, agent,
+        })), { title: getMessage('plan.title'), ignoreFocusOut: true });
+        if (!selectedCEO) return;
+        approver = [selectedCEO.agent];
+    }
+    if (approver.length !== 1) {
+        vscode.window.showErrorMessage(getMessage('plan.ceo.missing'));
+        return;
+    }
+    const decision = await vscode.window.showQuickPick([
+        { label: getMessage('plan.approve'), description: getMessage('plan.approve.description'), value: 'APPROVED' },
+        { label: getMessage('plan.reject'), description: getMessage('plan.reject.description'), value: 'REJECTED' },
+    ], { title: getMessage('plan.title'), placeHolder: getMessage('plan.decision.placeholder') });
+    if (!decision) return;
+    if (!objective.organizationId) {
+        objectiveRepository.update(objective.id, { organizationId: organization.id });
+    }
+    const auditRepository = new AuditLogRepository(database);
+    const useCase = createPersistedPlanDecision({ agentRepository, objectiveRepository,
+        auditRepository,
+        unitOfWork: createSqliteUnitOfWork(database),
+        clock: { now: () => new Date() }, idFactory: () => randomUUID() });
+    const result = await useCase.run({ approverId: approver[0].id, plan, decision: decision.value });
+    if (!result.ok) {
+        vscode.window.showErrorMessage(getMessage('plan.recordFailed', { error: result.error.message }));
+        return;
+    }
+    const planDecision = decision.value === 'APPROVED' ? getMessage('plan.approve') : getMessage('plan.reject');
+    vscode.window.showInformationMessage(getMessage('plan.recorded', { decision: planDecision.toLowerCase() }));
+    if (typeof refresh === 'function') refresh();
+    return result.value;
+}
+
+export async function answerDirectorQuestion({ database, refresh } = {}) {
+    const questionRepository = new DirectorQuestionRepository(database);
+    const objectiveRepository = new ObjectiveRepository(database);
+    const organizationRepository = new OrganizationRepository(database);
+    const organizations = organizationRepository.list().sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+    if (!organizations.length) {
+        vscode.window.showInformationMessage(getMessage('objective.organization.missing'));
+        return;
+    }
+    let organization = organizations[0];
+    if (organizations.length > 1) {
+        const selectedOrganization = await vscode.window.showQuickPick(organizations.map((entry) => ({
+            label: entry.name, description: entry.id, organization: entry,
+        })), { title: getMessage('objective.organization.pick'), ignoreFocusOut: true });
+        organization = selectedOrganization?.organization;
+    }
+    if (!organization) return;
+    const objectiveRecords = [...objectiveRepository.listByOrganization(organization.id), ...objectiveRepository.listUnassigned()];
+    const objectives = new Map(objectiveRecords.map((objective) => [objective.id, objective]));
+    const objectiveIds = new Set(objectives.keys());
+    const pending = questionRepository.listByStatus('PENDING')
+        .filter((question) => objectiveIds.has(question.objectiveId)).slice(0, 100);
+    if (pending.length === 0) {
+        vscode.window.showInformationMessage(getMessage('director.questions.none'));
+        return;
+    }
+    const selected = await vscode.window.showQuickPick(pending.map((question) => ({
+        label: question.question.slice(0, 160),
+        description: (() => {
+            const objective = objectives.get(question.objectiveId);
+            return objective
+                ? `${organization.name} · ${objective.title}${objective.organizationId ? '' : ' · Unassigned'}`
+                : getMessage('director.questions.objectiveUnavailable');
+        })(),
+        questionId: question.id,
+        objectiveId: question.objectiveId,
+    })), { title: getMessage('director.questions.pick'), ignoreFocusOut: true });
+    if (!selected) return;
+    const objective = objectives.get(selected.objectiveId);
+    const agentRepository = new AgentRepository(database);
+    let ceos = agentRepository.listByOrganization(organization.id)
+        .filter((agent) => agent.role === AgentRole.CEO && isAgentAvailable(agent));
+    if (!objective || !ceos.length) {
+        vscode.window.showErrorMessage(getMessage('director.questions.ceoMissing'));
+        return;
+    }
+    if (ceos.length > 1) {
+        const selectedCEO = await vscode.window.showQuickPick(ceos.map((agent) => ({
+            label: agent.name, description: agent.id, agent,
+        })), { title: getMessage('lifecycle.pickCEO'), ignoreFocusOut: true });
+        if (!selectedCEO) return;
+        ceos = [selectedCEO.agent];
+    }
+    const action = await vscode.window.showQuickPick([
+        { label: getMessage('director.questions.answerAction'), value: 'ANSWER' },
+        { label: getMessage('director.questions.skipAction'), value: 'SKIP' },
+    ], { title: getMessage('director.questions.pick'), ignoreFocusOut: true });
+    if (!action) return;
+    let answer;
+    if (action.value === 'ANSWER') {
+        answer = await vscode.window.showInputBox({
+            title: getMessage('director.questions.answer'), ignoreFocusOut: true,
+            validateInput: (value) => typeof value === 'string' && value.trim().length >= 1 && value.trim().length <= 10_000
+                ? undefined : getMessage('director.questions.answer.invalid'),
+        });
+        if (answer === undefined) return;
+    } else if (action.value !== 'SKIP') {
+        return;
+    }
+    if (!objective.organizationId) objectiveRepository.update(objective.id, { organizationId: organization.id });
+    const eventBus = new SqliteEventBus(database);
+    const auditRepository = new AuditLogRepository(database);
+    const workflow = createObjectiveQuestionWorkflow({
+        questionRepository,
+        objectiveRepository,
+        idFactory: () => randomUUID(),
+        eventPublisher: { append: (event) => {
+            eventBus.append(event);
+            return auditRepository.append({
+                id: event.eventId, action: event.type, entity: 'objective', entityId: event.aggregateId,
+                actorId: ceos[0]?.id ?? null, details: { occurredAt: event.occurredAt, ...event.payload },
+            });
+        } },
+        unitOfWork: createSqliteUnitOfWork(database),
+        clock: { now: () => new Date() },
+    });
+    const result = action.value === 'SKIP'
+        ? await workflow.skip.run({ questionId: selected.questionId })
+        : await workflow.answer.run({ questionId: selected.questionId, answer });
+    if (!result.ok) {
+        vscode.window.showErrorMessage(getMessage('director.questions.failed', { error: result.error.message }));
+        return;
+    }
+    if (typeof refresh === 'function') refresh();
+    vscode.window.showInformationMessage(getMessage(action.value === 'SKIP'
+        ? 'director.questions.skipped' : 'director.questions.answered'));
 }
